@@ -1,0 +1,84 @@
+name: Build and test iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Xcode
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build app and widgets for Simulator
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild -project UsefulTravelClock.xcodeproj \
+            -scheme UsefulTravelClock -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath build/Build.xcresult \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build/build.log
+      - name: Select an available iPhone simulator
+        run: |
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/devices.json"
+          python3 - <<'PY'
+          import json, os
+          with open(os.path.join(os.environ['RUNNER_TEMP'], 'devices.json')) as f:
+              runtimes = json.load(f)['devices']
+          devices = [d for runtime, group in runtimes.items() if '.iOS-' in runtime
+                     for d in group if d['name'].startswith('iPhone') and d.get('isAvailable')]
+          if not devices:
+              raise SystemExit('No available iPhone simulator on this runner.')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('SIMULATOR_ID=' + devices[0]['udid'] + '\n')
+          PY
+      - name: Test settings persistence and time calculations
+        run: |
+          set -o pipefail
+          xcodebuild -project UsefulTravelClock.xcodeproj \
+            -scheme UsefulTravelClock -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath build/Tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build/test.log
+      - name: Package Simulator app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/DerivedData/Build/Products/Release-iphonesimulator/UsefulTravelClock.app \
+            build/UsefulTravelClock-Simulator.zip
+      - name: Save Simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: UsefulTravelClock-Simulator
+          path: build/UsefulTravelClock-Simulator.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save build and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-build-diagnostics
+          path: |
+            build/*.log
+            build/*.xcresult
+          if-no-files-found: warn
+          retention-days: 14
