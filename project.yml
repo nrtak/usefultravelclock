@@ -1,0 +1,93 @@
+# Useful Travel Clock
+
+name: UsefulTravelClock
+options:
+  bundleIdPrefix: com.usefultravelclock
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  UsefulTravelClock:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - target: UsefulTravelClockWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.usefultravelclock.app
+        PRODUCT_NAME: UsefulTravelClock
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_CFBundleDisplayName: Useful Travel Clock
+        CODE_SIGN_ENTITLEMENTS: UsefulTravelClock/UsefulTravelClock.entitlements
+    entitlements:
+      path: UsefulTravelClock/UsefulTravelClock.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.usefultravelclock.app
+
+  UsefulTravelClockWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - UsefulTravelClockWidget
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.usefultravelclock.app.widget
+        PRODUCT_NAME: UsefulTravelClockWidget
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: UsefulTravelClockWidget/UsefulTravelClockWidget.entitlements
+    info:
+      path: UsefulTravelClockWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Useful Travel Clock Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: UsefulTravelClockWidget/UsefulTravelClockWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.usefultravelclock.app
+
+  UsefulTravelClockTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: UsefulTravelClock
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.usefultravelclock.tests
+
+schemes:
+  UsefulTravelClock:
+    build:
+      targets:
+        UsefulTravelClock: all
+        UsefulTravelClockWidget: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - UsefulTravelClockTests
+    archive:
+      config: Release
