@@ -1,0 +1,15 @@
+.DS_Store
+*.xcodeproj/
+DerivedData/
+build/
+*.xcresult/
+UsefulTravelClock/UsefulTravelClock.entitlements
+UsefulTravelClockWidget/UsefulTravelClockWidget.entitlements
+UsefulTravelClockWidget/Info.plist
+*.p12
+*.p8
+*.mobileprovision
+*.key
+*.cer
+*.certSigningRequest
+.env
