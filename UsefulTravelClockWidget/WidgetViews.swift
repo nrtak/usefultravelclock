@@ -14,7 +14,14 @@ struct SmallWidgetView: View {
 
     var body: some View {
         Group {
-            if let city = entry.cities(upTo: 1).first {
+            if entry.cities(upTo: 2).count == 2 {
+                VStack(spacing: 4) {
+                    ForEach(Array(entry.cities(upTo: 2).enumerated()), id: \.offset) { index, city in
+                        if index > 0 { Divider() }
+                        SmallTwoCityCell(city: city, entry: entry)
+                    }
+                }.frame(maxHeight: .infinity)
+            } else if let city = entry.cities(upTo: 1).first {
                 let t = TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID)
                 let difference = TimeEngine.timeDifferenceMinutes(entry.date, timeZoneID: city.timeZoneID, homeTimeZoneID: entry.homeZone)
                 let phase = TimeEngine.dayPhase(t.hourFloat)
@@ -29,12 +36,12 @@ struct SmallWidgetView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer(minLength: 0)
-                    WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
+                    WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.phase(.night, scheme: .light))
                         .frame(width: 56, height: 56)
                         .frame(maxWidth: .infinity, alignment: .center)
                     Spacer(minLength: 0)
-                    (Text(t.hm).font(.system(size: 28, weight: .bold).monospacedDigit())
-                        + Text(" " + t.period.uppercased()).font(.system(size: 12, weight: .semibold)))
+                    (Text(widgetTime(t)).font(.system(size: 28, weight: .bold).monospacedDigit())
+                        + Text(widgetPeriod(t)).font(.system(size: 12, weight: .semibold)))
                         .foregroundStyle(Design.widgetLabel)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
@@ -51,7 +58,7 @@ struct SmallWidgetView: View {
             }
         }
         .padding(2)
-        .widgetBackground(Design.widgetCard)
+        .widgetBackground(widgetSurface(entry))
     }
 }
 
@@ -62,12 +69,13 @@ struct MediumWidgetView: View {
 
     var body: some View {
         let cities = entry.cities(upTo: 6)
+        let columns = cities.count == 2 || cities.count == 4 ? 2 : 3
         Group {
             if cities.isEmpty {
                 Text("Pick cities in Useful Travel Clock").font(.caption)
             } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                    ForEach(cities) { city in
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns), spacing: 8) {
+                    ForEach(Array(cities.enumerated()), id: \.offset) { _, city in
                         gridCell(city: city)
                     }
                 }
@@ -81,30 +89,77 @@ struct MediumWidgetView: View {
         let difference = TimeEngine.timeDifferenceMinutes(entry.date, timeZoneID: city.timeZoneID, homeTimeZoneID: entry.homeZone)
         let phase = TimeEngine.dayPhase(t.hourFloat)
         let accent = Design.phase(phase, scheme: .light)
+        let count = entry.cityIDs.count
+        let roomy = count <= 3
+        let timeSize: CGFloat = count == 2 ? 28 : count <= 4 ? 23 : 20
 
         return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
+            if roomy {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
-                    .frame(width: 20, height: 20)
-                (Text(t.hm).font(.system(size: 20, weight: .bold).monospacedDigit())
-                    + Text(" " + t.period.uppercased()).font(.system(size: 9, weight: .semibold)))
+                    .frame(width: 38, height: 38)
+            }
+            HStack(spacing: 4) {
+                if !roomy {
+                WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
+                    .frame(width: roomy ? 30 : 20, height: roomy ? 30 : 20)
+                }
+                (Text(widgetTime(t)).font(.system(size: timeSize, weight: .bold).monospacedDigit())
+                    + Text(widgetPeriod(t)).font(.system(size: count <= 4 ? 11 : 9, weight: .semibold)))
                     .foregroundStyle(Design.widgetLabel)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
             Text(city.name)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: roomy ? 16 : 13, weight: .semibold))
                 .foregroundStyle(Design.widgetLabel)
                 .lineLimit(2)
                 .minimumScaleFactor(0.9)
             Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: count == 2 ? 12 : 10, weight: .medium))
                 .foregroundStyle(Design.widgetLabel)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
+        .background(Design.phaseSurface(phase, scheme: .light), in: RoundedRectangle(cornerRadius: 5))
     }
+}
+
+private struct SmallTwoCityCell: View {
+    let city: City
+    let entry: UsefulTravelClockEntry
+    var body: some View {
+        let t = TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID)
+        let difference = TimeEngine.timeDifferenceMinutes(entry.date, timeZoneID: city.timeZoneID, homeTimeZoneID: entry.homeZone)
+        VStack(alignment: .leading, spacing: 1) {
+            Text(city.name).font(.system(size: 13, weight: .semibold))
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 4) {
+                WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel).frame(width: 26, height: 26)
+                (Text(widgetTime(t)).font(.system(size: 24, weight: .bold).monospacedDigit())
+                 + Text(widgetPeriod(t)).font(.system(size: 10, weight: .semibold)))
+                    .lineLimit(1).minimumScaleFactor(0.85)
+            }
+            Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
+                .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .foregroundStyle(Design.widgetLabel)
+            .background(Design.phaseSurface(TimeEngine.dayPhase(t.hourFloat), scheme: .light))
+    }
+}
+
+private func widgetSurface(_ entry: UsefulTravelClockEntry) -> Color {
+    guard entry.cityIDs.count == 1, let city = entry.cities(upTo: 1).first else { return .white }
+    return Design.phaseSurface(TimeEngine.dayPhase(TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID).hourFloat), scheme: .light)
+}
+
+private func widgetTime(_ time: ZonedTime) -> String {
+    UserDefaults.usefultravelclockShared.bool(forKey: "use24") ? String(format: "%02d:%02d", time.hour24, time.minute) : time.hm
+}
+
+private func widgetPeriod(_ time: ZonedTime) -> String {
+    UserDefaults.usefultravelclockShared.bool(forKey: "use24") ? "" : " " + time.period.uppercased()
 }
 
 // MARK: - Lock screen widgets

@@ -1,6 +1,7 @@
 //  Useful Travel Clock
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Mirrors the web app's clocks screen: city cards + a time scrubber.
 struct ClocksView: View {
@@ -10,25 +11,71 @@ struct ClocksView: View {
     @State private var adding = false
     @State private var managing: City?
     @State private var now = Date()
+    @State private var editing = false
+    @State private var draggedID: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
+        VStack(spacing: 0) {
+            HStack {
+                Menu {
+                    Picker("Sort cities", selection: $store.sortOrder) {
+                        ForEach(CitySort.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } label: { Label(store.sortOrder.rawValue, systemImage: "arrow.up.arrow.down") }
+                Spacer()
+                Button(editing ? "Done" : "Edit") { editing.toggle(); draggedID = nil }
+            }.padding(.horizontal, 20).padding(.vertical, 8)
+            if editing {
+                Text("Drag to reorder. Pinned cities stay at the top.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.bottom, 6)
+            }
+            ScrollView {
             VStack(spacing: 0) {
-                ForEach(store.selectedCities) { city in
-                    Button { managing = city } label: { CityRowView(
+                ForEach(store.orderedCities(at: now)) { city in
+                    VStack(spacing: 0) {
+                    if editing {
+                        HStack {
+                            Button(role: .destructive) { store.removeCity(city.id) } label: { Image(systemName: "minus.circle.fill") }
+                                .accessibilityLabel("Remove \(city.name)")
+                            Button { managing = city } label: { Label("Change / rename", systemImage: "pencil") }
+                            Spacer()
+                            Button { store.toggleFavorite(city.id) } label: {
+                                Image(systemName: store.favoriteIDs.contains(city.id) ? "pin.fill" : "pin")
+                            }.accessibilityLabel("Pin \(city.name)")
+                            Image(systemName: "line.3.horizontal").accessibilityLabel("Drag to reorder")
+                        }.font(.subheadline).padding(10)
+                    }
+                    CityRowView(
                         city: city,
                         at: store.displayDate(from: now),
                         homeTimeZoneID: store.homeTimeZoneID,
                         scheme: scheme
-                    ) }.buttonStyle(.plain)
+                    )
+                    .onTapGesture { managing = city }
+                    .onLongPressGesture { editing = true }
+                    .accessibilityAction(named: "Edit cities") { editing = true }
+                    }
+                    .modifier(CityWiggle(active: editing && !reduceMotion))
+                    .onDrag {
+                        editing = true; draggedID = city.id
+                        return NSItemProvider(object: city.id as NSString)
+                    }
+                    .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
                 }
-                Button("+ Add city") { adding = true }.padding(.vertical, 12).disabled(store.cityIDs.count >= UsefulTravelClockStore.maxCities)
-                scrubber
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 16)
+        }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Button("+ Add city") { adding = true }.padding(.top, 8)
+                    .disabled(store.cityIDs.count >= UsefulTravelClockStore.maxCities)
+                scrubber
+            }.padding(.horizontal, 16).padding(.bottom, 8).background(Design.background(scheme))
         }
         .onReceive(timer) { now = $0 }
         .sheet(isPresented: $adding) { AddCitySheet() }
@@ -75,6 +122,30 @@ struct ClocksView: View {
     }
 }
 
+private struct CityWiggle: ViewModifier {
+    let active: Bool
+    @State private var tilted = false
+    func body(content: Content) -> some View {
+        content.rotationEffect(.degrees(active ? (tilted ? 0.45 : -0.45) : 0))
+            .onChange(of: active) { enabled in
+                if enabled { withAnimation(.easeInOut(duration: 0.16).repeatForever(autoreverses: true)) { tilted = true } }
+                else { tilted = false }
+            }
+    }
+}
+
+@MainActor private struct CityReorderDrop: DropDelegate {
+    let cityID: String
+    let store: UsefulTravelClockStore
+    @Binding var draggedID: String?
+    func dropEntered(info: DropInfo) {
+        guard let source = draggedID, source != cityID else { return }
+        withAnimation { store.moveCity(source, to: cityID) }
+    }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+    func performDrop(info: DropInfo) -> Bool { draggedID = nil; return true }
+}
+
 /// Readable city card with full location, difference, and date.
 struct CityRowView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
@@ -92,12 +163,16 @@ struct CityRowView: View {
 
         let isNight = phase == .dusk || phase == .evening || phase == .night
         let ink = scheme == .dark ? Color.white : Color(red: 0.16, green: 0.20, blue: 0.30)
-        let surface = scheme == .dark ? Design.cityRow(scheme) : (isNight ? Color(red: 0.92, green: 0.90, blue: 0.96) : Color.white)
+        let surface = Design.phaseSurface(phase, scheme: scheme)
 
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(city.name).font(.headline)
+                    if let name = store.nicknames[city.id], !name.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Text(name).font(.headline)
+                        Text(city.name).font(.subheadline)
+                    } else { Text(city.name).font(.headline) }
+                    if store.favoriteIDs.contains(city.id) { Image(systemName: "pin.fill").font(.caption).accessibilityLabel("Pinned") }
                     Text(subtitle).font(.subheadline)
                 }
                 .fixedSize(horizontal: false, vertical: true)
