@@ -25,7 +25,7 @@ struct ConverterView: View {
                 inputs
                 buttons
                 if result != nil { resultCard }
-                if let conversionError { Text(conversionError).foregroundStyle(.red).font(.caption) }
+                if let conversionError { Text(conversionError).foregroundStyle(.red).font(.body) }
             }
             .padding(16)
         }
@@ -41,16 +41,16 @@ struct ConverterView: View {
             Image(systemName: "arrow.left.arrow.right")
                 .foregroundStyle(Color(red: 0.29, green: 0.55, blue: 0.78))
             VStack(alignment: .leading, spacing: 1) {
-                Text("Time converter").font(.system(size: 16, weight: .bold))
+                Text("Time converter").font(.title2.bold())
                 Text("Convert a time between two cities")
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .foregroundStyle(Design.mutedForeground(scheme))
             }
         }
     }
 
     private var inputs: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 16) {
             fieldRow(label: "From", cityID: fromCityID) { pickingField = .from }
             HStack(spacing: 10) {
                 dateField
@@ -63,19 +63,20 @@ struct ConverterView: View {
     private func fieldRow(label: String, cityID: String, action: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Design.mutedForeground(scheme))
             Button(action: action) {
                 HStack {
                     Text(CitySearch.city(withID: cityID, in: store.allCities)?.label ?? "Select a city")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(Design.foreground(scheme))
                     Spacer()
-                    Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(Design.mutedForeground(scheme))
+                    Image(systemName: "chevron.down").font(.subheadline).foregroundStyle(Design.mutedForeground(scheme))
                 }
                 .padding(.horizontal, 12)
-                .frame(height: 44)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme).opacity(0.45)))
+                .padding(.vertical, 16)
+                .frame(minHeight: 56)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme)))
             }
         }
         .sheet(item: $pickingField) { field in
@@ -88,26 +89,26 @@ struct ConverterView: View {
     private var dateField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("DATE")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Design.mutedForeground(scheme))
             DatePicker("", selection: dateBinding, displayedComponents: .date)
                 .labelsHidden()
                 .environment(\.timeZone, TimeZone(identifier: "UTC")!)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme).opacity(0.45)))
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme)))
         }
     }
 
     private var timeField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("TIME")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Design.mutedForeground(scheme))
             DatePicker("", selection: timeBinding, displayedComponents: .hourAndMinute)
                 .labelsHidden()
                 .environment(\.timeZone, TimeZone(identifier: "UTC")!)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme).opacity(0.45)))
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme)))
         }
     }
 
@@ -115,16 +116,16 @@ struct ConverterView: View {
         HStack(spacing: 10) {
             Button(action: convert) {
                 Text("Convert time")
-                    .font(.system(size: 12, weight: .bold))
-                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Design.primary(scheme)))
                     .foregroundStyle(Design.background(scheme))
             }
             Button(action: syncNow) {
                 Text("Now")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.headline)
                     .padding(.horizontal, 18)
-                    .frame(minHeight: 40)
+                    .frame(minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme)))
                     .foregroundStyle(Design.foreground(scheme))
             }
@@ -158,14 +159,14 @@ struct ConverterView: View {
     private func resultColumn(city: City, time: ZonedTime, alignTrailing: Bool) -> some View {
         VStack(alignment: alignTrailing ? .trailing : .leading, spacing: 2) {
             Text(city.label)
-                .font(.system(size: 12, weight: .semibold))
-                .lineLimit(1)
+                .font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(time.hm).font(.system(size: 20, weight: .bold).monospacedDigit())
+                Text(time.hm).font(.title2.bold().monospacedDigit())
                 Text(time.period).font(.system(size: 14, weight: .semibold))
             }
             Text(time.date)
-                .font(.system(size: 11))
+                .font(.subheadline)
                 .foregroundStyle(Design.mutedForeground(scheme))
         }
         .foregroundStyle(Design.foreground(scheme))
@@ -229,9 +230,9 @@ struct CityPickerSheet: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(city.label).font(.system(size: 15, weight: .medium))
+                                Text(city.label).font(.body.weight(.medium))
                                 Text(TimeEngine.readableZone(city.timeZoneID))
-                                    .font(.system(size: 10))
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
