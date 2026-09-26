@@ -1,0 +1,45 @@
+name: iOS build and tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Select available iPhone simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for k,v in d["devices"].items() if "iOS" in k for x in v if "iPhone" in x["name"]))')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+      - name: Build and test app and embedded widgets
+        run: |
+          set -o pipefail
+          xcodebuild -project UsefulTravelClock.xcodeproj -scheme UsefulTravelClock \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO test | tee xcodebuild.log
+      - name: Upload build log and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-test-results
+          path: |
+            xcodebuild.log
+            TestResults.xcresult
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: UsefulTravelClock-simulator
+          path: build/Build/Products/Debug-iphonesimulator/UsefulTravelClock.app
+          if-no-files-found: error
