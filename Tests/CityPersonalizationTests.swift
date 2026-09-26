@@ -51,12 +51,13 @@ final class CityPersonalizationTests: XCTestCase {
     func testWidgetCountsAndIndependentPositions() {
         let available = ["a", "b", "c", "d", "e", "f", "g"]
         for count in 1...6 {
-            let ids = WidgetCitySelection.resolve([], count: count, saved: ["b", "a"], available: available)
+            let ids = WidgetCitySelection.resolve(Array(available.prefix(count)).map { Optional($0) }, available: available)
             XCTAssertEqual(ids.count, count)
             XCTAssertEqual(Set(ids).count, count)
         }
-        XCTAssertEqual(WidgetCitySelection.resolve(["f", "c"], count: 2, saved: ["a", "b"], available: available), ["f", "c"])
-        XCTAssertEqual(WidgetCitySelection.resolve([nil, "a"], count: 2, saved: ["a", "b"], available: available), ["b", "a"])
-        XCTAssertEqual(WidgetCitySelection.resolve(["missing"], count: 1, saved: [], available: available), ["a"])
+        XCTAssertEqual(WidgetCitySelection.resolve(["f", "c"], available: available), ["f", "c"])
+        XCTAssertEqual(WidgetCitySelection.resolve([nil, "a", nil, "c", nil, "b"], available: available), ["a", "c", "b"])
+        XCTAssertEqual(WidgetCitySelection.resolve(["missing"], available: available), [])
+        XCTAssertEqual(WidgetCitySelection.resolve([nil, nil], available: available), [])
     }
 }
