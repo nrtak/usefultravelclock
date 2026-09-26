@@ -9,12 +9,14 @@ options:
 
 settings:
   base:
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0"
+    INFOPLIST_KEY_CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
 
 targets:
   UsefulTravelClock:
@@ -52,11 +54,14 @@ targets:
         PRODUCT_NAME: UsefulTravelClockWidget
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
         CODE_SIGN_ENTITLEMENTS: UsefulTravelClockWidget/UsefulTravelClockWidget.entitlements
     info:
       path: UsefulTravelClockWidget/Info.plist
       properties:
         CFBundleDisplayName: Useful Travel Clock Widgets
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
@@ -68,14 +73,13 @@ targets:
   UsefulTravelClockTests:
     type: bundle.unit-test
     platform: iOS
-    sources:
-      - Tests
+    sources: [Tests]
     dependencies:
       - target: UsefulTravelClock
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.usefultravelclock.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.usefultravelclock.app.tests
 
 schemes:
   UsefulTravelClock:
@@ -83,11 +87,10 @@ schemes:
       targets:
         UsefulTravelClock: all
         UsefulTravelClockWidget: all
-    run:
-      config: Debug
     test:
-      config: Debug
       targets:
         - UsefulTravelClockTests
+    run:
+      config: Debug
     archive:
       config: Release
