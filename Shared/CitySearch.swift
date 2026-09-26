@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// See NOTICE.md for copyright and license notices.
+
 //  Useful Travel Clock
 
 import Foundation
