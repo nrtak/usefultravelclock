@@ -112,18 +112,18 @@ struct CityRowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
                     if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: ink) }
-                    VStack(alignment: .trailing, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
                             .font(.title.weight(.bold).monospacedDigit())
                             .fixedSize()
                         if !store.use24 {
-                            Text(t.period.uppercased()).font(.subheadline.weight(.semibold))
+                            Text(t.period.uppercased()).font(.subheadline.weight(.semibold)).fixedSize()
                         }
                     }
                 }
             }
             if store.showDate || store.showWeekday {
-                Text(TimeEngine.displayDate(at, timeZoneID: city.timeZoneID, date: store.showDate, weekday: store.showWeekday))
+                Text(compactDate)
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .fixedSize(horizontal: false, vertical: true)
@@ -138,6 +138,15 @@ struct CityRowView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Design.border(scheme)))
                 .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.06), radius: 3, y: 2)
         )
+    }
+    private var compactDate: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: city.timeZoneID)
+        formatter.dateFormat = store.showDate
+            ? (store.showWeekday ? "EEE, MMM d" : "MMM d")
+            : (store.showWeekday ? "EEE" : "")
+        return formatter.string(from: at)
     }
 }
 
