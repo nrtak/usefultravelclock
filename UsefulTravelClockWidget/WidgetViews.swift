@@ -94,9 +94,15 @@ struct MediumWidgetView: View {
         let timeSize: CGFloat = count == 2 ? 28 : count <= 4 ? 23 : 20
 
         return VStack(alignment: .leading, spacing: 4) {
+            if roomy {
+                WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
+                    .frame(width: 38, height: 38)
+            }
             HStack(spacing: 4) {
+                if !roomy {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
                     .frame(width: roomy ? 30 : 20, height: roomy ? 30 : 20)
+                }
                 (Text(widgetTime(t)).font(.system(size: timeSize, weight: .bold).monospacedDigit())
                     + Text(widgetPeriod(t)).font(.system(size: count <= 4 ? 11 : 9, weight: .semibold)))
                     .foregroundStyle(Design.widgetLabel)
@@ -115,7 +121,7 @@ struct MediumWidgetView: View {
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, roomy ? 8 : 2)
+        .padding(.vertical, 2)
         .background(Design.phaseSurface(phase, scheme: .light), in: RoundedRectangle(cornerRadius: 5))
     }
 }
