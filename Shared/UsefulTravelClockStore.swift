@@ -14,6 +14,11 @@ enum HomeMode: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
+enum CitySort: String, CaseIterable, Identifiable {
+    case custom = "Custom order", name = "City A–Z", timeZone = "Time zone"
+    var id: String { rawValue }
+}
+
 /// App-wide settings, persisted to the shared App Group so widgets read the
 /// same city list and home location. Mirrors the web app's localStorage keys.
 @MainActor
@@ -34,6 +39,9 @@ final class UsefulTravelClockStore: ObservableObject {
     @Published var showWeekday: Bool { didSet { persist() } }
     @Published var showDifference: Bool { didSet { persist() } }
     @Published var scrubHours: Int = 0
+    @Published var sortOrder: CitySort { didSet { persist() } }
+    @Published var favoriteIDs: [String] { didSet { persist() } }
+    @Published var nicknames: [String: String] { didSet { persist() } }
 
     let allCities: [City] = cities
 
@@ -50,6 +58,9 @@ final class UsefulTravelClockStore: ObservableObject {
         showDate = self.defaults.object(forKey: "showDate") as? Bool ?? true
         showWeekday = self.defaults.object(forKey: "showWeekday") as? Bool ?? true
         showDifference = self.defaults.object(forKey: "showDifference") as? Bool ?? true
+        sortOrder = CitySort(rawValue: self.defaults.string(forKey: "city-sort") ?? "") ?? .custom
+        favoriteIDs = self.defaults.stringArray(forKey: "city-favorites") ?? []
+        nicknames = self.defaults.dictionary(forKey: "city-nicknames") as? [String: String] ?? [:]
         cityIDs = Array(cityIDs.prefix(Self.maxCities))
     }
 
@@ -59,6 +70,9 @@ final class UsefulTravelClockStore: ObservableObject {
     }
 
     private func persist() {
+        defaults.set(sortOrder.rawValue, forKey: "city-sort")
+        defaults.set(favoriteIDs, forKey: "city-favorites")
+        defaults.set(nicknames, forKey: "city-nicknames")
         if let data = try? JSONEncoder().encode(cityIDs) {
             defaults.set(data, forKey: "usefultravelclock-cities")
         }
@@ -77,6 +91,58 @@ final class UsefulTravelClockStore: ObservableObject {
 
     var selectedCities: [City] {
         cityIDs.compactMap { id in allCities.first { $0.id == id } }
+    }
+
+    func orderedCities(at date: Date = Date()) -> [City] {
+        let positions = Dictionary(cityIDs.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        return selectedCities.sorted { a, b in
+            let ap = favoriteIDs.contains(a.id), bp = favoriteIDs.contains(b.id)
+            if ap != bp { return ap }
+            switch sortOrder {
+            case .custom: return (positions[a.id] ?? 0) < (positions[b.id] ?? 0)
+            case .timeZone:
+                let ao = TimeZone(identifier: a.timeZoneID)?.secondsFromGMT(for: date) ?? 0
+                let bo = TimeZone(identifier: b.timeZoneID)?.secondsFromGMT(for: date) ?? 0
+                if ao != bo { return ao < bo }
+                fallthrough
+            case .name:
+                let comparison = a.name.localizedCaseInsensitiveCompare(b.name)
+                return comparison == .orderedSame ? a.id < b.id : comparison == .orderedAscending
+            }
+        }
+    }
+
+    func toggleFavorite(_ id: String) {
+        if favoriteIDs.contains(id) { favoriteIDs.removeAll { $0 == id } }
+        else { favoriteIDs.append(id) }
+    }
+
+    func removeCity(_ id: String) {
+        favoriteIDs.removeAll { $0 == id }
+        nicknames.removeValue(forKey: id)
+        cityIDs.removeAll { $0 == id }
+    }
+
+    @discardableResult func replaceCity(_ id: String, with replacement: String) -> Bool {
+        guard replacement != id, !cityIDs.contains(replacement),
+              allCities.contains(where: { $0.id == replacement }),
+              let index = cityIDs.firstIndex(of: id) else { return false }
+        if let name = nicknames.removeValue(forKey: id) { nicknames[replacement] = name }
+        if favoriteIDs.contains(id) {
+            favoriteIDs.removeAll { $0 == id }; favoriteIDs.append(replacement)
+        }
+        if homeCityID == id { homeCityID = replacement }
+        cityIDs[index] = replacement
+        return true
+    }
+
+    func moveCity(_ id: String, to target: String) {
+        guard id != target, favoriteIDs.contains(id) == favoriteIDs.contains(target) else { return }
+        var order = orderedCities().map(\.id)
+        guard let from = order.firstIndex(of: id), let to = order.firstIndex(of: target) else { return }
+        order.remove(at: from); order.insert(id, at: to)
+        cityIDs = order
+        sortOrder = .custom
     }
 
     var deviceTimeZoneID: String {
@@ -100,7 +166,7 @@ final class UsefulTravelClockStore: ObservableObject {
 
     func toggleCity(_ id: String) {
         if cityIDs.contains(id) {
-            cityIDs.removeAll { $0 == id }
+            removeCity(id)
         } else if cityIDs.count < Self.maxCities {
             cityIDs.append(id)
         }

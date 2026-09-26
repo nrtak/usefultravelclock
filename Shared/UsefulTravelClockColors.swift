@@ -5,6 +5,13 @@ import SwiftUI
 /// Design tokens ported from the web app's `src/styles.css` (OKLCH → sRGB).
 /// Phase colors are text/clock accents only — never card backgrounds.
 enum Design {
+    static func phaseSurface(_ phase: DayPhase, scheme: ColorScheme) -> Color {
+        let night = phase == .night || phase == .evening || phase == .dusk
+        if scheme == .dark {
+            return night ? Color(red: 0.07, green: 0.12, blue: 0.20) : Color(red: 0.13, green: 0.13, blue: 0.10)
+        }
+        return night ? Color(red: 0.92, green: 0.96, blue: 1.0) : Color(red: 1.0, green: 0.995, blue: 0.96)
+    }
 
     // MARK: Light theme
 
