@@ -14,7 +14,7 @@ struct ClocksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 ForEach(store.selectedCities) { city in
                     Button { managing = city } label: { CityRowView(
                         city: city,
@@ -41,16 +41,16 @@ struct ClocksView: View {
                 Text(store.scrubHours == 0
                      ? "Right now"
                      : "\(store.scrubHours > 0 ? "+" : "")\(store.scrubHours) hours from now")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.6)
+                    .font(.subheadline.weight(.semibold))
+                    .tracking(0.5)
                     .textCase(.uppercase)
                     .foregroundStyle(Design.mutedForeground(scheme))
                 Spacer()
                 Group {
                     Button("Reset to now") { store.scrubHours = 0; now = Date() }
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 10)
                         .background(Capsule().fill(Design.secondary(scheme)))
                         .foregroundStyle(Design.foreground(scheme))
                 }
@@ -75,7 +75,7 @@ struct ClocksView: View {
     }
 }
 
-/// One city card — white row, phase color only on the analog clock + digital time.
+/// Readable city card with full location, difference, and date.
 struct CityRowView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     let city: City
@@ -87,47 +87,56 @@ struct CityRowView: View {
         let t = TimeEngine.zonedTime(at, timeZoneID: city.timeZoneID)
         let difference = TimeEngine.timeDifferenceMinutes(at, timeZoneID: city.timeZoneID, homeTimeZoneID: homeTimeZoneID)
         let phase = TimeEngine.dayPhase(t.hourFloat)
-        let accent = Design.phase(phase, scheme: scheme)
         let subtitle = [city.region, city.cityState == true ? nil : city.country]
             .compactMap { $0 }.joined(separator: ", ")
 
-        return HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(city.name)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Design.foreground(scheme))
-                    .lineLimit(2)
-                Text(subtitle + (store.showDifference ? " · " + TimeEngine.formatDifference(difference) : ""))
-                    .font(.system(size: 10))
-                    .foregroundStyle(Design.foreground(scheme).opacity(0.8))
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            HStack(spacing: 10) {
-                if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: accent) }
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
-                            .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
-                        Text(store.use24 ? "" : t.period)
-                            .font(.system(size: 13, weight: .medium))
-                            .opacity(0.85)
+        let isNight = phase == .dusk || phase == .evening || phase == .night
+        let ink = scheme == .dark ? Color.white : Color(red: 0.16, green: 0.20, blue: 0.30)
+        let surface = scheme == .dark ? Design.cityRow(scheme) : (isNight ? Color(red: 0.92, green: 0.90, blue: 0.96) : Color.white)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(city.name)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if store.showDifference {
+                        Text(TimeEngine.formatDifference(difference))
+                            .font(.subheadline)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(TimeEngine.displayDate(at, timeZoneID: city.timeZoneID, date: store.showDate, weekday: store.showWeekday).uppercased())
-                        .font(.system(size: 9, weight: .medium))
-                        .opacity(0.75)
-                }.frame(width: 145, alignment: .trailing)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: ink) }
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
+                            .font(.title.weight(.bold).monospacedDigit())
+                            .fixedSize()
+                        if !store.use24 {
+                            Text(t.period.uppercased()).font(.subheadline.weight(.semibold))
+                        }
+                    }
+                }
             }
-            .foregroundStyle(accent)
+            if store.showDate || store.showWeekday {
+                Text(TimeEngine.displayDate(at, timeZoneID: city.timeZoneID, date: store.showDate, weekday: store.showWeekday))
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .foregroundStyle(ink)
         .padding(.horizontal, 14)
-        .padding(.vertical, store.cityIDs.count <= 4 ? 16 : store.cityIDs.count <= 6 ? 10 : 6)
-        .frame(minHeight: 64)
+        .padding(.vertical, store.cityIDs.count <= 4 ? 18 : store.cityIDs.count <= 6 ? 14 : 10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Design.cityRow(scheme))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Design.border(scheme).opacity(0.7)))
-                .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.04), radius: 2, y: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(surface)
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Design.border(scheme)))
+                .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.06), radius: 3, y: 2)
         )
     }
 }
@@ -181,7 +190,7 @@ struct AnalogClockView: View {
             // Center pin
             context.fill(Path(ellipseIn: CGRect(x: c.x - 2 * scale, y: c.y - 2 * scale, width: 4 * scale, height: 4 * scale)), with: .color(accent))
         }
-        .frame(width: 44, height: 44)
+        .frame(width: 48, height: 48)
     }
 
     private func point(center c: CGPoint, angleDegrees: Double, distance: Double) -> CGPoint {
