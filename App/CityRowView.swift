@@ -94,38 +94,44 @@ struct CityRowView: View {
         let ink = scheme == .dark ? Color.white : Color(red: 0.16, green: 0.20, blue: 0.30)
         let surface = scheme == .dark ? Design.cityRow(scheme) : (isNight ? Color(red: 0.92, green: 0.90, blue: 0.96) : Color.white)
 
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(city.name).font(.headline)
-                Text(subtitle).font(.subheadline)
-                if store.showDate || store.showWeekday {
-                    Text(compactDate).font(.subheadline)
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(city.name).font(.headline)
+                    Text(subtitle).font(.subheadline)
                 }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(spacing: 8) {
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 6) {
                     if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: ink) }
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
-                            .font(.title.weight(.bold).monospacedDigit())
+                            .font(.system(size: 30, weight: .bold).monospacedDigit())
                         if !store.use24 {
                             Text(t.period.uppercased()).font(.subheadline.weight(.semibold))
                         }
                     }.fixedSize()
                 }
-                if store.showDifference {
-                    Text(TimeEngine.formatDifferenceCompact(difference)).font(.subheadline)
+            }
+            if store.showDate || store.showWeekday || store.showDifference {
+                HStack(spacing: 8) {
+                    if store.showDate || store.showWeekday { Text(compactDate) }
+                    if store.showDifference {
+                        Text(TimeEngine.formatDifferenceCompact(difference))
+                    }
                 }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .foregroundStyle(ink)
         .padding(.horizontal, 8)
-        .padding(.vertical, store.cityIDs.count <= 4 ? 14 : store.cityIDs.count <= 6 ? 11 : 8)
+        .padding(.vertical, store.cityIDs.count <= 4 ? 12 : store.cityIDs.count <= 6 ? 9 : 6)
         .frame(maxWidth: .infinity)
         .background(surface)
-        .overlay(alignment: .bottom) { Divider() }
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Design.border(scheme)).frame(height: 1)
+        }
         .contentShape(Rectangle())
     }
 
@@ -189,7 +195,7 @@ struct AnalogClockView: View {
             // Center pin
             context.fill(Path(ellipseIn: CGRect(x: c.x - 2 * scale, y: c.y - 2 * scale, width: 4 * scale, height: 4 * scale)), with: .color(accent))
         }
-        .frame(width: 56, height: 56)
+        .frame(width: 64, height: 64)
     }
 
     private func point(center c: CGPoint, angleDegrees: Double, distance: Double) -> CGPoint {
