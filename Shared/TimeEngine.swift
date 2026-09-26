@@ -118,8 +118,9 @@ enum TimeEngine {
     // MARK: - Converter input/output ("yyyy-MM-dd" + "HH:mm" in a zone)
 
     /// Converts a wall-clock date/time in a zone into the matching instant.
-    /// Mirrors `fromZonedInput` in the web app (iterative DST-safe solve).
-    static func fromZonedInput(day: String, time: String, timeZoneID: String) -> Date? {
+    /// Rejects nonexistent times and selects the requested occurrence of repeated times.
+    static func fromZonedInput(day: String, time: String, timeZoneID: String,
+                               repeatedTimePolicy: Calendar.RepeatedTimePolicy = .first) -> Date? {
         let dayParts = day.split(separator: "-").compactMap { Int($0) }
         let timeParts = time.split(separator: ":").compactMap { Int($0) }
         guard dayParts.count == 3, timeParts.count >= 2 else { return nil }
@@ -135,11 +136,11 @@ enum TimeEngine {
         let tz = zone(timeZoneID)
         let offsets = Set([-36, -12, 0, 12, 36].map { tz.secondsFromGMT(for: target.addingTimeInterval(Double($0) * 3600)) })
         // Verify wall-clock components: reject DST gaps and invalid dates.
-        // For repeated times, consistently choose the first occurrence.
-        return offsets.map { target.addingTimeInterval(-Double($0)) }.filter {
+        let candidates = offsets.map { target.addingTimeInterval(-Double($0)) }.filter {
             let actual = toZonedInput($0, timeZoneID: timeZoneID)
             return actual.day == day && actual.time == time
-        }.min()
+        }
+        return repeatedTimePolicy == .last ? candidates.max() : candidates.min()
     }
 
     /// Current wall-clock in a zone as converter inputs.
