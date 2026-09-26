@@ -84,12 +84,19 @@ struct UsefulTravelClockProvider: TimelineProvider {
 
 struct UsefulTravelClockSmallWidget: Widget {
     var body: some WidgetConfiguration {
+        if #available(iOSApplicationExtension 17.0, *) {
+            AppIntentConfiguration(kind: "UsefulTravelClockSmallWidget", intent: SmallClockConfiguration.self, provider: SmallClockProvider()) { entry in SmallWidgetView(entry: entry) }
+                .configurationDisplayName("Useful Travel Clock")
+                .description("Choose one or two cities. Touch and hold, then Edit Widget.")
+                .supportedFamilies([.systemSmall])
+        } else {
         StaticConfiguration(kind: "UsefulTravelClockSmallWidget", provider: UsefulTravelClockProvider()) { entry in
             SmallWidgetView(entry: entry)
         }
         .configurationDisplayName("Useful Travel Clock")
         .description("One city: analog + digital time, date and difference from home.")
         .supportedFamilies([.systemSmall])
+        }
     }
 }
 
@@ -97,12 +104,19 @@ struct UsefulTravelClockSmallWidget: Widget {
 
 struct UsefulTravelClockMediumWidget: Widget {
     var body: some WidgetConfiguration {
+        if #available(iOSApplicationExtension 17.0, *) {
+            AppIntentConfiguration(kind: "UsefulTravelClockMediumWidget", intent: GridClockConfiguration.self, provider: GridClockProvider()) { entry in MediumWidgetView(entry: entry) }
+                .configurationDisplayName("World Clock Grid")
+                .description("Choose two to six cities and their order with Edit Widget.")
+                .supportedFamilies([.systemMedium])
+        } else {
         StaticConfiguration(kind: "UsefulTravelClockMediumWidget", provider: UsefulTravelClockProvider()) { entry in
             MediumWidgetView(entry: entry)
         }
         .configurationDisplayName("World Clock Grid")
         .description("Six cities at a glance with differences from home.")
         .supportedFamilies([.systemMedium])
+        }
     }
 }
 
