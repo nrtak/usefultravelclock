@@ -31,9 +31,9 @@ struct SmallWidgetView: View {
                     Text(city.name)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Design.widgetLabel)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .allowsTightening(true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer(minLength: 0)
                     WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.phase(.night, scheme: .light))
@@ -53,7 +53,7 @@ struct SmallWidgetView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                Text("Pick cities in Useful Travel Clock")
+                Text("Touch and hold, then Edit Widget to choose cities")
                     .font(.caption)
             }
         }
@@ -69,10 +69,10 @@ struct MediumWidgetView: View {
 
     var body: some View {
         let cities = entry.cities(upTo: 6)
-        let columns = cities.count == 2 || cities.count == 4 ? 2 : 3
+        let columns = cities.count <= 2 ? max(1, cities.count) : cities.count == 4 ? 2 : 3
         Group {
             if cities.isEmpty {
-                Text("Pick cities in Useful Travel Clock").font(.caption)
+                Text("Touch and hold, then Edit Widget to choose cities").font(.caption)
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns), spacing: 8) {
                     ForEach(Array(cities.enumerated()), id: \.offset) { _, city in
@@ -112,8 +112,10 @@ struct MediumWidgetView: View {
             Text(city.name)
                 .font(.system(size: roomy ? 16 : 13, weight: .semibold))
                 .foregroundStyle(Design.widgetLabel)
-                .lineLimit(2)
-                .minimumScaleFactor(0.9)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .allowsTightening(true)
+                .frame(height: roomy ? 20 : 16, alignment: .leading)
             Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
                 .font(.system(size: count == 2 ? 12 : 10, weight: .medium))
                 .foregroundStyle(Design.widgetLabel)
@@ -134,7 +136,7 @@ private struct SmallTwoCityCell: View {
         let difference = TimeEngine.timeDifferenceMinutes(entry.date, timeZoneID: city.timeZoneID, homeTimeZoneID: entry.homeZone)
         VStack(alignment: .leading, spacing: 1) {
             Text(city.name).font(.system(size: 13, weight: .semibold))
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1).minimumScaleFactor(0.5).allowsTightening(true)
             HStack(spacing: 4) {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel).frame(width: 26, height: 26)
                 (Text(widgetTime(t)).font(.system(size: 24, weight: .bold).monospacedDigit())
@@ -214,7 +216,7 @@ struct LockScreenWidgetView: View {
                         .lineLimit(1)
                 }
             } else {
-                Text("Pick cities in Useful Travel Clock").font(.caption2)
+                Text("Touch and hold, then Edit Widget to choose cities").font(.caption2)
             }
         }
     }
@@ -225,7 +227,7 @@ struct LockScreenWidgetView: View {
                 let t = TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID)
                 Text("\(city.shortLabel) \(t.hm) \(t.period)")
             } else {
-                Text("Pick cities in Useful Travel Clock")
+                Text("Touch and hold, then Edit Widget to choose cities")
             }
         }
     }
