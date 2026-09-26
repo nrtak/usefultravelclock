@@ -20,28 +20,29 @@ struct SmallWidgetView: View {
                 let phase = TimeEngine.dayPhase(t.hourFloat)
                 let accent = Design.phase(phase, scheme: .light)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(city.shortLabel)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Design.widgetLabel)
-                            .lineLimit(2)
-                        Spacer(minLength: 0)
-                        WidgetAnalogClock(hourFloat: t.hourFloat, accent: accent)
-                            .frame(width: 40, height: 40)
-                    }
-                    (Text(t.hm).font(.system(size: 26, weight: .bold).monospacedDigit())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(city.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Design.widgetLabel)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer(minLength: 0)
+                    WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
+                        .frame(width: 56, height: 56)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    Spacer(minLength: 0)
+                    (Text(t.hm).font(.system(size: 28, weight: .bold).monospacedDigit())
                         + Text(" " + t.period.uppercased()).font(.system(size: 12, weight: .semibold)))
                         .foregroundStyle(Design.widgetLabel)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID))
-                        .font(.system(size: 10, weight: .medium))
+                        .minimumScaleFactor(0.8)
+                    Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Design.widgetLabel)
-                    Text(TimeEngine.formatDifferenceCompact(difference))
-                        .font(.system(size: 10))
-                        .foregroundStyle(Design.widgetSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
@@ -65,7 +66,7 @@ struct MediumWidgetView: View {
             if cities.isEmpty {
                 Text("Pick cities in Useful Travel Clock").font(.caption)
             } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 8) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                     ForEach(cities) { city in
                         gridCell(city: city)
                     }
@@ -81,28 +82,26 @@ struct MediumWidgetView: View {
         let phase = TimeEngine.dayPhase(t.hourFloat)
         let accent = Design.phase(phase, scheme: .light)
 
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                WidgetAnalogClock(hourFloat: t.hourFloat, accent: accent)
-                    .frame(width: 24, height: 24)
-                HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    Text(t.hm).font(.system(size: 15, weight: .bold, design: .rounded).monospacedDigit())
-                    Text(t.period).font(.system(size: 9, weight: .semibold))
-                }
-                .foregroundStyle(accent)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
+                    .frame(width: 20, height: 20)
+                (Text(t.hm).font(.system(size: 20, weight: .bold).monospacedDigit())
+                    + Text(" " + t.period.uppercased()).font(.system(size: 9, weight: .semibold)))
+                    .foregroundStyle(Design.widgetLabel)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            Text(city.shortLabel)
-                .font(.system(size: 10, weight: .semibold))
+            Text(city.name)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Design.widgetLabel)
+                .lineLimit(2)
+                .minimumScaleFactor(0.9)
+            Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Design.widgetLabel)
                 .lineLimit(1)
-            Text(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID))
-                .font(.system(size: 8, weight: .medium))
-                .foregroundStyle(Design.widgetSecondary)
-            Text(TimeEngine.formatDifferenceCompact(difference))
-                .font(.system(size: 8))
-                .foregroundStyle(Design.widgetSecondary)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
