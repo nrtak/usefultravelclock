@@ -21,19 +21,21 @@ struct SmallWidgetView: View {
                 let accent = Design.phase(phase, scheme: .light)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(city.shortLabel)
-                        .font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 6) {
+                        Text(city.shortLabel)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Design.widgetLabel)
+                            .lineLimit(2)
+                        Spacer(minLength: 0)
+                        WidgetAnalogClock(hourFloat: t.hourFloat, accent: accent)
+                            .frame(width: 40, height: 40)
+                    }
+                    (Text(t.hm).font(.system(size: 26, weight: .bold).monospacedDigit())
+                        + Text(" " + t.period.uppercased()).font(.system(size: 12, weight: .semibold)))
                         .foregroundStyle(Design.widgetLabel)
                         .lineLimit(1)
-                    HStack(spacing: 8) {
-                        WidgetAnalogClock(hourFloat: t.hourFloat, accent: accent)
-                            .frame(width: 34, height: 34)
-                        HStack(alignment: .firstTextBaseline, spacing: 2) {
-                            Text(t.hm).font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
-                            Text(t.period).font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(accent)
-                    }
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID))
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Design.widgetLabel)
