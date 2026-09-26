@@ -6,13 +6,8 @@ import SwiftUI
 @main
 struct UsefulTravelClockWidgetBundle: WidgetBundle {
     var body: some Widget {
-        if #available(iOSApplicationExtension 17.0, *) {
-            UsefulTravelClockSmallWidget()
-            UsefulTravelClockMediumWidget()
-        } else {
-            LegacySmallWidget()
-            LegacyMediumWidget()
-        }
+        UsefulTravelClockSmallWidget()
+        UsefulTravelClockMediumWidget()
         UsefulTravelClockLockScreenWidget()
     }
 }
@@ -104,21 +99,6 @@ struct UsefulTravelClockMediumWidget: Widget {
             .configurationDisplayName("World Clock Grid")
             .description("Choose two to six cities and their order with Edit Widget.")
             .supportedFamilies([.systemMedium])
-    }
-}
-
-struct LegacySmallWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "UsefulTravelClockSmallWidget", provider: UsefulTravelClockProvider()) { entry in
-            SmallWidgetView(entry: UsefulTravelClockEntry(date: entry.date, cityIDs: Array(entry.cityIDs.prefix(1)), homeTimeZoneID: entry.homeTimeZoneID))
-        }.configurationDisplayName("Useful Travel Clock").description("Your first city at a glance.").supportedFamilies([.systemSmall])
-    }
-}
-
-struct LegacyMediumWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "UsefulTravelClockMediumWidget", provider: UsefulTravelClockProvider()) { entry in MediumWidgetView(entry: entry) }
-            .configurationDisplayName("World Clock Grid").description("Your cities at a glance.").supportedFamilies([.systemMedium])
     }
 }
 

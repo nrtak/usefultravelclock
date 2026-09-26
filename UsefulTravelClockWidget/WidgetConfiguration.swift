@@ -1,7 +1,7 @@
 import AppIntents
 import WidgetKit
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct ClockCityEntity: AppEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "City"
     static var defaultQuery = ClockCityQuery()
@@ -11,7 +11,7 @@ struct ClockCityEntity: AppEntity {
     init(city: City) { id = city.id; name = city.shortLabel }
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct ClockCityQuery: EntityStringQuery {
     func entities(for identifiers: [String]) async throws -> [ClockCityEntity] {
         identifiers.compactMap { id in clockCityDatabase.first { $0.id == id }.map(ClockCityEntity.init) }
@@ -26,21 +26,21 @@ struct ClockCityQuery: EntityStringQuery {
     }
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 enum SmallCityCount: Int, AppEnum {
     case one = 1, two = 2
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Number of cities"
     static var caseDisplayRepresentations: [Self: DisplayRepresentation] = [.one: "1 city", .two: "2 cities"]
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 enum GridCityCount: Int, AppEnum {
     case two = 2, three = 3, four = 4, five = 5, six = 6
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Number of cities"
     static var caseDisplayRepresentations: [Self: DisplayRepresentation] = [.two: "2 cities", .three: "3 cities", .four: "4 cities", .five: "5 cities", .six: "6 cities"]
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct SmallClockConfiguration: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Choose cities"
     static var description = IntentDescription("Choose one or two cities. City 1 appears above City 2. Change the city in each position to change their order.")
@@ -49,7 +49,7 @@ struct SmallClockConfiguration: WidgetConfigurationIntent {
     @Parameter(title: "City 2 (when showing 2)") var second: ClockCityEntity?
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct GridClockConfiguration: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Choose cities and order"
     static var description = IntentDescription("Cities appear left to right, then top to bottom. Change the city in each numbered position to reorder. Positions beyond your selected count are ignored.")
@@ -62,7 +62,7 @@ struct GridClockConfiguration: WidgetConfigurationIntent {
     @Parameter(title: "City 6") var sixth: ClockCityEntity?
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct SmallClockProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> UsefulTravelClockEntry { ClockWidgetData.entry(ids: [], count: 1) }
     func snapshot(for configuration: SmallClockConfiguration, in context: Context) async -> UsefulTravelClockEntry {
@@ -73,7 +73,7 @@ struct SmallClockProvider: AppIntentTimelineProvider {
     }
 }
 
-@available(iOSApplicationExtension 17.0, *)
+@available(iOS 17.0, *)
 struct GridClockProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> UsefulTravelClockEntry { ClockWidgetData.entry(ids: [], count: 6) }
     func snapshot(for configuration: GridClockConfiguration, in context: Context) async -> UsefulTravelClockEntry {
