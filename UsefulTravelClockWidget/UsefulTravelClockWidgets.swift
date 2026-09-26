@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import WidgetKit
@@ -27,7 +24,7 @@ extension UsefulTravelClockEntry {
     var homeZone: String { homeTimeZoneID }
 
     func cities(upTo count: Int) -> [City] {
-        cityIDs.prefix(count).compactMap { id in CitySearch.city(withID: id, in: cityCatalog) }
+        cityIDs.prefix(count).compactMap { id in clockCityDatabase.first { $0.id == id } }
     }
 }
 
@@ -44,12 +41,22 @@ struct UsefulTravelClockProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsefulTravelClockEntry>) -> Void) {
+        let shared = UserDefaults.usefultravelclockShared
+        var ids = defaultCityIDs
+        if let data = shared.data(forKey: "usefultravelclock-cities"),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            ids = decoded
+        }
+        let home = shared.string(forKey: "usefultravelclock-home-mode") == "manual"
+            ? CitySearch.city(withID: shared.string(forKey: "usefultravelclock-home-city") ?? defaultCityIDs.first ?? "nyc", in: clockCityDatabase)?.timeZoneID ?? TimeZone.current.identifier
+            : TimeZone.current.identifier
+
         // One entry per minute for the next hour, then refresh.
         var entries: [UsefulTravelClockEntry] = []
-        let start = Calendar.current.dateInterval(of: .minute, for: Date())?.start ?? Date()
+        let start = Calendar.current.dateInterval(of: .minute, for: Date())!.start
         for minute in 0..<60 {
             let at = start.addingTimeInterval(TimeInterval(minute * 60))
-            entries.append(entry(for: at, fallbackIDs: defaultCityIDs))
+            entries.append(entry(for: at, fallbackIDs: ids, homeOverride: home))
         }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
@@ -65,8 +72,7 @@ struct UsefulTravelClockProvider: TimelineProvider {
         if let homeOverride {
             home = homeOverride
         } else if shared.string(forKey: "usefultravelclock-home-mode") == "manual" {
-            let id = shared.string(forKey: "usefultravelclock-home-city") ?? defaultCityIDs.first ?? "nyc"
-            home = CitySearch.city(withID: id, in: cityCatalog)?.timeZoneID ?? TimeZone.current.identifier
+            home = CitySearch.city(withID: shared.string(forKey: "usefultravelclock-home-city") ?? defaultCityIDs.first ?? "nyc", in: clockCityDatabase)?.timeZoneID ?? TimeZone.current.identifier
         } else {
             home = TimeZone.current.identifier
         }

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -10,6 +7,8 @@ struct ClocksView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.colorScheme) private var scheme
 
+    @State private var adding = false
+    @State private var managing: City?
     @State private var now = Date()
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
@@ -17,13 +16,14 @@ struct ClocksView: View {
         ScrollView {
             VStack(spacing: 8) {
                 ForEach(store.selectedCities) { city in
-                    CityRowView(
+                    Button { managing = city } label: { CityRowView(
                         city: city,
                         at: store.displayDate(from: now),
                         homeTimeZoneID: store.homeTimeZoneID,
                         scheme: scheme
-                    )
+                    ) }.buttonStyle(.plain)
                 }
+                Button("+ Add city") { adding = true }.disabled(store.cityIDs.count >= UsefulTravelClockStore.maxCities)
                 scrubber
             }
             .padding(.horizontal, 16)
@@ -31,6 +31,8 @@ struct ClocksView: View {
             .padding(.bottom, 16)
         }
         .onReceive(timer) { now = $0 }
+        .sheet(isPresented: $adding) { AddCitySheet() }
+        .sheet(item: $managing) { CityManagementSheet(city: $0) }
     }
 
     private var scrubber: some View {
@@ -44,8 +46,8 @@ struct ClocksView: View {
                     .textCase(.uppercase)
                     .foregroundStyle(Design.mutedForeground(scheme))
                 Spacer()
-                if store.scrubHours != 0 {
-                    Button("Reset") { store.scrubHours = 0 }
+                Group {
+                    Button("Reset to now") { store.scrubHours = 0; now = Date() }
                         .font(.system(size: 10, weight: .semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
@@ -75,6 +77,7 @@ struct ClocksView: View {
 
 /// One city card — white row, phase color only on the analog clock + digital time.
 struct CityRowView: View {
+    @EnvironmentObject private var store: UsefulTravelClockStore
     let city: City
     let at: Date
     let homeTimeZoneID: String
@@ -93,32 +96,32 @@ struct CityRowView: View {
                 Text(city.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Design.foreground(scheme))
-                    .lineLimit(1)
-                Text("\(subtitle) · \(TimeEngine.formatDifference(difference))")
+                    .lineLimit(2)
+                Text(subtitle + (store.showDifference ? " · " + TimeEngine.formatDifference(difference) : ""))
                     .font(.system(size: 10))
                     .foregroundStyle(Design.foreground(scheme).opacity(0.8))
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
             HStack(spacing: 10) {
-                AnalogClockView(hourFloat: t.hourFloat, accent: accent)
+                if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: accent) }
                 VStack(alignment: .trailing, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(t.hm)
+                        Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
                             .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
-                        Text(t.period)
+                        Text(store.use24 ? "" : t.period)
                             .font(.system(size: 13, weight: .medium))
                             .opacity(0.85)
                     }
-                    Text(t.date.uppercased())
+                    Text(TimeEngine.displayDate(at, timeZoneID: city.timeZoneID, date: store.showDate, weekday: store.showWeekday).uppercased())
                         .font(.system(size: 9, weight: .medium))
                         .opacity(0.75)
-                }
+                }.frame(width: 145, alignment: .trailing)
             }
             .foregroundStyle(accent)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, store.cityIDs.count <= 4 ? 16 : store.cityIDs.count <= 6 ? 10 : 6)
         .frame(minHeight: 64)
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -142,8 +145,7 @@ struct AnalogClockView: View {
             let radius = 20 * scale
 
             // Face
-            let face = Path(ellipseIn: CGRect(x: c.x - radius, y: c.y - radius,
-                                             width: radius * 2, height: radius * 2))
+            let face = Path(ellipseIn: CGRect(x: c.x - radius, y: c.y - radius, width: radius * 2, height: radius * 2))
             context.fill(face, with: .color(accent.opacity(0.1)))
             context.stroke(face, with: .color(accent.opacity(0.45)), lineWidth: scale)
 

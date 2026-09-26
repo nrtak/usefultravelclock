@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import Foundation
@@ -24,6 +21,13 @@ enum DayPhase: CaseIterable {
 }
 
 enum TimeEngine {
+    static func displayDate(_ instant: Date, timeZoneID: String, date: Bool, weekday: Bool) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = zone(timeZoneID)
+        formatter.dateFormat = [weekday ? "EEEE" : "", date ? "MMMM d" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
+        return date || weekday ? formatter.string(from: instant) : ""
+    }
 
     static func zone(_ id: String) -> TimeZone {
         TimeZone(identifier: id) ?? .current
@@ -113,43 +117,29 @@ enum TimeEngine {
 
     // MARK: - Converter input/output ("yyyy-MM-dd" + "HH:mm" in a zone)
 
-    /// Resolves Gregorian wall-clock input without normalizing invalid dates or
-    /// skipped local times. Repeated times default to their first occurrence.
-    static func fromZonedInput(
-        day: String, time: String, timeZoneID: String,
-        repeatedTimePolicy: Calendar.RepeatedTimePolicy = .first
-    ) -> Date? {
-        guard day.range(of: #"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"#, options: .regularExpression) != nil,
-              time.range(of: #"^[0-9]{2}:[0-9]{2}$"#, options: .regularExpression) != nil,
-              let tz = TimeZone(identifier: timeZoneID) else { return nil }
+    /// Converts a wall-clock date/time in a zone into the matching instant.
+    /// Mirrors `fromZonedInput` in the web app (iterative DST-safe solve).
+    static func fromZonedInput(day: String, time: String, timeZoneID: String) -> Date? {
         let dayParts = day.split(separator: "-").compactMap { Int($0) }
         let timeParts = time.split(separator: ":").compactMap { Int($0) }
-        guard dayParts.count == 3, timeParts.count == 2 else { return nil }
+        guard dayParts.count == 3, timeParts.count >= 2 else { return nil }
         let (year, month, dayNumber) = (dayParts[0], dayParts[1], dayParts[2])
         let (hour, minute) = (timeParts[0], timeParts[1])
-        guard (1...9999).contains(year), (1...12).contains(month),
-              (1...31).contains(dayNumber), (0...23).contains(hour),
-              (0...59).contains(minute) else { return nil }
 
         var utc = Calendar(identifier: .gregorian)
-        utc.timeZone = TimeZone(secondsFromGMT: 0)!
-        let components = DateComponents(year: year, month: month, day: dayNumber,
-                                        hour: hour, minute: minute, second: 0)
-        guard let target = utc.date(from: components) else { return nil }
-        let validated = toZonedInput(target, timeZoneID: "UTC")
-        guard validated.day == day, validated.time == time else { return nil }
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        guard let target = utc.date(from: DateComponents(year: year, month: month, day: dayNumber, hour: hour, minute: minute)) else {
+            return nil
+        }
 
-        var local = Calendar(identifier: .gregorian)
-        local.timeZone = tz
-        // Start before either occurrence, including zones across the date line.
-        guard let instant = local.nextDate(
-            after: target.addingTimeInterval(-48 * 3600), matching: components,
-            matchingPolicy: .strict, repeatedTimePolicy: repeatedTimePolicy,
-            direction: .forward
-        ) else { return nil }
-        let resolved = toZonedInput(instant, timeZoneID: timeZoneID)
-        guard resolved.day == day, resolved.time == time else { return nil }
-        return instant
+        let tz = zone(timeZoneID)
+        let offsets = Set([-36, -12, 0, 12, 36].map { tz.secondsFromGMT(for: target.addingTimeInterval(Double($0) * 3600)) })
+        // Verify wall-clock components: reject DST gaps and invalid dates.
+        // For repeated times, consistently choose the first occurrence.
+        return offsets.map { target.addingTimeInterval(-Double($0)) }.filter {
+            let actual = toZonedInput($0, timeZoneID: timeZoneID)
+            return actual.day == day && actual.time == time
+        }.min()
     }
 
     /// Current wall-clock in a zone as converter inputs.

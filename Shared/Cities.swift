@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 // Auto-generated from the web app's city database. Do not edit by hand.
@@ -167,5 +164,4 @@ let defaultCityIDs: [String] = ["nyc", "lon", "mil", "tyo", "mel"]
 
 let popularCityIDs: [String] = ["nyc", "lax", "sfo", "chi", "lon", "par", "ber", "ams", "dxb", "sin", "tyo", "hkg", "sel", "syd", "mel", "tor", "sao", "bom"]
 
-// Alias avoids shadowing by the widget entry's cities(upTo:) method.
-let cityCatalog = cities
+let clockCityDatabase = cities

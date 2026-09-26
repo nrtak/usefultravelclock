@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -15,6 +12,13 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Display") {
+                    Toggle("24-hour time", isOn: $store.use24)
+                    Toggle("Analog clocks", isOn: $store.showAnalog)
+                    Toggle("Date", isOn: $store.showDate)
+                    Toggle("Day of the week", isOn: $store.showWeekday)
+                    Toggle("Time difference", isOn: $store.showDifference)
+                }
                 Section("Appearance") {
                     Picker("Appearance", selection: $store.theme) {
                         ForEach(ThemeMode.allCases) { mode in
