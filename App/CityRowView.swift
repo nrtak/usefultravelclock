@@ -112,6 +112,7 @@ struct CityRowView: View {
                         }
                     }.fixedSize()
                 }
+                .offset(y: (store.showDate || store.showWeekday || store.showDifference) ? 10 : 0)
             }
             if store.showDate || store.showWeekday || store.showDifference {
                 HStack(spacing: 8) {
