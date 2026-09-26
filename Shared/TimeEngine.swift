@@ -133,7 +133,7 @@ enum TimeEngine {
             return nil
         }
 
-        let tz = zone(timeZoneID)
+        guard let tz = TimeZone(identifier: timeZoneID) else { return nil }
         let offsets = Set([-36, -12, 0, 12, 36].map { tz.secondsFromGMT(for: target.addingTimeInterval(Double($0) * 3600)) })
         // Verify wall-clock components: reject DST gaps and invalid dates.
         let candidates = offsets.map { target.addingTimeInterval(-Double($0)) }.filter {
