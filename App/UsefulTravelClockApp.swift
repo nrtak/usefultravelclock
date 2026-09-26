@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -25,7 +22,6 @@ struct RootView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.colorScheme) private var scheme
     @State private var tab: Tab = .clocks
-    @State private var showAddCity = false
     @State private var showSettings = false
 
     enum Tab { case clocks, converter }
@@ -43,7 +39,6 @@ struct RootView: View {
             toolbar
         }
         .background(Design.background(scheme))
-        .sheet(isPresented: $showAddCity) { AddCitySheet() }
         .sheet(isPresented: $showSettings) { SettingsSheet() }
     }
 
@@ -51,7 +46,6 @@ struct RootView: View {
         HStack {
             tabButton("Clocks", systemImage: "clock") { tab = .clocks }
             tabButton("Converter", systemImage: "arrow.left.arrow.right") { tab = .converter }
-            tabButton("Add city", systemImage: "plus") { showAddCity = true }
             tabButton("Settings", systemImage: "gearshape") { showSettings = true }
         }
         .padding(.top, 8)

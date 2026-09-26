@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -31,6 +28,11 @@ final class UsefulTravelClockStore: ObservableObject {
     @Published var theme: ThemeMode { didSet { persist() } }
     @Published var homeMode: HomeMode { didSet { persist() } }
     @Published var homeCityID: String { didSet { persist() } }
+    @Published var use24: Bool { didSet { persist() } }
+    @Published var showAnalog: Bool { didSet { persist() } }
+    @Published var showDate: Bool { didSet { persist() } }
+    @Published var showWeekday: Bool { didSet { persist() } }
+    @Published var showDifference: Bool { didSet { persist() } }
     @Published var scrubHours: Int = 0
 
     let allCities: [City] = cities
@@ -38,14 +40,22 @@ final class UsefulTravelClockStore: ObservableObject {
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults? = nil) {
-        let storage = defaults ?? .usefultravelclockShared
-        self.defaults = storage
-        let savedIDs = storage.data(forKey: "usefultravelclock-cities")
-            .flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? defaultCityIDs
-        cityIDs = Array(savedIDs.prefix(Self.maxCities))
-        theme = ThemeMode(rawValue: storage.string(forKey: "usefultravelclock-theme") ?? "") ?? .light
-        homeMode = HomeMode(rawValue: storage.string(forKey: "usefultravelclock-home-mode") ?? "") ?? .automatic
-        homeCityID = storage.string(forKey: "usefultravelclock-home-city") ?? (defaultCityIDs.first ?? "nyc")
+        self.defaults = defaults ?? UserDefaults(suiteName: UsefulTravelClockStore.appGroupID) ?? .standard
+        cityIDs = self.defaults.data(forKey: "usefultravelclock-cities").flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? defaultCityIDs
+        theme = ThemeMode(rawValue: self.defaults.string(forKey: "usefultravelclock-theme") ?? "") ?? .light
+        homeMode = HomeMode(rawValue: self.defaults.string(forKey: "usefultravelclock-home-mode") ?? "") ?? .automatic
+        homeCityID = self.defaults.string(forKey: "usefultravelclock-home-city") ?? (defaultCityIDs.first ?? "nyc")
+        use24 = self.defaults.bool(forKey: "use24")
+        showAnalog = self.defaults.object(forKey: "showAnalog") as? Bool ?? true
+        showDate = self.defaults.object(forKey: "showDate") as? Bool ?? true
+        showWeekday = self.defaults.object(forKey: "showWeekday") as? Bool ?? true
+        showDifference = self.defaults.object(forKey: "showDifference") as? Bool ?? true
+        cityIDs = Array(cityIDs.prefix(Self.maxCities))
+    }
+
+    private func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 
     private func persist() {
@@ -55,6 +65,11 @@ final class UsefulTravelClockStore: ObservableObject {
         defaults.set(theme.rawValue, forKey: "usefultravelclock-theme")
         defaults.set(homeMode.rawValue, forKey: "usefultravelclock-home-mode")
         defaults.set(homeCityID, forKey: "usefultravelclock-home-city")
+        defaults.set(use24, forKey: "use24")
+        defaults.set(showAnalog, forKey: "showAnalog")
+        defaults.set(showDate, forKey: "showDate")
+        defaults.set(showWeekday, forKey: "showWeekday")
+        defaults.set(showDifference, forKey: "showDifference")
         WidgetCenter.shared.reloadAllTimelines()
     }
 

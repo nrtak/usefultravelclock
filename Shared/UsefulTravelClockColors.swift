@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -40,16 +37,16 @@ enum Design {
 
     static let phaseDayLight = Color(red: 0.686, green: 0.561, blue: 0.0)
     static let phaseAfternoonLight = Color(red: 0.827, green: 0.424, blue: 0.0)
-    static let phaseDuskLight = phaseNightLight
-    static let phaseEveningLight = phaseNightLight
+    static let phaseDuskLight = Color(red: 0.808, green: 0.325, blue: 0.259)
+    static let phaseEveningLight = Color(red: 0.196, green: 0.463, blue: 0.694)
     static let phaseNightLight = Color(red: 0.173, green: 0.275, blue: 0.471)
 
     // MARK: Phase accents (dark values)
 
     static let phaseDayDark = Color(red: 0.910, green: 0.804, blue: 0.384)
     static let phaseAfternoonDark = Color(red: 0.996, green: 0.675, blue: 0.396)
-    static let phaseDuskDark = phaseNightDark
-    static let phaseEveningDark = phaseNightDark
+    static let phaseDuskDark = Color(red: 0.980, green: 0.608, blue: 0.510)
+    static let phaseEveningDark = Color(red: 0.463, green: 0.694, blue: 0.890)
     static let phaseNightDark = Color(red: 0.482, green: 0.576, blue: 0.745)
 
     static func phase(_ phase: DayPhase, scheme: ColorScheme) -> Color {

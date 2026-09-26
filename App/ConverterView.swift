@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// See NOTICE.md for copyright and license notices.
-
 //  Useful Travel Clock
 
 import SwiftUI
@@ -17,7 +14,6 @@ struct ConverterView: View {
     @State private var time: String = "12:00"
     @State private var result: Date?
     @State private var conversionError: String?
-    @State private var useLaterOccurrence = false
     @State private var pickingField: Field?
 
     enum Field { case from, to }
@@ -27,32 +23,17 @@ struct ConverterView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 inputs
-                if isRepeatedTime {
-                    Picker("This time occurs twice", selection: $useLaterOccurrence) {
-                        Text("First occurrence").tag(false)
-                        Text("Second occurrence").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    Text("The clocks move back on this date. Choose which occurrence to convert.")
-                        .font(.caption)
-                        .foregroundStyle(Design.mutedForeground(scheme))
-                }
                 buttons
-                if let conversionError {
-                    Text(conversionError)
-                        .font(.callout)
-                        .accessibilityLabel("Conversion unavailable. \(conversionError)")
-                }
                 if result != nil { resultCard }
+                if let conversionError { Text(conversionError).foregroundStyle(.red).font(.caption) }
             }
             .padding(16)
         }
         .onAppear(perform: syncNow)
-        .onChange(of: day) { _ in convert() }
-        .onChange(of: time) { _ in convert() }
-        .onChange(of: fromCityID) { _ in convert() }
-        .onChange(of: toCityID) { _ in convert() }
-        .onChange(of: useLaterOccurrence) { _ in convert() }
+        .onChange(of: day) { _ in result = nil; conversionError = nil }
+        .onChange(of: time) { _ in result = nil; conversionError = nil }
+        .onChange(of: fromCityID) { _ in result = nil; conversionError = nil }
+        .onChange(of: toCityID) { _ in result = nil; conversionError = nil }
     }
 
     private var header: some View {
@@ -109,10 +90,9 @@ struct ConverterView: View {
             Text("DATE")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Design.mutedForeground(scheme))
-            DatePicker("Date in the selected source city", selection: dateBinding, displayedComponents: .date)
-                .environment(\.timeZone, pickerCalendar.timeZone)
-                .environment(\.calendar, pickerCalendar)
+            DatePicker("", selection: dateBinding, displayedComponents: .date)
                 .labelsHidden()
+                .environment(\.timeZone, TimeZone(identifier: "UTC")!)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme).opacity(0.45)))
         }
@@ -123,10 +103,9 @@ struct ConverterView: View {
             Text("TIME")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Design.mutedForeground(scheme))
-            DatePicker("Time in the selected source city", selection: timeBinding, displayedComponents: .hourAndMinute)
-                .environment(\.timeZone, pickerCalendar.timeZone)
-                .environment(\.calendar, pickerCalendar)
+            DatePicker("", selection: timeBinding, displayedComponents: .hourAndMinute)
                 .labelsHidden()
+                .environment(\.timeZone, TimeZone(identifier: "UTC")!)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Design.secondary(scheme).opacity(0.45)))
         }
@@ -195,15 +174,6 @@ struct ConverterView: View {
 
     // MARK: Logic
 
-    // Pickers transport wall-clock components in UTC. Applying the source zone
-    // happens only during conversion, so the device zone cannot shift the input
-    // and skipped/repeated times remain selectable for explicit validation.
-    private var pickerCalendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
-    }
-
     private var dateBinding: Binding<Date> {
         Binding(
             get: { TimeEngine.fromZonedInput(day: day, time: "12:00", timeZoneID: "UTC") ?? Date() },
@@ -223,28 +193,16 @@ struct ConverterView: View {
     }
 
     private func syncNow() {
-        let now = Date()
-        let values = TimeEngine.toZonedInput(now, timeZoneID: fromZoneID)
+        let values = TimeEngine.toZonedInput(Date(), timeZoneID: fromZoneID)
         day = values.day
         time = values.time
-        let first = TimeEngine.fromZonedInput(day: day, time: time, timeZoneID: fromZoneID)
-        useLaterOccurrence = first.map { now.timeIntervalSince($0) >= 60 } ?? false
-        convert()
-    }
-
-    private var isRepeatedTime: Bool {
-        guard let first = TimeEngine.fromZonedInput(day: day, time: time, timeZoneID: fromZoneID),
-              let last = TimeEngine.fromZonedInput(day: day, time: time, timeZoneID: fromZoneID,
-                                                  repeatedTimePolicy: .last) else { return false }
-        return first != last
+        result = nil
+        conversionError = nil
     }
 
     private func convert() {
-        result = TimeEngine.fromZonedInput(day: day, time: time, timeZoneID: fromZoneID,
-                                          repeatedTimePolicy: useLaterOccurrence ? .last : .first)
-        conversionError = result == nil
-            ? "This local date or time does not exist in the selected city. A clock change may skip it. Choose another time."
-            : nil
+        result = TimeEngine.fromZonedInput(day: day, time: time, timeZoneID: fromZoneID)
+        conversionError = result == nil ? "This local time does not exist. Choose another time; daylight saving may skip this hour." : nil
     }
 }
 
