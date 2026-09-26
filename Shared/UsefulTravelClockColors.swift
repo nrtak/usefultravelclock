@@ -10,7 +10,7 @@ enum Design {
         if scheme == .dark {
             return night ? Color(red: 0.07, green: 0.12, blue: 0.20) : Color(red: 0.13, green: 0.13, blue: 0.10)
         }
-        return night ? Color(red: 0.92, green: 0.96, blue: 1.0) : Color(red: 1.0, green: 0.995, blue: 0.96)
+        return night ? Color(red: 0.78, green: 0.85, blue: 0.96) : Color(red: 1.0, green: 0.995, blue: 0.96)
     }
 
     // MARK: Light theme
