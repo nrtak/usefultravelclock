@@ -14,7 +14,7 @@ struct ClocksView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 ForEach(store.selectedCities) { city in
                     Button { managing = city } label: { CityRowView(
                         city: city,
@@ -23,7 +23,7 @@ struct ClocksView: View {
                         scheme: scheme
                     ) }.buttonStyle(.plain)
                 }
-                Button("+ Add city") { adding = true }.disabled(store.cityIDs.count >= UsefulTravelClockStore.maxCities)
+                Button("+ Add city") { adding = true }.padding(.vertical, 12).disabled(store.cityIDs.count >= UsefulTravelClockStore.maxCities)
                 scrubber
             }
             .padding(.horizontal, 16)
@@ -94,51 +94,41 @@ struct CityRowView: View {
         let ink = scheme == .dark ? Color.white : Color(red: 0.16, green: 0.20, blue: 0.30)
         let surface = scheme == .dark ? Design.cityRow(scheme) : (isNight ? Color(red: 0.92, green: 0.90, blue: 0.96) : Color.white)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(city.name)
-                        .font(.headline)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if store.showDifference {
-                        Text(TimeEngine.formatDifference(difference))
-                            .font(.subheadline)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+        return HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(city.name).font(.headline)
+                Text(subtitle).font(.subheadline)
+                if store.showDate || store.showWeekday {
+                    Text(compactDate).font(.subheadline)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .trailing, spacing: 4) {
                 HStack(spacing: 8) {
                     if store.showAnalog { AnalogClockView(hourFloat: t.hourFloat, accent: ink) }
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(store.use24 ? String(format: "%02d:%02d", t.hour24, t.minute) : t.hm)
                             .font(.title.weight(.bold).monospacedDigit())
-                            .fixedSize()
                         if !store.use24 {
-                            Text(t.period.uppercased()).font(.subheadline.weight(.semibold)).fixedSize()
+                            Text(t.period.uppercased()).font(.subheadline.weight(.semibold))
                         }
-                    }
+                    }.fixedSize()
                 }
-            }
-            if store.showDate || store.showWeekday {
-                Text(compactDate)
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .fixedSize(horizontal: false, vertical: true)
+                if store.showDifference {
+                    Text(TimeEngine.formatDifferenceCompact(difference)).font(.subheadline)
+                }
             }
         }
         .foregroundStyle(ink)
-        .padding(.horizontal, 14)
-        .padding(.vertical, store.cityIDs.count <= 4 ? 18 : store.cityIDs.count <= 6 ? 14 : 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(surface)
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Design.border(scheme)))
-                .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.06), radius: 3, y: 2)
-        )
+        .padding(.horizontal, 8)
+        .padding(.vertical, store.cityIDs.count <= 4 ? 14 : store.cityIDs.count <= 6 ? 11 : 8)
+        .frame(maxWidth: .infinity)
+        .background(surface)
+        .overlay(alignment: .bottom) { Divider() }
+        .contentShape(Rectangle())
     }
+
     private var compactDate: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -199,7 +189,7 @@ struct AnalogClockView: View {
             // Center pin
             context.fill(Path(ellipseIn: CGRect(x: c.x - 2 * scale, y: c.y - 2 * scale, width: 4 * scale, height: 4 * scale)), with: .color(accent))
         }
-        .frame(width: 48, height: 48)
+        .frame(width: 56, height: 56)
     }
 
     private func point(center c: CGPoint, angleDegrees: Double, distance: Double) -> CGPoint {
