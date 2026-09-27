@@ -14,9 +14,8 @@ struct SmallWidgetView: View {
     var body: some View {
         Group {
             if entry.cities(upTo: 2).count == 2 {
-                VStack(spacing: 4) {
+                VStack(spacing: 8) {
                     ForEach(Array(entry.cities(upTo: 2).enumerated()), id: \.offset) { index, city in
-                        if index > 0 { Divider() }
                         SmallTwoCityCell(city: city, entry: entry)
                     }
                 }.frame(maxHeight: .infinity)
@@ -166,23 +165,25 @@ private struct WidgetPhaseBackground: View {
         let rows = max(1, (cities.count + columns - 1) / columns)
         ZStack {
             Design.widgetCard
-            VStack(spacing: 4) {
+            VStack(spacing: 0) {
                 ForEach(0..<rows, id: \.self) { row in
-                    HStack(spacing: 4) {
+                    HStack(spacing: 0) {
                         ForEach(0..<columns, id: \.self) { column in
                             let index = row * columns + column
                             if index < cities.count {
                                 let time = TimeEngine.zonedTime(date, timeZoneID: cities[index].timeZoneID)
                                 let phase = TimeEngine.dayPhase(time.hourFloat)
                                 let night = phase == .dusk || phase == .evening || phase == .night
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(night ? Design.phaseSurface(phase, scheme: .light) : Color(red: 1, green: 0.97, blue: 0.82))
-                                    .overlay {
-                                        if !night {
-                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .strokeBorder(Color(red: 0.70, green: 0.53, blue: 0.12).opacity(0.5), lineWidth: 1)
-                                        }
-                                    }
+                                let tint = night
+                                    ? Color(red: 0.82, green: 0.88, blue: 0.97)
+                                    : Color(red: 1, green: 0.96, blue: 0.80)
+                                // Fade into the shared surface on every edge, so adjacent
+                                // day/night regions blend without rectangular seams.
+                                Rectangle()
+                                    .fill(LinearGradient(colors: [.clear, tint, tint, .clear],
+                                                         startPoint: .leading, endPoint: .trailing))
+                                    .mask(LinearGradient(colors: [.clear, .white, .white, .clear],
+                                                         startPoint: .top, endPoint: .bottom))
                             } else {
                                 Color.clear
                             }
