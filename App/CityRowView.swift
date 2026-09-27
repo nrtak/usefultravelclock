@@ -11,59 +11,25 @@ struct ClocksView: View {
     @State private var adding = false
     @State private var managing: City?
     @State private var now = Date()
-    @State private var editing = false
+    private var editing: Bool { store.isEditingCities }
     @State private var draggedID: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Menu {
-                    Picker("Sort cities", selection: $store.sortOrder) {
-                        ForEach(CitySort.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                } label: { Label(store.sortOrder.rawValue, systemImage: "arrow.up.arrow.down") }
-                Spacer()
-                Button(editing ? "Done" : "Edit") { editing.toggle(); draggedID = nil }
-            }.padding(.horizontal, 20).padding(.vertical, 8)
-            if editing {
-                Text("Drag to reorder. Pinned cities stay at the top.")
-                    .font(.caption).foregroundStyle(.secondary).padding(.bottom, 6)
-            }
             ScrollView {
             VStack(spacing: 0) {
-                ForEach(store.orderedCities(at: now)) { city in
-                    VStack(spacing: 0) {
-                    if editing {
-                        HStack {
-                            Button(role: .destructive) { store.removeCity(city.id) } label: { Image(systemName: "minus.circle.fill") }
-                                .accessibilityLabel("Remove \(city.name)")
-                            Button { managing = city } label: { Label("Change / rename", systemImage: "pencil") }
-                            Spacer()
-                            Button { store.toggleFavorite(city.id) } label: {
-                                Image(systemName: store.favoriteIDs.contains(city.id) ? "pin.fill" : "pin")
-                            }.accessibilityLabel("Pin \(city.name)")
-                            Image(systemName: "line.3.horizontal").accessibilityLabel("Drag to reorder")
-                        }.font(.subheadline).padding(10)
-                    }
-                    CityRowView(
-                        city: city,
-                        at: store.displayDate(from: now),
-                        homeTimeZoneID: store.homeTimeZoneID,
-                        scheme: scheme
-                    )
-                    .onTapGesture { managing = city }
-                    .onLongPressGesture { editing = true }
-                    .accessibilityAction(named: "Edit cities") { editing = true }
-                    }
-                    .modifier(CityWiggle(active: editing && !reduceMotion))
-                    .onDrag {
-                        editing = true; draggedID = city.id
-                        return NSItemProvider(object: city.id as NSString)
-                    }
-                    .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
+                let ordered = store.orderedCities(at: now)
+                let pinned = ordered.filter { store.favoriteIDs.contains($0.id) }
+                let other = ordered.filter { !store.favoriteIDs.contains($0.id) }
+                if !pinned.isEmpty {
+                    sectionHeading("Pinned", symbol: "pin.fill")
+                    ForEach(pinned) { city in editableRow(city) }
+                    if !other.isEmpty { sectionHeading("Other cities", symbol: "globe") }
                 }
+                ForEach(other) { city in editableRow(city) }
+
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -80,6 +46,52 @@ struct ClocksView: View {
         .onReceive(timer) { now = $0 }
         .sheet(isPresented: $adding) { AddCitySheet() }
         .sheet(item: $managing) { CityManagementSheet(city: $0) }
+    }
+
+    private func sectionHeading(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.subheadline.weight(.bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8).padding(.vertical, 10)
+            .background(Design.secondary(scheme))
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func editableRow(_ city: City) -> some View {
+        HStack(spacing: 0) {
+            if editing {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(store.nicknames[city.id]?.isEmpty == false ? store.nicknames[city.id]! : city.name)
+                        .font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                    if store.nicknames[city.id]?.isEmpty == false { Text(city.name).font(.caption) }
+                    let time = TimeEngine.zonedTime(store.displayDate(from: now), timeZoneID: city.timeZoneID)
+                    Text(store.use24 ? String(format: "%02d:%02d", time.hour24, time.minute) : time.hm + " " + time.period.uppercased())
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)) }
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                Button("Remove", role: .destructive) { store.removeCity(city.id) }
+                    .font(.subheadline.weight(.semibold)).frame(width: 68).frame(maxHeight: .infinity)
+                    .background(Color.red.opacity(0.10)).accessibilityLabel("Remove \(city.name)")
+                Button("Personalize") { managing = city }
+                    .font(.subheadline.weight(.semibold)).frame(width: 100).frame(maxHeight: .infinity)
+                    .background(Color.blue.opacity(0.12)).accessibilityLabel("Personalize \(city.name)")
+            } else {
+                CityRowView(city: city, at: store.displayDate(from: now), homeTimeZoneID: store.homeTimeZoneID, scheme: scheme)
+                    .onTapGesture { managing = city }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(Rectangle())
+        .onLongPressGesture { store.isEditingCities = true }
+        .accessibilityAction(named: "Edit cities") { store.isEditingCities = true }
+        .modifier(CityWiggle(active: editing && !reduceMotion))
+        .onDrag {
+            store.isEditingCities = true; draggedID = city.id
+            return NSItemProvider(object: city.id as NSString)
+        }
+        .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
+        .overlay(alignment: .bottom) { Rectangle().fill(Design.border(scheme)).frame(height: 1).padding(.horizontal, 10) }
     }
 
     private var scrubber: some View {
@@ -172,7 +184,7 @@ struct CityRowView: View {
                         Text(name).font(.headline)
                         Text(city.name).font(.subheadline)
                     } else { Text(city.name).font(.headline) }
-                    if store.favoriteIDs.contains(city.id) { Image(systemName: "pin.fill").font(.caption).accessibilityLabel("Pinned") }
+                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 3).background(Color.blue.opacity(0.15), in: Capsule()) }
                     Text(subtitle).font(.subheadline)
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -205,9 +217,6 @@ struct CityRowView: View {
         .padding(.vertical, store.cityIDs.count <= 4 ? 12 : store.cityIDs.count <= 6 ? 9 : 6)
         .frame(maxWidth: .infinity)
         .background(surface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Design.border(scheme)).frame(height: 1)
-        }
         .contentShape(Rectangle())
     }
 

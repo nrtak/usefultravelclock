@@ -42,6 +42,56 @@ final class UsefulTravelClockStore: ObservableObject {
     @Published var sortOrder: CitySort { didSet { persist() } }
     @Published var favoriteIDs: [String] { didSet { persist() } }
     @Published var nicknames: [String: String] { didSet { persist() } }
+    @Published var isEditingCities = false
+    @Published private(set) var canUndo = false
+    private var undoHistory: [EditState] = []
+    private var lastEditState: EditState?
+    private var editDepth = 0
+    private var restoring = false
+
+    private struct EditState: Equatable {
+        var cityIDs: [String]
+        var favoriteIDs: [String]
+        var nicknames: [String: String]
+        var sortOrder: CitySort
+        var theme: ThemeMode
+        var homeMode: HomeMode
+        var homeCityID: String
+        var use24: Bool
+        var showAnalog: Bool
+        var showDate: Bool
+        var showWeekday: Bool
+        var showDifference: Bool
+    }
+
+    private var editState: EditState {
+        EditState(cityIDs: cityIDs, favoriteIDs: favoriteIDs, nicknames: nicknames,
+                  sortOrder: sortOrder, theme: theme, homeMode: homeMode, homeCityID: homeCityID,
+                  use24: use24, showAnalog: showAnalog, showDate: showDate,
+                  showWeekday: showWeekday, showDifference: showDifference)
+    }
+
+    /// Compound actions (replacement, removal, or reordering) undo as one step.
+    func edit(_ changes: () -> Void) {
+        editDepth += 1
+        changes()
+        editDepth -= 1
+        if editDepth == 0 { persist() }
+    }
+
+    func undoLastEdit() {
+        guard let previous = undoHistory.popLast() else { return }
+        restoring = true
+        cityIDs = previous.cityIDs; favoriteIDs = previous.favoriteIDs; nicknames = previous.nicknames
+        sortOrder = previous.sortOrder; theme = previous.theme
+        homeMode = previous.homeMode; homeCityID = previous.homeCityID
+        use24 = previous.use24; showAnalog = previous.showAnalog
+        showDate = previous.showDate; showWeekday = previous.showWeekday; showDifference = previous.showDifference
+        restoring = false
+        lastEditState = editState
+        canUndo = !undoHistory.isEmpty
+        persist()
+    }
 
     let allCities: [City] = cities
 
@@ -62,6 +112,7 @@ final class UsefulTravelClockStore: ObservableObject {
         favoriteIDs = self.defaults.stringArray(forKey: "city-favorites") ?? []
         nicknames = self.defaults.dictionary(forKey: "city-nicknames") as? [String: String] ?? [:]
         cityIDs = Array(cityIDs.prefix(Self.maxCities))
+        lastEditState = editState
     }
 
     private func decode<T: Decodable>(_ type: T.Type, key: String) -> T? {
@@ -70,6 +121,14 @@ final class UsefulTravelClockStore: ObservableObject {
     }
 
     private func persist() {
+        guard !restoring, editDepth == 0 else { return }
+        let current = editState
+        if let previous = lastEditState, previous != current {
+            undoHistory.append(previous)
+            if undoHistory.count > 50 { undoHistory.removeFirst() }
+            canUndo = true
+        }
+        lastEditState = current
         defaults.set(sortOrder.rawValue, forKey: "city-sort")
         defaults.set(favoriteIDs, forKey: "city-favorites")
         defaults.set(nicknames, forKey: "city-nicknames")
@@ -118,21 +177,25 @@ final class UsefulTravelClockStore: ObservableObject {
     }
 
     func removeCity(_ id: String) {
+        edit {
         favoriteIDs.removeAll { $0 == id }
         nicknames.removeValue(forKey: id)
         cityIDs.removeAll { $0 == id }
+        }
     }
 
     @discardableResult func replaceCity(_ id: String, with replacement: String) -> Bool {
         guard replacement != id, !cityIDs.contains(replacement),
               allCities.contains(where: { $0.id == replacement }),
               let index = cityIDs.firstIndex(of: id) else { return false }
+        edit {
         if let name = nicknames.removeValue(forKey: id) { nicknames[replacement] = name }
         if favoriteIDs.contains(id) {
             favoriteIDs.removeAll { $0 == id }; favoriteIDs.append(replacement)
         }
         if homeCityID == id { homeCityID = replacement }
         cityIDs[index] = replacement
+        }
         return true
     }
 
@@ -141,8 +204,7 @@ final class UsefulTravelClockStore: ObservableObject {
         var order = orderedCities().map(\.id)
         guard let from = order.firstIndex(of: id), let to = order.firstIndex(of: target) else { return }
         order.remove(at: from); order.insert(id, at: to)
-        cityIDs = order
-        sortOrder = .custom
+        edit { cityIDs = order; sortOrder = .custom }
     }
 
     var deviceTimeZoneID: String {

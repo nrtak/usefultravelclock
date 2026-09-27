@@ -3,9 +3,8 @@
 import SwiftUI
 import WidgetKit
 
-// Widget visuals follow the approved mockups: white card, phase color only on
-// the analog clock and digital time, abbreviated days, "+x hrs" differences,
-// "UK"-style country abbreviations, full day+date so no mental math is needed.
+// Phase backgrounds extend toward the widget edge while content retains the
+// system's safe margins for rounded corners and readable city names.
 
 // MARK: - Small widget
 
@@ -58,7 +57,9 @@ struct SmallWidgetView: View {
             }
         }
         .padding(2)
-        .widgetBackground(widgetSurface(entry))
+        .containerBackground(for: .widget) {
+            WidgetPhaseBackground(cities: entry.cities(upTo: 2), date: entry.date, columns: 1)
+        }
     }
 }
 
@@ -81,7 +82,9 @@ struct MediumWidgetView: View {
                 }
             }
         }
-        .widgetBackground(Design.widgetCard)
+        .containerBackground(for: .widget) {
+            WidgetPhaseBackground(cities: cities, date: entry.date, columns: columns)
+        }
     }
 
     private func gridCell(city: City) -> some View {
@@ -124,7 +127,6 @@ struct MediumWidgetView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)
-        .background(Design.phaseSurface(phase, scheme: .light), in: RoundedRectangle(cornerRadius: 5))
     }
 }
 
@@ -147,13 +149,37 @@ private struct SmallTwoCityCell: View {
                 .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .foregroundStyle(Design.widgetLabel)
-            .background(Design.phaseSurface(TimeEngine.dayPhase(t.hourFloat), scheme: .light))
     }
 }
 
-private func widgetSurface(_ entry: UsefulTravelClockEntry) -> Color {
-    guard entry.cityIDs.count == 1, let city = entry.cities(upTo: 1).first else { return .white }
-    return Design.phaseSurface(TimeEngine.dayPhase(TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID).hourFloat), scheme: .light)
+private struct WidgetPhaseBackground: View {
+    let cities: [City]
+    let date: Date
+    let columns: Int
+
+    var body: some View {
+        let rows = max(1, (cities.count + columns - 1) / columns)
+        ZStack {
+            Design.widgetCard
+            VStack(spacing: 4) {
+                ForEach(0..<rows, id: \.self) { row in
+                    HStack(spacing: 4) {
+                        ForEach(0..<columns, id: \.self) { column in
+                            let index = row * columns + column
+                            if index < cities.count {
+                                let time = TimeEngine.zonedTime(date, timeZoneID: cities[index].timeZoneID)
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Design.phaseSurface(TimeEngine.dayPhase(time.hourFloat), scheme: .light))
+                            } else {
+                                Color.clear
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(4)
+        }
+    }
 }
 
 private func widgetTime(_ time: ZonedTime) -> String {

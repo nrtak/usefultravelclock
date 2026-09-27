@@ -12,6 +12,14 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Organize cities") {
+                    Picker("Sort cities", selection: $store.sortOrder) {
+                        ForEach(CitySort.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    Button("Edit cities") { store.isEditingCities = true; dismiss() }
+                    Text("You can also touch and hold a city in Clocks. Pinned cities always stay at the top.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Display") {
                     Toggle("24-hour time", isOn: $store.use24)
                     Toggle("Analog clocks", isOn: $store.showAnalog)
@@ -58,7 +66,12 @@ struct SettingsSheet: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Done") { dismiss() } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Undo") { store.undoLastEdit() }.disabled(!store.canUndo)
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
         }
     }
 }
