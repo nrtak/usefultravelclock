@@ -168,8 +168,16 @@ private struct WidgetPhaseBackground: View {
                             let index = row * columns + column
                             if index < cities.count {
                                 let time = TimeEngine.zonedTime(date, timeZoneID: cities[index].timeZoneID)
+                                let phase = TimeEngine.dayPhase(time.hourFloat)
+                                let night = phase == .dusk || phase == .evening || phase == .night
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Design.phaseSurface(TimeEngine.dayPhase(time.hourFloat), scheme: .light))
+                                    .fill(night ? Design.phaseSurface(phase, scheme: .light) : Color(red: 1, green: 0.97, blue: 0.82))
+                                    .overlay {
+                                        if !night {
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .strokeBorder(Color(red: 0.70, green: 0.53, blue: 0.12).opacity(0.5), lineWidth: 1)
+                                        }
+                                    }
                             } else {
                                 Color.clear
                             }

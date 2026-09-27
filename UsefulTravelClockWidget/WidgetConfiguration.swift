@@ -37,13 +37,9 @@ struct SmallClockConfiguration: WidgetConfigurationIntent {
 @available(iOS 17.0, *)
 struct GridClockConfiguration: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Choose cities and order"
-    static var description = IntentDescription("Cities appear left to right, then top to bottom. Change the city in each numbered position to reorder. Leave any position blank to omit it.")
-    @Parameter(title: "City 1") var first: ClockCityEntity?
-    @Parameter(title: "City 2") var second: ClockCityEntity?
-    @Parameter(title: "City 3") var third: ClockCityEntity?
-    @Parameter(title: "City 4") var fourth: ClockCityEntity?
-    @Parameter(title: "City 5") var fifth: ClockCityEntity?
-    @Parameter(title: "City 6") var sixth: ClockCityEntity?
+    static var description = IntentDescription("Choose up to six cities in the Cities list. Reorder the list to arrange the grid left to right, then top to bottom.")
+    @Parameter(title: "Cities", default: [], size: IntentCollectionSize(min: 0, max: 6))
+    var selectedCities: [ClockCityEntity]
 }
 
 @available(iOS 17.0, *)
@@ -66,7 +62,7 @@ struct GridClockProvider: AppIntentTimelineProvider {
     func timeline(for configuration: GridClockConfiguration, in context: Context) async -> Timeline<UsefulTravelClockEntry> {
         ClockWidgetData.timeline(ids: selection(configuration))
     }
-    private func selection(_ c: GridClockConfiguration) -> [String?] { [c.first?.id, c.second?.id, c.third?.id, c.fourth?.id, c.fifth?.id, c.sixth?.id] }
+    private func selection(_ c: GridClockConfiguration) -> [String?] { c.selectedCities.prefix(6).map { Optional($0.id) } }
 }
 
 enum ClockWidgetData {
