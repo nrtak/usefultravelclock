@@ -50,9 +50,9 @@ struct ClocksView: View {
 
     private func sectionHeading(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
-            .font(.subheadline.weight(.bold))
+            .font(.caption.weight(.semibold))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8).padding(.vertical, 10)
+            .padding(.horizontal, 8).padding(.vertical, 6)
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(Color.blue.opacity(scheme == .dark ? 0.14 : 0.055))

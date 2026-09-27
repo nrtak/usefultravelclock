@@ -28,10 +28,10 @@ struct ClockCityQuery: EntityStringQuery {
 
 @available(iOS 17.0, *)
 struct SmallClockConfiguration: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Choose cities"
-    static var description = IntentDescription("Choose up to two cities. Leave a position blank to omit it. City 1 appears above City 2.")
-    @Parameter(title: "City 1") var first: ClockCityEntity?
-    @Parameter(title: "City 2") var second: ClockCityEntity?
+    static var title: LocalizedStringResource = "Choose cities and order"
+    static var description = IntentDescription("Choose up to two cities in the Cities list. Remove cities or reorder the list to arrange them top to bottom.")
+    @Parameter(title: "Cities", default: [], size: IntentCollectionSize(min: 0, max: 2))
+    var selectedCities: [ClockCityEntity]
 }
 
 @available(iOS 17.0, *)
@@ -46,10 +46,10 @@ struct GridClockConfiguration: WidgetConfigurationIntent {
 struct SmallClockProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> UsefulTravelClockEntry { ClockWidgetData.entry(ids: Array(defaultCityIDs.prefix(1)).map { Optional($0) }) }
     func snapshot(for configuration: SmallClockConfiguration, in context: Context) async -> UsefulTravelClockEntry {
-        ClockWidgetData.entry(ids: [configuration.first?.id, configuration.second?.id])
+        ClockWidgetData.entry(ids: configuration.selectedCities.prefix(2).map { Optional($0.id) })
     }
     func timeline(for configuration: SmallClockConfiguration, in context: Context) async -> Timeline<UsefulTravelClockEntry> {
-        ClockWidgetData.timeline(ids: [configuration.first?.id, configuration.second?.id])
+        ClockWidgetData.timeline(ids: configuration.selectedCities.prefix(2).map { Optional($0.id) })
     }
 }
 
