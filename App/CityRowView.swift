@@ -26,7 +26,7 @@ struct ClocksView: View {
                 if !pinned.isEmpty {
                     sectionHeading("Pinned", symbol: "pin.fill")
                     ForEach(pinned) { city in editableRow(city) }
-                    if !other.isEmpty { sectionHeading("Other cities", symbol: "globe") }
+                    if !other.isEmpty { Divider().padding(.vertical, 3) }
                 }
                 ForEach(other) { city in editableRow(city) }
 
