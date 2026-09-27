@@ -29,7 +29,10 @@ struct AddCitySheet: View {
             .navigationTitle("Add a city")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button("Done") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Undo") { store.undoLastEdit() }.disabled(!store.canUndo)
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
     }

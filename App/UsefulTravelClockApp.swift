@@ -36,10 +36,24 @@ struct RootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            if store.canUndo || store.isEditingCities {
+                HStack {
+                    Button("Undo") { store.undoLastEdit() }.disabled(!store.canUndo)
+                        .accessibilityLabel("Undo last change")
+                    Spacer()
+                    if store.isEditingCities {
+                        Text("Drag cities to reorder").font(.caption).foregroundStyle(.secondary)
+                        Button("Done") { store.isEditingCities = false }
+                    }
+                }.padding(.horizontal, 20).padding(.vertical, 8)
+            }
             toolbar
         }
         .background(Design.background(scheme))
-        .sheet(isPresented: $showSettings) { SettingsSheet() }
+        .sheet(isPresented: $showSettings, onDismiss: { if store.isEditingCities { tab = .clocks } }) { SettingsSheet() }
+        .onChange(of: store.isEditingCities) { editing in
+            if editing { tab = .clocks }
+        }
     }
 
     private var toolbar: some View {
