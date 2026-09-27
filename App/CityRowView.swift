@@ -81,6 +81,7 @@ struct ClocksView: View {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .contentShape(Rectangle())
         .onLongPressGesture { store.isEditingCities = true }
         .accessibilityAction(named: "Edit cities") { store.isEditingCities = true }
@@ -90,7 +91,7 @@ struct ClocksView: View {
             return NSItemProvider(object: city.id as NSString)
         }
         .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
-        .overlay(alignment: .bottom) { Rectangle().fill(Design.border(scheme)).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Design.border(scheme)).frame(height: 1).padding(.horizontal, 10) }
     }
 
     private var scrubber: some View {
@@ -216,9 +217,6 @@ struct CityRowView: View {
         .padding(.vertical, store.cityIDs.count <= 4 ? 12 : store.cityIDs.count <= 6 ? 9 : 6)
         .frame(maxWidth: .infinity)
         .background(surface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Design.border(scheme)).frame(height: 1)
-        }
         .contentShape(Rectangle())
     }
 
