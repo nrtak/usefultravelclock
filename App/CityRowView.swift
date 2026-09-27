@@ -57,18 +57,10 @@ struct ClocksView: View {
             .accessibilityAddTraits(.isHeader)
     }
 
-    @ViewBuilder private func editableRow(_ city: City) -> some View {
-        if editing && !store.pendingRemovalIDs.contains(city.id) {
-            rowContent(city)
-                .modifier(CityWiggle(active: !reduceMotion))
-                .onDrag {
-                    draggedID = city.id
-                    return NSItemProvider(object: city.id as NSString)
-                }
-                .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
-        } else {
-            rowContent(city)
-        }
+    private func editableRow(_ city: City) -> some View {
+        rowContent(city)
+            .modifier(CityWiggle(active: editing && !reduceMotion && !store.pendingRemovalIDs.contains(city.id)))
+            .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
     }
 
     private func rowContent(_ city: City) -> some View {
@@ -91,21 +83,32 @@ struct ClocksView: View {
                         .font(.title3.weight(.semibold).monospacedDigit())
                     if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)) }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                    .onDrag {
+                        draggedID = city.id
+                        return NSItemProvider(object: city.id as NSString)
+                    }
+            } else {
+                CityRowView(city: city, at: store.displayDate(from: now), homeTimeZoneID: store.homeTimeZoneID, scheme: scheme)
+                    .onTapGesture { managing = city }
+            }
+            if editing {
+                HStack(spacing: 0) {
                 Button("Remove", role: .destructive) { store.markCityForRemoval(city.id) }
                     .font(.subheadline.weight(.semibold)).frame(width: 68, height: 104)
                     .background(Color.red.opacity(0.10)).accessibilityLabel("Remove \(city.name)")
                 Button("Personalize") { managing = city }
                     .font(.subheadline.weight(.semibold)).frame(width: 100, height: 104)
                     .background(Color.blue.opacity(0.12)).accessibilityLabel("Personalize \(city.name)")
-            } else {
-                CityRowView(city: city, at: store.displayDate(from: now), homeTimeZoneID: store.homeTimeZoneID, scheme: scheme)
-                    .onTapGesture { managing = city }
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
             }
         }
         .padding(store.pendingRemovalIDs.contains(city.id) ? 10 : 0)
         .frame(minHeight: store.pendingRemovalIDs.contains(city.id) ? 56 : (editing ? 104 : 0))
         .background(Design.background(scheme))
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: editing)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: store.pendingRemovalIDs.contains(city.id))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .contentShape(Rectangle())
         .onLongPressGesture { store.isEditingCities = true }
@@ -172,7 +175,8 @@ private struct CityWiggle: ViewModifier {
     let store: UsefulTravelClockStore
     @Binding var draggedID: String?
     func dropEntered(info: DropInfo) {
-        guard let source = draggedID, source != cityID else { return }
+        guard store.isEditingCities, !store.pendingRemovalIDs.contains(cityID),
+              let source = draggedID, source != cityID, !store.pendingRemovalIDs.contains(source) else { return }
         withAnimation { store.moveCity(source, to: cityID) }
     }
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
