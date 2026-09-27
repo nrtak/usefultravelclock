@@ -98,6 +98,16 @@ struct MediumWidgetView: View {
         let timeSize: CGFloat = count == 2 ? 28 : count <= 3 ? 23 : count == 4 ? 21 : 20
 
         return VStack(alignment: .leading, spacing: roomy ? 3 : 0) {
+            Text(city.name)
+                .font(.system(size: roomy ? 16 : 13, weight: .semibold))
+                .foregroundStyle(Design.widgetLabel)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .allowsTightening(true)
+                .frame(height: roomy ? 20 : 16, alignment: .leading)
+            Text(widgetCountry(city))
+                .font(.system(size: roomy ? 12 : 9, weight: .medium))
+                .foregroundStyle(Design.widgetLabel).lineLimit(1).minimumScaleFactor(0.8)
             if roomy {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
                     .frame(width: 38, height: 38)
@@ -113,16 +123,6 @@ struct MediumWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
-            Text(city.name)
-                .font(.system(size: roomy ? 16 : 13, weight: .semibold))
-                .foregroundStyle(Design.widgetLabel)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .allowsTightening(true)
-                .frame(height: roomy ? 20 : 16, alignment: .leading)
-            Text(widgetCountry(city))
-                .font(.system(size: roomy ? 12 : 9, weight: .medium))
-                .foregroundStyle(Design.widgetLabel).lineLimit(1).minimumScaleFactor(0.8)
             Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
                 .font(.system(size: count == 2 ? 12 : 10, weight: .medium))
                 .foregroundStyle(Design.widgetLabel)
