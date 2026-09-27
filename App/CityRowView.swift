@@ -157,6 +157,9 @@ private struct CityWiggle: ViewModifier {
     @State private var tilted = false
     func body(content: Content) -> some View {
         content.rotationEffect(.degrees(active ? (tilted ? 0.45 : -0.45) : 0))
+            .onAppear {
+                if active { withAnimation(.easeInOut(duration: 0.16).repeatForever(autoreverses: true)) { tilted = true } }
+            }
             .onChange(of: active) { enabled in
                 if enabled { withAnimation(.easeInOut(duration: 0.16).repeatForever(autoreverses: true)) { tilted = true } }
                 else { tilted = false }
