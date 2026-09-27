@@ -28,6 +28,18 @@ struct RootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if store.canUndo || store.isEditingCities {
+                HStack {
+                    Button("Undo") { store.undoLastEdit() }.disabled(!store.canUndo)
+                        .accessibilityLabel("Undo last change")
+                    Spacer()
+                    if store.isEditingCities {
+                        Text("Drag cities to reorder").font(.caption).foregroundStyle(.secondary)
+                        Button("Done") { store.finishEditingCities() }.buttonStyle(.borderedProminent)
+                    }
+                }.font(.headline).padding(.horizontal, 16).padding(.vertical, 12).background(Design.secondary(scheme))
+            }
+
             Group {
                 switch tab {
                 case .clocks: ClocksView()
@@ -36,17 +48,6 @@ struct RootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if store.canUndo || store.isEditingCities {
-                HStack {
-                    Button("Undo") { store.undoLastEdit() }.disabled(!store.canUndo)
-                        .accessibilityLabel("Undo last change")
-                    Spacer()
-                    if store.isEditingCities {
-                        Text("Drag cities to reorder").font(.caption).foregroundStyle(.secondary)
-                        Button("Done") { store.isEditingCities = false }
-                    }
-                }.padding(.horizontal, 20).padding(.vertical, 8)
-            }
             toolbar
         }
         .background(Design.background(scheme))

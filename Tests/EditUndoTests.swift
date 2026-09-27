@@ -2,6 +2,30 @@ import XCTest
 @testable import UsefulTravelClock
 
 final class EditUndoTests: XCTestCase {
+    @MainActor func testRemovalStaysVisibleUntilDoneAndCanBeRestored() {
+        let suite = "undo." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = UsefulTravelClockStore(defaults: defaults)
+        store.cityIDs = ["nyc", "lon"]
+        store.markCityForRemoval("nyc")
+        XCTAssertTrue(store.cityIDs.contains("nyc"))
+        XCTAssertTrue(store.pendingRemovalIDs.contains("nyc"))
+        store.undoLastEdit()
+        XCTAssertFalse(store.pendingRemovalIDs.contains("nyc"))
+        store.markCityForRemoval("nyc")
+        store.restorePendingCity("nyc")
+        XCTAssertTrue(store.pendingRemovalIDs.isEmpty)
+        store.markCityForRemoval("nyc")
+        store.finishEditingCities()
+        XCTAssertEqual(store.cityIDs, ["lon"])
+        XCTAssertTrue(store.pendingRemovalIDs.isEmpty)
+        XCTAssertFalse(store.isEditingCities)
+        store.undoLastEdit()
+        XCTAssertEqual(store.cityIDs, ["nyc", "lon"])
+        XCTAssertTrue(store.pendingRemovalIDs.isEmpty)
+    }
+
     @MainActor func testRemoveUndoRestoresAllCityDetailsAndPosition() {
         let suite = "undo." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!

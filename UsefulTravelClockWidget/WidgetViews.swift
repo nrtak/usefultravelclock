@@ -177,7 +177,7 @@ private struct WidgetPhaseBackground: View {
                     }
                 }
             }
-            .padding(4)
+            // The system clips this background to the widget's rounded outline.
         }
     }
 }
