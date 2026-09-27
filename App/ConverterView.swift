@@ -241,7 +241,7 @@ struct CityPickerSheet: View {
                     }
                 }
             }
-            .searchable(text: $query, prompt: "Type any city, country or code")
+            .safeAreaInset(edge: .top, spacing: 0) { CitySearchField(query: $query) }
             .navigationTitle("Select a city")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Cancel") { dismiss() } }

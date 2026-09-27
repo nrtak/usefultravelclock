@@ -25,7 +25,7 @@ struct AddCitySheet: View {
                     }
                 }
             }
-            .searchable(text: $query, prompt: "Search city, country or airport code")
+            .safeAreaInset(edge: .top, spacing: 0) { CitySearchField(query: $query) }
             .navigationTitle("Add a city")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -63,5 +63,32 @@ struct AddCitySheet: View {
             .opacity(disabled ? 0.4 : 1)
         }
         .disabled(disabled)
+    }
+}
+
+/// An explicit top search field stays visible on every supported iOS version.
+struct CitySearchField: View {
+    @Binding var query: String
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Search locations").font(.headline)
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(.blue)
+                TextField("City, US state, country or airport", text: $query)
+                    .font(.body).autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .accessibilityLabel("Search city, US state, country or airport code")
+                if !query.isEmpty {
+                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 14).frame(minHeight: 56)
+            .background(Design.secondary(scheme), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.blue.opacity(0.6), lineWidth: 1.5))
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(Design.background(scheme))
     }
 }
