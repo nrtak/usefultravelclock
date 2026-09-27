@@ -43,6 +43,7 @@ final class UsefulTravelClockStore: ObservableObject {
     @Published var favoriteIDs: [String] { didSet { persist() } }
     @Published var nicknames: [String: String] { didSet { persist() } }
     @Published var isEditingCities = false
+    @Published private(set) var pendingRemovalIDs: Set<String> = [] { didSet { persist() } }
     @Published private(set) var canUndo = false
     private var undoHistory: [EditState] = []
     private var lastEditState: EditState?
@@ -53,6 +54,7 @@ final class UsefulTravelClockStore: ObservableObject {
         var cityIDs: [String]
         var favoriteIDs: [String]
         var nicknames: [String: String]
+        var pendingRemovalIDs: Set<String>
         var sortOrder: CitySort
         var theme: ThemeMode
         var homeMode: HomeMode
@@ -65,7 +67,7 @@ final class UsefulTravelClockStore: ObservableObject {
     }
 
     private var editState: EditState {
-        EditState(cityIDs: cityIDs, favoriteIDs: favoriteIDs, nicknames: nicknames,
+        EditState(cityIDs: cityIDs, favoriteIDs: favoriteIDs, nicknames: nicknames, pendingRemovalIDs: pendingRemovalIDs,
                   sortOrder: sortOrder, theme: theme, homeMode: homeMode, homeCityID: homeCityID,
                   use24: use24, showAnalog: showAnalog, showDate: showDate,
                   showWeekday: showWeekday, showDifference: showDifference)
@@ -83,6 +85,7 @@ final class UsefulTravelClockStore: ObservableObject {
         guard let previous = undoHistory.popLast() else { return }
         restoring = true
         cityIDs = previous.cityIDs; favoriteIDs = previous.favoriteIDs; nicknames = previous.nicknames
+        pendingRemovalIDs = isEditingCities ? previous.pendingRemovalIDs : []
         sortOrder = previous.sortOrder; theme = previous.theme
         homeMode = previous.homeMode; homeCityID = previous.homeCityID
         use24 = previous.use24; showAnalog = previous.showAnalog
@@ -91,6 +94,24 @@ final class UsefulTravelClockStore: ObservableObject {
         lastEditState = editState
         canUndo = !undoHistory.isEmpty
         persist()
+    }
+
+    func markCityForRemoval(_ id: String) {
+        guard cityIDs.contains(id), !pendingRemovalIDs.contains(id) else { return }
+        isEditingCities = true
+        pendingRemovalIDs.insert(id)
+    }
+
+    func restorePendingCity(_ id: String) { pendingRemovalIDs.remove(id) }
+
+    func finishEditingCities() {
+        if !pendingRemovalIDs.isEmpty {
+            edit {
+                for id in pendingRemovalIDs { removeCity(id) }
+                pendingRemovalIDs = []
+            }
+        }
+        isEditingCities = false
     }
 
     let allCities: [City] = cities
