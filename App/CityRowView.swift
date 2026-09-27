@@ -19,7 +19,7 @@ struct ClocksView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: 5) {
                 let ordered = store.orderedCities(at: now)
                 let pinned = ordered.filter { store.favoriteIDs.contains($0.id) }
                 let other = ordered.filter { !store.favoriteIDs.contains($0.id) }
@@ -57,8 +57,30 @@ struct ClocksView: View {
             .accessibilityAddTraits(.isHeader)
     }
 
-    private func editableRow(_ city: City) -> some View {
+    @ViewBuilder private func editableRow(_ city: City) -> some View {
+        if editing && !store.pendingRemovalIDs.contains(city.id) {
+            rowContent(city)
+                .modifier(CityWiggle(active: !reduceMotion))
+                .onDrag {
+                    draggedID = city.id
+                    return NSItemProvider(object: city.id as NSString)
+                }
+                .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
+        } else {
+            rowContent(city)
+        }
+    }
+
+    private func rowContent(_ city: City) -> some View {
         HStack(spacing: 0) {
+            if store.pendingRemovalIDs.contains(city.id) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(city.name).font(.subheadline.weight(.semibold)).strikethrough()
+                    Text("Removed · tap Restore or Undo before Done").font(.caption)
+                }.foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Button("Restore") { store.restorePendingCity(city.id) }
+                    .font(.subheadline.weight(.bold)).padding(.leading, 8)
+            } else {
             if editing {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(store.nicknames[city.id]?.isEmpty == false ? store.nicknames[city.id]! : city.name)
@@ -69,29 +91,25 @@ struct ClocksView: View {
                         .font(.title3.weight(.semibold).monospacedDigit())
                     if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)) }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                Button("Remove", role: .destructive) { store.removeCity(city.id) }
-                    .font(.subheadline.weight(.semibold)).frame(width: 68).frame(maxHeight: .infinity)
+                Button("Remove", role: .destructive) { store.markCityForRemoval(city.id) }
+                    .font(.subheadline.weight(.semibold)).frame(width: 68, height: 104)
                     .background(Color.red.opacity(0.10)).accessibilityLabel("Remove \(city.name)")
                 Button("Personalize") { managing = city }
-                    .font(.subheadline.weight(.semibold)).frame(width: 100).frame(maxHeight: .infinity)
+                    .font(.subheadline.weight(.semibold)).frame(width: 100, height: 104)
                     .background(Color.blue.opacity(0.12)).accessibilityLabel("Personalize \(city.name)")
             } else {
                 CityRowView(city: city, at: store.displayDate(from: now), homeTimeZoneID: store.homeTimeZoneID, scheme: scheme)
                     .onTapGesture { managing = city }
             }
+            }
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(store.pendingRemovalIDs.contains(city.id) ? 10 : 0)
+        .frame(minHeight: store.pendingRemovalIDs.contains(city.id) ? 56 : (editing ? 104 : 0))
+        .background(Design.background(scheme))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .contentShape(Rectangle())
         .onLongPressGesture { store.isEditingCities = true }
         .accessibilityAction(named: "Edit cities") { store.isEditingCities = true }
-        .modifier(CityWiggle(active: editing && !reduceMotion))
-        .onDrag {
-            store.isEditingCities = true; draggedID = city.id
-            return NSItemProvider(object: city.id as NSString)
-        }
-        .onDrop(of: [UTType.text], delegate: CityReorderDrop(cityID: city.id, store: store, draggedID: $draggedID))
-        .overlay(alignment: .bottom) { Rectangle().fill(Design.border(scheme)).frame(height: 1).padding(.horizontal, 10) }
     }
 
     private var scrubber: some View {
@@ -175,7 +193,7 @@ struct CityRowView: View {
 
         let isNight = phase == .dusk || phase == .evening || phase == .night
         let ink = scheme == .dark ? Color.white : Color(red: 0.16, green: 0.20, blue: 0.30)
-        let surface = Design.phaseSurface(phase, scheme: scheme)
+        let surface = !isNight && scheme == .light ? Color(red: 1, green: 0.97, blue: 0.82) : Design.phaseSurface(phase, scheme: scheme)
 
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .center, spacing: 8) {
@@ -217,6 +235,12 @@ struct CityRowView: View {
         .padding(.vertical, store.cityIDs.count <= 4 ? 12 : store.cityIDs.count <= 6 ? 9 : 6)
         .frame(maxWidth: .infinity)
         .background(surface)
+        .overlay {
+            if !isNight {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color(red: 0.70, green: 0.53, blue: 0.12).opacity(scheme == .dark ? 0.7 : 0.5), lineWidth: 1)
+            }
+        }
         .contentShape(Rectangle())
     }
 

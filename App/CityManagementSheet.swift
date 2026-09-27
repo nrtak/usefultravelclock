@@ -25,7 +25,7 @@ struct CityManagementSheet: View {
                 Button("Change city") { saveNickname(); replacing = true }
                 Button("Move up") { move(-1) }
                 Button("Move down") { move(1) }
-                Button("Remove", role: .destructive) { saveNickname(); store.removeCity(city.id); dismiss() }
+                Button("Remove", role: .destructive) { saveNickname(); store.markCityForRemoval(city.id); dismiss() }
             }.navigationTitle("Personalize").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
