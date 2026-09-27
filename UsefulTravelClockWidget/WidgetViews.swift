@@ -34,6 +34,8 @@ struct SmallWidgetView: View {
                         .minimumScaleFactor(0.5)
                         .allowsTightening(true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(widgetCountry(city)).font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Design.widgetLabel).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                     WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.phase(.night, scheme: .light))
                         .frame(width: 56, height: 56)
@@ -94,9 +96,9 @@ struct MediumWidgetView: View {
         let accent = Design.phase(phase, scheme: .light)
         let count = entry.cityIDs.count
         let roomy = count <= 3
-        let timeSize: CGFloat = count == 2 ? 28 : count <= 4 ? 23 : 20
+        let timeSize: CGFloat = count == 2 ? 28 : count <= 3 ? 23 : count == 4 ? 21 : 20
 
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: roomy ? 3 : 0) {
             if roomy {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel)
                     .frame(width: 38, height: 38)
@@ -119,6 +121,9 @@ struct MediumWidgetView: View {
                 .minimumScaleFactor(0.5)
                 .allowsTightening(true)
                 .frame(height: roomy ? 20 : 16, alignment: .leading)
+            Text(widgetCountry(city))
+                .font(.system(size: roomy ? 12 : 9, weight: .medium))
+                .foregroundStyle(Design.widgetLabel).lineLimit(1).minimumScaleFactor(0.8)
             Text("\(TimeEngine.compactDate(entry.date, timeZoneID: city.timeZoneID)) · \(TimeEngine.formatDifferenceCompact(difference))")
                 .font(.system(size: count == 2 ? 12 : 10, weight: .medium))
                 .foregroundStyle(Design.widgetLabel)
@@ -126,7 +131,7 @@ struct MediumWidgetView: View {
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 2)
+        .padding(.vertical, roomy ? 2 : 0)
     }
 }
 
@@ -137,7 +142,7 @@ private struct SmallTwoCityCell: View {
         let t = TimeEngine.zonedTime(entry.date, timeZoneID: city.timeZoneID)
         let difference = TimeEngine.timeDifferenceMinutes(entry.date, timeZoneID: city.timeZoneID, homeTimeZoneID: entry.homeZone)
         VStack(alignment: .leading, spacing: 1) {
-            Text(city.name).font(.system(size: 13, weight: .semibold))
+            Text("\(city.name), \(widgetCountry(city))").font(.system(size: 13, weight: .semibold))
                 .lineLimit(1).minimumScaleFactor(0.5).allowsTightening(true)
             HStack(spacing: 4) {
                 WidgetAnalogClock(hourFloat: t.hourFloat, accent: Design.widgetLabel).frame(width: 26, height: 26)
@@ -192,6 +197,10 @@ private struct WidgetPhaseBackground: View {
 
 private func widgetTime(_ time: ZonedTime) -> String {
     UserDefaults.usefultravelclockShared.bool(forKey: "use24") ? String(format: "%02d:%02d", time.hour24, time.minute) : time.hm
+}
+
+private func widgetCountry(_ city: City) -> String {
+    city.country == "United Kingdom" ? "UK" : city.country
 }
 
 private func widgetPeriod(_ time: ZonedTime) -> String {
