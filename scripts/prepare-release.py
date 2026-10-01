@@ -4,7 +4,7 @@ import plistlib
 
 root = Path(__file__).resolve().parent.parent
 temp = Path(os.environ['RUNNER_TEMP'])
-team = os.environ['TEAM_ID']
+team = os.environ.get('TEAM_ID') or plistlib.loads((temp / 'app.plist').read_bytes())['TeamIdentifier'][0]
 profiles = {}
 for kind, bundle in [('app', 'com.usefultravelclock.app'), ('widget', 'com.usefultravelclock.app.widget')]:
     with (temp / f'{kind}.plist').open('rb') as file:

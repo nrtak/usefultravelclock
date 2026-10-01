@@ -203,7 +203,7 @@ struct TimeConverterView: View {
     }
 }
 
-extension ConverterView.Field: Identifiable {
+extension TimeConverterView.Field: Identifiable {
     var id: Int { hashValue }
 }
 
