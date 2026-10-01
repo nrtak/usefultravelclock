@@ -17,13 +17,13 @@ struct TravelDashboard: View {
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { home.navigationTitle("Trip Notes").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
+            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
             CurrencyConverterView(store: currency).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
             NavigationStack { world.navigationTitle("World Time").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
             NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
             NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
         }
-        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Notes", systemImage: "lock").font(.title)) } }
+        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .environmentObject(weather)
         .environmentObject(trip)
         .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) {

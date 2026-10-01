@@ -32,7 +32,7 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_CFBundleDisplayName: Trip Notes
+        INFOPLIST_KEY_CFBundleDisplayName: Trip Info
         CODE_SIGN_ENTITLEMENTS: UsefulTravelClock/UsefulTravelClock.entitlements
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
