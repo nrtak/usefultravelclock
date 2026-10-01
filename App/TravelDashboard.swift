@@ -51,7 +51,7 @@ struct TravelDashboard: View {
                 HStack { VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }; Spacer(); Image(systemName: "chevron.right") }.padding()
             }.buttonStyle(.bordered)
             VStack(alignment: .leading, spacing: 8) {
-                HStack { Label("Hotel", systemImage: "bed.double"); Spacer(); Button(trip.unlocked ? "Hide" : "Unlock") { if trip.unlocked { trip.lock() } else { Task { await trip.unlock() } } } }
+                HStack(spacing: 12) { Label("Hotel", systemImage: "bed.double"); Button(trip.unlocked ? "Hide" : "Unlock") { if trip.unlocked { trip.lock() } else { Task { await trip.unlock() } } }; Spacer() }
                 if trip.unlocked {
                     if let hotel = trip.records.first(where: { $0.kind == "Hotel" }) { Text(hotel.name).font(.headline); Text(hotel.from); Text("\(hotel.start.formatted(date: .abbreviated, time: .omitted)) – \(hotel.end.formatted(date: .abbreviated, time: .omitted))").font(.caption) }
                     else { Text("Add your hotel in My Trip.").font(.caption) }
