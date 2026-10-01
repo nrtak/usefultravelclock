@@ -1,11 +1,10 @@
-"""Generate release-only signing overrides without changing simulator settings."""
 from pathlib import Path
 import os
 import plistlib
 
 root = Path(__file__).resolve().parent.parent
 temp = Path(os.environ['RUNNER_TEMP'])
-team = 'R3233N87DC'
+team = os.environ['TEAM_ID']
 profiles = {}
 for kind, bundle in [('app', 'com.usefultravelclock.app'), ('widget', 'com.usefultravelclock.app.widget')]:
     with (temp / f'{kind}.plist').open('rb') as file:
@@ -14,6 +13,8 @@ for kind, bundle in [('app', 'com.usefultravelclock.app'), ('widget', 'com.usefu
     assert entitlements['application-identifier'] == f'{team}.{bundle}', 'Wrong profile bundle ID'
     assert 'group.com.usefultravelclock.app' in entitlements['com.apple.security.application-groups'], 'Missing App Group'
     assert not entitlements.get('get-task-allow', False), 'Development profile supplied'
+    if kind == 'app':
+        assert entitlements.get('com.apple.developer.weatherkit') is True, 'App profile needs WeatherKit enabled'
     profiles[bundle] = profile['Name']
 
 lines = ['include:', '  - project.yml', 'targets:']

@@ -1,9 +1,6 @@
-//  Useful Travel Clock
 
 import SwiftUI
 
-/// Settings: Appearance (light / dark / system) and Home location
-/// (automatic from the device, or a manually picked home city).
 struct SettingsSheet: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.dismiss) private var dismiss
