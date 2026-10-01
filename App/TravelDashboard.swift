@@ -43,10 +43,10 @@ struct TravelDashboard: View {
         VStack(spacing: 10) {
             TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true) }
             VStack(alignment: .leading, spacing: 10) {
-                Text("Currency").font(.headline)
+                Label("Currency", systemImage: "coins").font(.subheadline.weight(.semibold))
                 HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
                 HStack { Text(currency.detail).font(.caption); Spacer(); Button("Full converter") { tab = 1 } }
-            }.padding().foregroundStyle(Color.readable(on: currencyColor)).background(Color(hex: currencyColor), in: RoundedRectangle(cornerRadius: 16))
+            }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
                 HStack { VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }; Spacer(); Image(systemName: "chevron.right") }.padding()
@@ -57,7 +57,7 @@ struct TravelDashboard: View {
                     if let hotel = trip.records.first(where: { $0.kind == "Hotel" }) { Text(hotel.name).font(.headline); Text(hotel.from).font(.subheadline).textSelection(.enabled); Text("\(hotel.start.formatted(date: .abbreviated, time: .omitted)) – \(hotel.end.formatted(date: .abbreviated, time: .omitted))").font(.caption) }
                     else { Text("Add your hotel in My Trip.").font(.caption) }
                 }
-            }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            }.tripPanel()
             Spacer(minLength: 0)
         }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
@@ -76,7 +76,8 @@ struct TravelDashboard: View {
                     HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit() }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                 }
                 VStack { HStack { Text("Compare all cities"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -12...24, step: 0.5); Text(shift == 0 ? "Live time" : "Preview: \(shift.formatted()) hours from now").font(.caption) }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-                Spacer(minLength: 0)
+                TripArtwork(symbol: "globe")
+            Spacer(minLength: 0)
             }.padding()
         }.navigationBarTitleDisplayMode(.inline)
     }
@@ -88,10 +89,11 @@ struct TravelDashboard: View {
     }
     private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(role).font(.caption)
-            Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.headline).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.buttonStyle(.plain).disabled(!selectable)
-            Text(time(date, zone: zone)).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
-            Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption)
+            Text(role).font(.caption).frame(maxWidth: .infinity)
+            Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.frame(maxWidth: .infinity).buttonStyle(.plain).disabled(!selectable)
+            Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
+            if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
+            Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
             Text(role == "Destination" ? difference(zone: zone, date: date) : "Home time").font(.caption2).lineLimit(2).frame(height: 28, alignment: .topLeading)
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
     }
