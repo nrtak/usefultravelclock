@@ -10,7 +10,8 @@ struct TripSettingsView: View {
             List {
                 Section("Appearance") {
                     Picker("Theme", selection: $clock.theme) { ForEach(ThemeMode.allCases) { Text($0.rawValue.capitalized).tag($0) } }
-                    Text("Box colors").font(.caption).foregroundStyle(.secondary) ColorPicker("Home", selection: color($home)); ColorPicker("Destination", selection: color($destination)); ColorPicker("Currency", selection: color($currency)); Button("Restore standard colors") { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" } }
+                    Text("Box colors").font(.caption).foregroundStyle(.secondary)
+                    ColorPicker("Home", selection: color($home)); ColorPicker("Destination", selection: color($destination)); ColorPicker("Currency", selection: color($currency)); Button("Restore standard colors") { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" } }
                 Section("Clock settings") {
                     Toggle("24-hour time", isOn: $clock.use24)
                     Toggle("Analog clocks", isOn: $clock.showAnalog)
