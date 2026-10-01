@@ -9,7 +9,7 @@ struct TripWeatherCard: View {
             HStack { Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor); Spacer(); NavigationLink("More") { TripWeatherSearchView() } }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
             WeatherCreditView()
-        }.padding(12).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+        }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
         .task(id: destination?.id) { if let destination { await weather.load(city: destination) } }
     }

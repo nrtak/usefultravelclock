@@ -87,7 +87,7 @@ struct TripTranslateView: View {
                         Image(systemName: "arrow.right")
                         Picker("To", selection: $target) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
                     }
-                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Label("Text or photo", systemImage: "text.viewfinder").font(.headline)
@@ -102,14 +102,14 @@ struct TripTranslateView: View {
                         if config == next { config?.invalidate() } else { config = next }
                     } label: { Label("Translate", systemImage: "arrow.right").frame(maxWidth: .infinity) }
                     .buttonStyle(.borderedProminent).disabled(input.isEmpty)
-                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Translation", systemImage: "character.bubble.fill").font(.headline)
                     TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
-                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                }.tripPanel()
                 if !message.isEmpty { Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently) }
-                Label("Read menus, signs and travel details", systemImage: "suitcase.rolling").font(.caption).foregroundStyle(.secondary)
+                TripArtwork(symbol: "character.bubble")
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {

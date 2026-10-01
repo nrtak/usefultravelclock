@@ -21,41 +21,25 @@ struct CurrencyConverterView: View {
             GeometryReader { geometry in
               ScrollViewReader { proxy in
                 ScrollView {
-                    ConverterPageLayout(availableHeight: max(0, geometry.size.height - 16), expandsCards: !editing) {
+                    VStack(spacing: 10) {
                         VStack(spacing: 6) {
                             amountCard(source: true)
-                            HStack(spacing: 8) {
-                              Color.clear.frame(maxWidth: .infinity, maxHeight: 44)
-                              Button { editingSide = nil; store.swap() } label: {
-                                Image(systemName: "arrow.up.arrow.down")
-                                    .font(.title3.weight(.semibold)).frame(width: 48, height: 44)
-                                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 8))
-                                    .foregroundStyle(.white)
-                              }.accessibilityLabel("Swap currencies")
-                              Button("Clear amount") {
-                                  let side = editingSide ?? store.inputSide
-                                  store.edit("", side: side)
-                                  editingSide = side
-                              }
-                              .font(.subheadline.weight(.medium))
-                              .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
-                              .accessibilityHint("Clears both amounts and opens the keyboard for a new price")
-                            }.frame(maxWidth: .infinity)
+                            Button { editingSide = nil; store.swap() } label: {
+                                Image(systemName: "arrow.up.arrow.down").font(.title3).frame(width: 44, height: 44)
+                            }.buttonStyle(.bordered).accessibilityLabel("Swap currencies")
                             amountCard(source: false)
-                        }.id("amounts")
+                            HStack { Spacer(); Button("Clear amount") { store.edit("", side: editingSide ?? store.inputSide) }.font(.caption) }
+                            rateDetails
+                        }.tripPanel().id("amounts")
 
                         if !editing {
-                            rateDetails
                             saveButtons
-                            Text("Save a price, photo and note to revisit a travel find later.")
-                                .font(.caption).foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("More ways to convert").font(.headline)
-                                Button { showsItems = true } label: { Label("Add multiple prices", systemImage: "calculator") }
-                                Text("Add purchases, then convert the total").font(.caption).foregroundStyle(.secondary)
-                                Button { showsPhotoPrices = true } label: { Label("Convert prices in a photo", systemImage: "camera") }
-                            }.frame(maxWidth: .infinity, alignment: .leading).padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("More ways to convert").font(.subheadline.weight(.semibold))
+                                feature("Add multiple prices", detail: "Add several prices and convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
+                                feature("Convert prices in a photo", detail: "Take or choose a photo to convert its prices.", icon: "camera") { showsPhotoPrices = true }
+                            }.tripPanel()
+                            TripArtwork(symbol: "banknote")
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -75,7 +59,7 @@ struct CurrencyConverterView: View {
                 }
             }
             }
-            .navigationTitle("Convert Currency")
+            .navigationTitle("Currency")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Convert") { editingSide = nil } }
@@ -93,6 +77,16 @@ struct CurrencyConverterView: View {
         }
     }
 
+    private func feature(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon).font(.title2).frame(width: 36)
+                VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.medium)); Text(detail).font(.caption).foregroundStyle(.secondary) }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption)
+            }.frame(minHeight: 44)
+        }.buttonStyle(.plain)
+    }
     private func amountCard(source: Bool) -> some View {
         let code = source ? store.source : store.target
         return VStack(alignment: .leading, spacing: 6) {
@@ -109,14 +103,14 @@ struct CurrencyConverterView: View {
                                            focused: editingSide == (source ? .source : .target)) },
                     set: { store.edit($0, side: source ? .source : .target) }
                 ))
-                .font(.system(size: editing ? 36 : 44, weight: source ? .medium : .semibold))
+                .font(.system(size: editing ? 32 : 36, weight: source ? .medium : .semibold))
                 .monospacedDigit().keyboardType(.decimalPad)
                 .focused($editingSide, equals: source ? .source : .target)
                 .accessibilityLabel("\(source ? "From" : "To") amount in \(Currency.named(code).name)")
             }
         }
-        .frame(maxHeight: .infinity, alignment: .center)
-        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
         .foregroundStyle(Color.readable(on: boxColor))
         .background(Color(hex: boxColor),
                     in: RoundedRectangle(cornerRadius: 12))
@@ -203,10 +197,10 @@ struct CurrencyConverterView: View {
                         (Text(code).fontWeight(.semibold) + Text(" (\(Currency.named(code).name))"))
                             .font(.subheadline).lineLimit(1).minimumScaleFactor(0.65)
                     }
-                    Text(Currency.named(code).countryLabel).font(.headline)
+                    Text(Currency.named(code).countryLabel).font(.subheadline.weight(.semibold))
                         .lineLimit(editing ? 1 : 2)
                 }.frame(maxWidth: .infinity, alignment: .leading)
-                Label("Search", systemImage: "magnifyingglass")
+                Image(systemName: "magnifyingglass")
                     .font(.subheadline.weight(.semibold)).foregroundStyle(.blue)
                     .padding(.horizontal, 10).frame(minHeight: 44)
                     .background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
