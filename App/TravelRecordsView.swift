@@ -80,16 +80,22 @@ struct RecordForm: View {
                 TextField("Notes (optional)", text: $record.note, axis: .vertical).lineLimit(2...4)
             }
             Section {
-                Button("Save") {
-                    if record.end < record.start { record.end = record.start }
-                    trip.error = nil
-                    trip.save(record)
-                    if trip.error == nil { onSave?() }
-                }.disabled(!hasDetails)
                 if let error = trip.error { Text(error).font(.caption).foregroundStyle(.red) }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") { save() }.disabled(!hasDetails)
             }
         }
         .onChange(of: record.start) { _, start in if record.end < start { record.end = start } }
         .onChange(of: trip.unlocked) { _, unlocked in if !unlocked { onSave?() } }
     }
+    private func save() {
+        if record.end < record.start { record.end = record.start }
+        trip.error = nil
+        trip.save(record)
+        if trip.error == nil { onSave?() }
+    }
+
 }
