@@ -8,8 +8,24 @@ struct TripSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Box colors") { ColorPicker("Home", selection: color($home)); ColorPicker("Destination", selection: color($destination)); ColorPicker("Currency", selection: color($currency)); Button("Restore standard colors") { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" } }
-                Section("World Time") { NavigationLink("Clock display & cities") { SettingsSheet() }; NavigationLink("Add a city") { AddCitySheet() } }
+                Section("Appearance") {
+                    Picker("Theme", selection: $clock.theme) { ForEach(ThemeMode.allCases) { Text($0.rawValue.capitalized).tag($0) } }
+                    Text("Box colors").font(.caption).foregroundStyle(.secondary) ColorPicker("Home", selection: color($home)); ColorPicker("Destination", selection: color($destination)); ColorPicker("Currency", selection: color($currency)); Button("Restore standard colors") { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" } }
+                Section("Clock settings") {
+                    Toggle("24-hour time", isOn: $clock.use24)
+                    Toggle("Analog clocks", isOn: $clock.showAnalog)
+                    Toggle("Date", isOn: $clock.showDate)
+                    Toggle("Day of the week", isOn: $clock.showWeekday)
+                    Toggle("Time difference", isOn: $clock.showDifference)
+                    Picker("Home location", selection: $clock.homeMode) {
+                        ForEach(HomeMode.allCases) { Text($0.rawValue.capitalized).tag($0) }
+                    }
+                    if clock.homeMode == .manual {
+                        Picker("Home city", selection: $clock.homeCityID) {
+                            ForEach(clock.allCities) { Text($0.label).tag($0.id) }
+                        }
+                    }
+                }
                 Section("Utilities") { NavigationLink("Units") { TripUnitsView() } }
                 Section("About & support") {
                     NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Travel details unlock using device authentication.").padding() }
