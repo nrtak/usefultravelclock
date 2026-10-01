@@ -74,18 +74,47 @@ struct TripTranslateView: View {
     @State private var saved = false
     private let languages = ["en", "ja", "es", "fr", "de", "ko", "zh-Hans", "it", "pt"]
     var body: some View {
-        VStack(spacing: 12) {
-            HStack { Picker("From", selection: $source) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }; Image(systemName: "arrow.right"); Picker("To", selection: $target) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } } }
-            PhotosPicker("Choose image", selection: $photo, matching: .images)
-            if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxHeight: 100) }
-            TextField("Enter or scan text", text: $input, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
-            Button("Translate") { output = ""; message = "Translating…"; let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target)); if config == next { config?.invalidate() } else { config = next } }.disabled(input.isEmpty)
-            TextField("Translation", text: $output, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
-            TextField("Notes about this image or translation", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
-            HStack { Button("Save translation") { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil); Spacer(); Button("Saved") { saved = true } }
-            Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently)
-            Spacer(minLength: 0)
-        }.padding().navigationBarTitleDisplayMode(.inline)
+        ScrollView {
+            VStack(spacing: 14) {
+                VStack(spacing: 10) {
+                    HStack {
+                        Label("Languages", systemImage: "character.bubble").font(.headline)
+                        Spacer()
+                        Button { saved = true } label: { Label("Saved", systemImage: "bookmark") }
+                    }
+                    HStack {
+                        Picker("From", selection: $source) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
+                        Image(systemName: "arrow.right")
+                        Picker("To", selection: $target) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
+                    }
+                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Label("Text or photo", systemImage: "text.viewfinder").font(.headline)
+                        Spacer()
+                        PhotosPicker(selection: $photo, matching: .images) { Label("Photo", systemImage: "photo") }
+                    }
+                    if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
+                    TextField("Enter text, or choose a photo to read it", text: $input, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
+                    Button {
+                        output = ""; message = "Translating…"
+                        let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
+                        if config == next { config?.invalidate() } else { config = next }
+                    } label: { Label("Translate", systemImage: "arrow.right").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).disabled(input.isEmpty)
+                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Translation", systemImage: "character.bubble.fill").font(.headline)
+                    TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
+                    TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
+                }.padding(14).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                if !message.isEmpty { Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently) }
+                Label("Read menus, signs and travel details", systemImage: "suitcase.rolling").font(.caption).foregroundStyle(.secondary)
+            }.padding(12)
+        }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .confirmationAction) {
+            Button("Save") { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
+        } }
         .translationTask(config) { session in do { let response = try await session.translate(input); output = response.targetText; message = "" } catch { message = error.localizedDescription } }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { Button("Done") { saved = false } } } }
@@ -95,5 +124,5 @@ struct SavedTranslationEditor: View {
     @EnvironmentObject private var trip: TripStore
     @Environment(\.dismiss) private var dismiss
     @State var record: TranslationRecord
-    var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Button("Save changes") { if trip.saveTranslation(record) { dismiss() } }; Spacer() }.padding().navigationTitle("Saved translation") }
+    var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Spacer() }.padding().navigationTitle("Saved translation").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { if trip.saveTranslation(record) { dismiss() } } } } }
 }
