@@ -6,9 +6,17 @@ struct TripWeatherCard: View {
     let destination: City?
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack { Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor); Spacer(); NavigationLink("More") { TripWeatherSearchView() } }
+            HStack(spacing: 8) {
+                NavigationLink { TripWeatherSearchView() } label: {
+                    HStack(spacing: 4) {
+                        Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor).font(.headline)
+                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }.buttonStyle(.plain).accessibilityLabel("More weather")
+                Spacer(minLength: 4)
+                WeatherCreditView()
+            }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
-            HStack { Spacer(); WeatherCreditView() }
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
         .task(id: destination?.id) { if let destination { await weather.load(city: destination) } }
@@ -44,9 +52,9 @@ struct WeatherCreditView: View {
     var body: some View {
         if let attribution = weather.attribution {
             Link(destination: attribution.legalPageURL) {
-                HStack(spacing: 6) { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 62, height: 10); Text("Data sources").font(.system(size: 10)) }
+                HStack(spacing: 6) { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 62, height: 10); Text("Sources").font(.caption2) }
             }
-        } else { Text("Source: Apple Weather · WeatherKit").font(.caption2).foregroundStyle(.secondary) }
+        } else { Text("Apple Weather").font(.caption2).foregroundStyle(.secondary) }
     }
 }
 struct TripWeatherSearchView: View {
