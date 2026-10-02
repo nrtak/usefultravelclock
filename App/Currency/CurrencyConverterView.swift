@@ -33,12 +33,11 @@ struct CurrencyConverterView: View {
                         }.tripPanel().id("amounts")
 
                         if !editing {
-                            saveButtons
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("More ways to convert").font(.subheadline.weight(.semibold))
                                 feature("Add multiple prices", detail: "Add several prices and convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
-                                feature("Convert prices in a photo", detail: "Take or choose a photo to convert its prices.", icon: "camera") { showsPhotoPrices = true }
+                                feature("Live camera / photo", detail: "Read prices with your camera or a photo.", icon: "camera.viewfinder") { showsPhotoPrices = true }
                             }.tripPanel()
+                            saveButtons
                             TripArtwork(symbol: "banknote")
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
