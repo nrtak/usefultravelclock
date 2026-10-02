@@ -37,7 +37,7 @@ struct WeatherCreditView: View {
     var body: some View {
         if let attribution = weather.attribution {
             Link(destination: attribution.legalPageURL) {
-                HStack { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 100, height: 16); Text("Data sources").font(.caption2) }
+                HStack { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 62, height: 10); Text("Data sources").font(.caption2) }
             }
         } else { Text("Source: Apple Weather · WeatherKit").font(.caption2).foregroundStyle(.secondary) }
     }

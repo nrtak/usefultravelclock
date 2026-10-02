@@ -10,8 +10,23 @@ struct TripSettingsView: View {
             List {
                 Section("Appearance") {
                     Picker("Theme", selection: $clock.theme) { ForEach(ThemeMode.allCases) { Text($0.rawValue.capitalized).tag($0) } }
-                    Text("Box colors").font(.caption).foregroundStyle(.secondary)
-                    ColorPicker("Home", selection: color($home)); ColorPicker("Destination", selection: color($destination)); ColorPicker("Currency", selection: color($currency)); Button("Restore standard colors") { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" } }
+                    Text("Box theme").font(.caption).foregroundStyle(.secondary)
+                    ForEach(BoxTheme.allCases) { theme in
+                        Button {
+                            home = theme.colors[0]; destination = theme.colors[1]; currency = theme.colors[2]
+                        } label: {
+                            HStack {
+                                Text(theme.rawValue).foregroundStyle(.primary)
+                                Spacer()
+                                ForEach(Array(theme.colors.enumerated()), id: \.offset) { _, hex in
+                                    RoundedRectangle(cornerRadius: 5).fill(Color(hex: hex)).frame(width: 32, height: 24)
+                                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.4)))
+                                }
+                                Image(systemName: home == theme.colors[0] && destination == theme.colors[1] && currency == theme.colors[2] ? "checkmark.circle.fill" : "circle").frame(width: 22)
+                            }
+                        }.accessibilityLabel(theme.rawValue + " box theme")
+                    }
+                }
                 Section("Clock settings") {
                     Toggle("24-hour time", isOn: $clock.use24)
                     Toggle("Analog clocks", isOn: $clock.showAnalog)
@@ -35,7 +50,9 @@ struct TripSettingsView: View {
                     Text("Trip Info · Version 1.1")
                     Text("© 2026 Irvine Dynamics").font(.caption)
                 }
-            }.navigationTitle("Settings")
+            }.navigationTitle("Settings").onAppear {
+                if !BoxTheme.allCases.contains(where: { $0.colors == [home, destination, currency] }) { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" }
+            }
         }
     }
     private func color(_ value: Binding<String>) -> Binding<Color> { Binding(get: { Color(hex: value.wrappedValue) }, set: { color in var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0; UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a); value.wrappedValue = String(format: "%02X%02X%02X", Int(r*255), Int(g*255), Int(b*255)) }) }
@@ -50,4 +67,17 @@ struct TripUnitsView: View {
     @State private var amount = "20"
     private var result: String { guard let n = Double(amount) else { return "Enter a number" }; switch kind { case "Temperature": return "\((n*9/5+32).formatted()) °F"; case "Distance": return "\((n*0.621371).formatted()) mi"; default: return "\((n*2.20462262).formatted()) lb" } }
     var body: some View { VStack(spacing: 20) { Picker("Unit", selection: $kind) { ForEach(["Temperature", "Distance", "Weight"], id: \.self) { Text($0).tag($0) } }; TextField(kind == "Temperature" ? "Celsius" : kind == "Distance" ? "Kilometers" : "Kilograms", text: $amount).keyboardType(.numbersAndPunctuation).textFieldStyle(.roundedBorder); Text(result).font(.largeTitle); Spacer() }.padding().navigationTitle("Units") }
+}
+
+enum BoxTheme: String, CaseIterable, Identifiable {
+    case standard = "Standard", coastal = "Coastal", warm = "Warm", outline = "Outline"
+    var id: String { rawValue }
+    var colors: [String] {
+        switch self {
+        case .standard: return ["EAF4ED", "EAF1FC", "F3F3F3"]
+        case .coastal: return ["E4F4F2", "E8EDFA", "F3F5F7"]
+        case .warm: return ["FFF3DB", "F4EAF7", "F5F2EE"]
+        case .outline: return ["FFFFFF", "FFFFFF", "FFFFFF"]
+        }
+    }
 }
