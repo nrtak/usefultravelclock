@@ -88,9 +88,9 @@ struct TripTranslateView: View {
                         Button { saved = true } label: { Label("Saved", systemImage: "bookmark") }
                     }
                     HStack {
-                        Picker("From", selection: $source) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
+                        languageMenu("From", selection: $source)
                         Image(systemName: "arrow.right")
-                        Picker("To", selection: $target) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
+                        languageMenu("To", selection: $target)
                     }
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
@@ -148,6 +148,30 @@ struct TripTranslateView: View {
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { Button("Done") { saved = false } } } }
     }
+    private func languageMenu(_ role: String, selection: Binding<String>) -> some View {
+        Menu {
+            ForEach(languages, id: \.self) { language in
+                Button { selection.wrappedValue = language } label: {
+                    if selection.wrappedValue == language {
+                        Label(Locale.current.localizedString(forIdentifier: language) ?? language, systemImage: "checkmark")
+                    } else {
+                        Text(Locale.current.localizedString(forIdentifier: language) ?? language)
+                    }
+                }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(role).font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)
+                        .font(.subheadline.weight(.medium)).lineLimit(1).minimumScaleFactor(0.5)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.down").font(.caption2).fixedSize()
+                }
+            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        }.accessibilityLabel("\(role) language: \(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)")
+    }
+
 }
 struct SavedTranslationEditor: View {
     @EnvironmentObject private var trip: TripStore
