@@ -27,10 +27,13 @@ struct PriceImageView: View {
     @State private var error = ""
     @State private var busy = false
     @State private var camera = false
+    @State private var live = true
     @State private var page = 0
     var body: some View {
         VStack(spacing: 12) {
             Text("\(store.source) → \(store.target)").font(.headline)
+            Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
+            if live { LiveTextCamera(onText: { text in lines = text.split(separator: "\n").map { RecognizedLine(text: String($0)) }; page = 0 }, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
             if busy { ProgressView("Reading prices…") }
@@ -39,7 +42,7 @@ struct PriceImageView: View {
             }
             if lines.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= lines.count) } }
             Text(error).font(.caption).foregroundStyle(.red)
-            Text("Review recognized prices. Bare numbers may be quantities; the selected source currency is assumed. Live camera overlays are not yet implemented.").font(.caption).foregroundStyle(.secondary)
+            Text("Prices update as the camera reads text. Check the selected source currency and recognized values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
@@ -47,7 +50,7 @@ struct PriceImageView: View {
     }
     private func recognize(_ raw: Data) async {
         guard let sanitized = ConversionPhoto.jpeg(from: raw) else { error = "Couldn’t read that image."; return }
-        data = sanitized; busy = true; error = ""; defer { busy = false }
+        live = false; data = sanitized; busy = true; error = ""; defer { busy = false }
         do { lines = try await ImageText.read(sanitized); page = 0; if lines.isEmpty { error = "No text found. Try a clearer photo." } } catch { self.error = error.localizedDescription }
     }
     private func convert(_ text: String) -> String {
@@ -72,6 +75,8 @@ struct TripTranslateView: View {
     @State private var config: TranslationSession.Configuration?
     @State private var message = ""
     @State private var saved = false
+    @State private var liveTranslation = false
+    @State private var liveText = ""
     private let languages = ["en", "ja", "es", "fr", "de", "ko", "zh-Hans", "it", "pt"]
     var body: some View {
         ScrollView {
@@ -88,6 +93,10 @@ struct TripTranslateView: View {
                         Picker("To", selection: $target) { ForEach(languages, id: \.self) { Text(Locale.current.localizedString(forIdentifier: $0) ?? $0).tag($0) } }
                     }
                 }.tripPanel()
+                Picker("Translate mode", selection: $liveTranslation) { Text("Text / photo").tag(false); Text("Live camera").tag(true) }.pickerStyle(.segmented)
+                if liveTranslation {
+                    LiveTextCamera(onText: { liveText = $0 }, onError: { message = $0 }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Label("Text or photo", systemImage: "text.viewfinder").font(.headline)
@@ -115,7 +124,22 @@ struct TripTranslateView: View {
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             Button("Save") { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
         } }
-        .translationTask(config) { session in do { let response = try await session.translate(input); output = response.targetText; message = "" } catch { message = error.localizedDescription } }
+        .task(id: liveText) {
+            guard liveTranslation else { return }
+            do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
+            guard !Task.isCancelled else { return }
+            input = liveText
+            if liveText.isEmpty { output = ""; return }
+            let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
+            if config == next { config?.invalidate() } else { config = next }
+        }
+        .onChange(of: liveTranslation) { _, _ in liveText = ""; output = "" }
+        .onChange(of: source) { _, _ in config = nil; output = ""; liveText = "" }
+        .onChange(of: target) { _, _ in config = nil; output = ""; liveText = "" }
+        .translationTask(config) { session in
+            let requested = input
+            do { let response = try await session.translate(requested); if requested == input { output = response.targetText; message = "" } } catch { message = error.localizedDescription }
+        }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { Button("Done") { saved = false } } } }
     }
