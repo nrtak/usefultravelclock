@@ -8,7 +8,7 @@ struct TripWeatherCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack { Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor); Spacer(); NavigationLink("More") { TripWeatherSearchView() } }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
-            WeatherCreditView()
+            HStack { Spacer(); WeatherCreditView() }
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
         .task(id: destination?.id) { if let destination { await weather.load(city: destination) } }
@@ -16,7 +16,15 @@ struct TripWeatherCard: View {
     private func column(_ role: String, city: City?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(role).font(.caption)
-            Text(city?.name ?? "Choose city").font(.headline)
+            HStack(spacing: 4) {
+                Text(city?.name ?? "Choose city").font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                if let city {
+                    Button { Task { await weather.load(city: city, force: true) } } label: {
+                        Image(systemName: "arrow.clockwise").font(.caption).frame(width: 32, height: 32)
+                    }.accessibilityLabel("Refresh \(role) weather")
+                }
+            }
             if let city {
                 let place = weather.locations[city.id]
                 if let place, let result = weather.cache[place.id] {
@@ -26,7 +34,6 @@ struct TripWeatherCard: View {
                     if weather.errors[place.id] != nil || Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Cached forecast").font(.caption2).foregroundStyle(.secondary) }
                 } else if weather.loading.contains(city.id) { ProgressView() }
                 else { Text("Weather unavailable").font(.caption) }
-                Button { Task { await weather.load(city: city, force: true) } } label: { Image(systemName: "arrow.clockwise") }.accessibilityLabel("Refresh \(role) weather")
             } else { Text("Select your home city above.").font(.caption) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -37,7 +44,7 @@ struct WeatherCreditView: View {
     var body: some View {
         if let attribution = weather.attribution {
             Link(destination: attribution.legalPageURL) {
-                HStack { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 62, height: 10); Text("Data sources").font(.caption2) }
+                HStack(spacing: 6) { AsyncImage(url: scheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").font(.caption2) }.frame(width: 62, height: 10); Text("Data sources").font(.system(size: 10)) }
             }
         } else { Text("Source: Apple Weather · WeatherKit").font(.caption2).foregroundStyle(.secondary) }
     }

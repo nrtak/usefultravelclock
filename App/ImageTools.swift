@@ -31,7 +31,7 @@ struct PriceImageView: View {
     @State private var page = 0
     var body: some View {
         VStack(spacing: 12) {
-            Text("\(store.source) → \(store.target)").font(.headline)
+            CurrencyPairControl(store: store)
             Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
             if live { LiveTextCamera(onText: { text in lines = text.split(separator: "\n").map { RecognizedLine(text: String($0)) }; page = 0 }, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
