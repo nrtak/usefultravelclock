@@ -42,7 +42,7 @@ struct TripSettingsView: View {
                         }
                     }
                 }
-                Section("Utilities") { NavigationLink("Units") { TripUnitsView() } }
+                Section("Utilities") { NavigationLink("Unit Converter") { TripUnitsView() } }
                 Section("About & support") {
                     NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Travel details unlock using device authentication.").padding() }
                     NavigationLink("Privacy") { Text("Travel records are encrypted on device. Photos and translations stay locally. Exchange rate requests go to Frankfurter. Weather requests go to Apple WeatherKit; city search uses Apple Maps. Apple’s translation framework may collect API usage metrics; translated content is not included. No app analytics are added.").padding() }
@@ -62,12 +62,6 @@ extension Color {
     static func readable(on hex: String) -> Color { let n = UInt32(hex, radix:16) ?? 0xFFFFFF; let values = [Double((n >> 16)&255)/255, Double((n >> 8)&255)/255, Double(n&255)/255].map { $0 <= 0.04045 ? $0/12.92 : pow(($0+0.055)/1.055, 2.4) }; return values[0]*0.2126 + values[1]*0.7152 + values[2]*0.0722 > 0.179 ? .black : .white }
 }
 
-struct TripUnitsView: View {
-    @State private var kind = "Temperature"
-    @State private var amount = "20"
-    private var result: String { guard let n = Double(amount) else { return "Enter a number" }; switch kind { case "Temperature": return "\((n*9/5+32).formatted()) °F"; case "Distance": return "\((n*0.621371).formatted()) mi"; default: return "\((n*2.20462262).formatted()) lb" } }
-    var body: some View { VStack(spacing: 20) { Picker("Unit", selection: $kind) { ForEach(["Temperature", "Distance", "Weight"], id: \.self) { Text($0).tag($0) } }; TextField(kind == "Temperature" ? "Celsius" : kind == "Distance" ? "Kilometers" : "Kilograms", text: $amount).keyboardType(.numbersAndPunctuation).textFieldStyle(.roundedBorder); Text(result).font(.largeTitle); Spacer() }.padding().navigationTitle("Units") }
-}
 
 enum BoxTheme: String, CaseIterable, Identifiable {
     case standard = "Standard", coastal = "Coastal", warm = "Warm", outline = "Outline"
