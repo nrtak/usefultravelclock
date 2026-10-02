@@ -34,7 +34,7 @@ struct ItemConversionView: View {
         .padding(.horizontal, 16)
         .navigationTitle("Add multiple prices")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } } }
         .sheet(item: $picker) { side in
             CurrencyPicker(store: store, title: "Search currency") { code in
                 if side == .source { store.source = code } else { store.target = code }

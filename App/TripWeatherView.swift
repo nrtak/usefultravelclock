@@ -23,7 +23,6 @@ struct TripWeatherCard: View {
     }
     private func column(_ role: String, city: City?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(role).font(.caption)
             HStack(spacing: 4) {
                 Text(city?.name ?? "Choose city").font(.headline).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 0)

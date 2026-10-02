@@ -127,7 +127,7 @@ struct TripTranslateView: View {
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {
-            Button("Save") { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
+            TripActionButton("Save", primary: true) { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
         } }
         .task(id: liveText) {
             guard liveTranslation else { return }
@@ -177,5 +177,5 @@ struct SavedTranslationEditor: View {
     @EnvironmentObject private var trip: TripStore
     @Environment(\.dismiss) private var dismiss
     @State var record: TranslationRecord
-    var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Spacer() }.padding().navigationTitle("Saved translation").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { if trip.saveTranslation(record) { dismiss() } } } } }
+    var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Spacer() }.padding().navigationTitle("Saved translation").toolbar { ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { if trip.saveTranslation(record) { dismiss() } } } } }
 }

@@ -239,7 +239,7 @@ struct CityPickerSheet: View {
             .safeAreaInset(edge: .top, spacing: 0) { CitySearchField(query: $query) }
             .navigationTitle("Select a city")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Cancel") { dismiss() } }
+            .toolbar { TripActionButton("Cancel", primary: false) { dismiss() } }
         }
         .presentationDetents([.medium, .large])
     }

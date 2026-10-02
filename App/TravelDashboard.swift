@@ -43,7 +43,7 @@ struct TravelDashboard: View {
         VStack(spacing: 10) {
             TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true) }
             VStack(alignment: .leading, spacing: 10) {
-                Label("Currency", systemImage: "coins").font(.subheadline.weight(.semibold))
+                Label("Currency", systemImage: "banknote").font(.headline)
                 HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
                 HStack { Text(currency.detail).font(.caption); Spacer(); Button("Full converter") { tab = 1 } }
             }.tripPanel()
@@ -51,20 +51,13 @@ struct TravelDashboard: View {
             Button { tab = 3 } label: {
                 HStack { VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }; Spacer(); Image(systemName: "chevron.right") }.padding()
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) { Label("Hotel", systemImage: "bed.double"); Button(trip.unlocked ? "Hide" : "Unlock") { if trip.unlocked { trip.lock() } else { Task { await trip.unlock() } } }; Spacer() }
-                if trip.unlocked {
-                    if let hotel = trip.records.first(where: { $0.kind == "Hotel" }) { Text(hotel.name).font(.headline); Text(hotel.from).font(.subheadline).textSelection(.enabled); Text("\(hotel.start.formatted(date: .abbreviated, time: .omitted)) – \(hotel.end.formatted(date: .abbreviated, time: .omitted))").font(.caption) }
-                    else { Text("Add your hotel in My Trip.").font(.caption) }
-                }
-            }.tripPanel()
             Spacer(minLength: 0)
         }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
     }
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
-        return VStack(alignment: .leading) { Text(code).font(.caption); HStack(spacing: 4) { Text(Currency.named(code).symbol); TextField("Amount", text: Binding(get: { currency.fieldText(for: side, focused: false) }, set: { currency.edit($0.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: ""), side: side) })).keyboardType(.decimalPad).font(.title2).monospacedDigit() } }
+        return VStack(alignment: .leading) { Text(code).font(.caption); HStack(spacing: 4) { Text(Currency.named(code).symbol); TextField("Amount", text: Binding(get: { currency.fieldText(for: side, focused: false) }, set: { currency.edit($0.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: ""), side: side) })).keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit() } }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
     }
     private var world: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
@@ -90,11 +83,11 @@ struct TravelDashboard: View {
     private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(role).font(.caption).frame(maxWidth: .infinity)
-            Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.frame(maxWidth: .infinity).buttonStyle(.plain).disabled(!selectable)
+            Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.frame(maxWidth: .infinity).buttonStyle(.plain).disabled(!selectable)
             Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
             if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
             Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
-            Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 28, alignment: .topLeading)
+            Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 16, alignment: .topLeading)
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }

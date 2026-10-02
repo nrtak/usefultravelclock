@@ -85,7 +85,7 @@ struct RecordForm: View {
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }.disabled(!hasDetails)
+                TripActionButton("Save", primary: true) { save() }.disabled(!hasDetails)
             }
         }
         .onChange(of: record.start) { _, start in if record.end < start { record.end = start } }

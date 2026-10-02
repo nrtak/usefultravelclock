@@ -33,10 +33,10 @@ struct CurrencyConverterView: View {
                         }.tripPanel().id("amounts")
 
                         if !editing {
-                            VStack(alignment: .leading, spacing: 12) {
-                                feature("Add multiple prices", detail: "Add several prices and convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
-                                feature("Live camera / photo", detail: "Read prices with your camera or a photo.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }.tripPanel()
+                            HStack(spacing: 10) {
+                                featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
+                                featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
+                            }
                             saveButtons
                             TripArtwork(symbol: "banknote")
                             VStack(spacing: 0) {
@@ -76,15 +76,16 @@ struct CurrencyConverterView: View {
         }
     }
 
-    private func feature(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func featureTile(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon).font(.title2).frame(width: 36)
-                VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.medium)); Text(detail).font(.caption).foregroundStyle(.secondary) }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption)
-            }.frame(minHeight: 44)
-        }.buttonStyle(.plain)
+            VStack(spacing: 10) {
+                Image(systemName: icon).font(.system(size: 42, weight: .regular)).foregroundStyle(.blue)
+                Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.65)
+                Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
+        }.buttonStyle(.plain).frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
     }
     private func amountCard(source: Bool) -> some View {
         let code = source ? store.source : store.target
@@ -194,10 +195,8 @@ struct CurrencyConverterView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(side == .source ? "From" : "To").font(.caption).foregroundStyle(.secondary)
                         (Text(code).fontWeight(.semibold) + Text(" (\(Currency.named(code).name))"))
-                            .font(.subheadline).lineLimit(1).minimumScaleFactor(0.65)
+                            .font(.headline).lineLimit(1).minimumScaleFactor(0.65)
                     }
-                    Text(Currency.named(code).countryLabel).font(.subheadline.weight(.semibold))
-                        .lineLimit(editing ? 1 : 2)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "magnifyingglass")
                     .font(.subheadline.weight(.semibold)).foregroundStyle(.blue)
