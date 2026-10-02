@@ -50,8 +50,8 @@ struct SaveConversionView: View {
             }
             .navigationTitle("Save conversion").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(loadingPhoto || saving || saved.loadError != nil) }
+                ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() }.disabled(loadingPhoto || saving || saved.loadError != nil) }
             }
             .task(id: selectedPhoto) {
                 guard let selectedPhoto else { return }

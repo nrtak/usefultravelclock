@@ -34,7 +34,7 @@ struct ItemConversionView: View {
         .padding(.horizontal, 16)
         .navigationTitle("Add multiple prices")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } } }
         .sheet(item: $picker) { side in
             CurrencyPicker(store: store, title: "Search currency") { code in
                 if side == .source { store.source = code } else { store.target = code }
@@ -46,11 +46,7 @@ struct ItemConversionView: View {
 
     private var content: some View {
         VStack(spacing: 10) {
-            HStack {
-                Button(store.source) { picker = .source }.frame(maxWidth: .infinity)
-                Image(systemName: "arrow.right")
-                Button(store.target) { picker = .target }.frame(maxWidth: .infinity)
-            }.buttonStyle(.bordered).frame(minHeight: 44)
+            CurrencyPairControl(store: store)
             ForEach(Array(items.enumerated()).filter { $0.offset / pageSize == page }, id: \.element.id) { pair in
                 HStack {
                     Text("Item \(pair.offset + 1)").font(.subheadline)

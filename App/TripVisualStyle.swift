@@ -37,3 +37,21 @@ struct TripAnalogClock: View {
         }.frame(width: 54, height: 54).accessibilityHidden(true)
     }
 }
+
+struct TripActionButton: View {
+    let title: String
+    let primary: Bool
+    let action: () -> Void
+    init(_ title: String, primary: Bool, action: @escaping () -> Void) {
+        self.title = title; self.primary = primary; self.action = action
+    }
+    var body: some View {
+        if primary {
+            Button(action: action) { Label(title, systemImage: "checkmark").fontWeight(.semibold) }
+                .buttonStyle(.borderedProminent).tint(.blue)
+        } else {
+            Button(action: action) { Label(title, systemImage: "xmark") }
+                .buttonStyle(.bordered).tint(.gray)
+        }
+    }
+}
