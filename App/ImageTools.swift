@@ -36,9 +36,25 @@ struct PriceImageView: View {
         VStack(spacing: 12) {
             CurrencyPairControl(store: store)
             Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
-            Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
+            HStack(spacing: 16) {
+                priceModeButton("Live Camera", icon: "camera.viewfinder", selected: live) {
+                    guard !live else { return }
+                    live = true; data = nil; prices = []; page = 0
+                    pricesHeld = false; scanID = UUID(); error = ""
+                }
+                priceModeButton("Photo", icon: "photo", selected: !live) {
+                    live = false; error = ""
+                }
+            }
             if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
-            HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
+            if !live {
+                HStack(spacing: 20) {
+                    PhotosPicker(selection: $photo, matching: .images) { Label("Choose photo", systemImage: "photo.on.rectangle") }
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button { camera = true } label: { Label("Take photo", systemImage: "camera") }
+                    }
+                }.buttonStyle(.bordered)
+            }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
             if live {
                 HStack {
@@ -64,6 +80,20 @@ struct PriceImageView: View {
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
         .sheet(isPresented: $camera) { ConversionCamera { image in camera = false; if let image, let raw = ConversionPhoto.jpeg(from: image) { Task { await recognize(raw) } } } }
+    }
+    private func priceModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.title2)
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .foregroundStyle(selected ? Color.white : Color.blue)
+            .background(selected ? Color.blue : Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue, lineWidth: selected ? 0 : 1.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
     private func captureLivePrices(_ text: String) {
         guard !pricesHeld else { return }
