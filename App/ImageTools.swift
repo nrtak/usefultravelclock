@@ -23,44 +23,69 @@ struct PriceImageView: View {
     @ObservedObject var store: ConverterStore
     @State private var photo: PhotosPickerItem?
     @State private var data: Data?
-    @State private var lines: [RecognizedLine] = []
+    @State private var prices: [RecognizedPrice] = []
     @State private var error = ""
     @State private var busy = false
     @State private var camera = false
     @State private var live = true
     @State private var page = 0
+    @State private var pricesHeld = false
+    @State private var scanID = UUID()
+    @State private var includeUnmarked = false
     var body: some View {
         VStack(spacing: 12) {
             CurrencyPairControl(store: store)
+            Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
             Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
-            if live { LiveTextCamera(onText: { text in lines = text.split(separator: "\n").map { RecognizedLine(text: String($0)) }; page = 0 }, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
+            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
-            if busy { ProgressView("Reading prices…") }
-            ForEach(Array(lines.dropFirst(page*4).prefix(4))) { line in
-                VStack(alignment: .leading) { Text(line.text).font(.subheadline); Text(convert(line.text)).font(.headline) }.frame(maxWidth: .infinity, alignment: .leading)
+            if live {
+                HStack {
+                    Text(pricesHeld ? "Prices held" : "Point at prices").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { prices = []; page = 0; pricesHeld = false; scanID = UUID() } label: {
+                        Label("Scan again", systemImage: "arrow.clockwise")
+                    }.disabled(!pricesHeld)
+                }
             }
-            if lines.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= lines.count) } }
+            if busy { ProgressView("Reading prices…") }
+            ForEach(Array(prices.dropFirst(page*4).prefix(4))) { price in
+                VStack(alignment: .leading) { Text(Currency.named(store.source).symbol + " " + Amount.format(price.value, currency: .named(store.source))).font(.subheadline); Text(convert(price.value)).font(.headline) }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if prices.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= prices.count) } }
             Text(error).font(.caption).foregroundStyle(.red)
-            Text("Prices update as the camera reads text. Check the selected source currency and recognized values.").font(.caption).foregroundStyle(.secondary)
+            Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
+        .onChange(of: includeUnmarked) { _, _ in
+            prices = []; page = 0; pricesHeld = false; scanID = UUID()
+            if !live, let data { Task { await recognize(data) } }
+        }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
         .sheet(isPresented: $camera) { ConversionCamera { image in camera = false; if let image, let raw = ConversionPhoto.jpeg(from: image) { Task { await recognize(raw) } } } }
+    }
+    private func captureLivePrices(_ text: String) {
+        guard !pricesHeld else { return }
+        let captured = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
+        guard !captured.isEmpty else { return }
+        prices = captured
+        page = 0
+        pricesHeld = true
     }
     private func recognize(_ raw: Data) async {
         guard let sanitized = ConversionPhoto.jpeg(from: raw) else { error = "Couldn’t read that image."; return }
         live = false; data = sanitized; busy = true; error = ""; defer { busy = false }
-        do { lines = try await ImageText.read(sanitized); page = 0; if lines.isEmpty { error = "No text found. Try a clearer photo." } } catch { self.error = error.localizedDescription }
+        do {
+            let text = try await ImageText.read(sanitized).map(\.text).joined(separator: "\n")
+            prices = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
+            page = 0
+            if prices.isEmpty { error = "No marked prices found. Include a currency symbol, code or price label in the photo." }
+        } catch { self.error = error.localizedDescription }
     }
-    private func convert(_ text: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: #"\d+(?:,\d{3})*(?:\.\d{1,2})?"#) else { return "" }
-        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-        return matches.compactMap { match -> String? in
-            guard let range = Range(match.range, in: text), let value = Decimal(string: String(text[range]).replacingOccurrences(of: ",", with: "")) else { return nil }
-            guard let rate = store.source == store.target ? Decimal(1) : store.snapshot?.multiplier(from: store.source, to: store.target) else { return "Rate unavailable" }
-            return "≈ " + Currency.named(store.target).symbol + " " + Amount.format(value * rate, currency: .named(store.target))
-        }.joined(separator: " · ")
+    private func convert(_ value: Decimal) -> String {
+        guard let rate = store.source == store.target ? Decimal(1) : store.snapshot?.multiplier(from: store.source, to: store.target) else { return "Rate unavailable" }
+        return "≈ " + Currency.named(store.target).symbol + " " + Amount.format(value * rate, currency: .named(store.target))
     }
 }
 struct TripTranslateView: View {
