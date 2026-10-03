@@ -36,7 +36,8 @@ struct TravelRecordsView: View {
                     }
                 }
             }
-        }.safeAreaInset(edge: .bottom, spacing: 0) { ConsularHelpCard() }\n        .navigationBarTitleDisplayMode(.inline)
+        }.safeAreaInset(edge: .bottom, spacing: 0) { ConsularHelpCard() }
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $draft) { record in RecordEditor(record: record) }
     }
 }
