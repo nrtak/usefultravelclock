@@ -8,7 +8,7 @@ struct RecognizedPrice: Identifiable {
 enum PriceRecognition {
     // Require price context. Bare integers could be product IDs, quantities or dates.
     // Do not guess digits from letters such as O, I, S or B.
-    static func read(_ text: String, currency: Currency) -> [RecognizedPrice] {
+    static func read(_ text: String, currency: Currency, includeUnmarked: Bool = false) -> [RecognizedPrice] {
         let text = text.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? text
         let excluded = #"(?i)(商品番号|品番|型番|電話|SKU|ISBN|product\s*(?:no|number|id)|item\s*(?:no|number|id)|model|order\s*(?:no|number|id)|phone)"#
         let symbols = currency.code == "JPY" ? [currency.symbol, "¥", "円"] : [currency.symbol]
@@ -23,6 +23,11 @@ enum PriceRecognition {
         var output: [RecognizedPrice] = []
         for line in text.components(separatedBy: .newlines) {
             guard line.range(of: excluded, options: .regularExpression) == nil else { continue }
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if includeUnmarked, let value = parseNumber(trimmed) {
+                output.append(RecognizedPrice(value: value))
+                continue
+            }
             var matches: [(NSRange, Decimal)] = []
             for pattern in patterns {
                 guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }

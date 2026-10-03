@@ -17,6 +17,11 @@ final class PriceRecognitionTests: XCTestCase {
         XCTAssertEqual(PriceRecognition.read("$12.50 and $7.25", currency: .named("USD")).map(\.value), [Decimal(string:"12.50")!, Decimal(string:"7.25")!])
         XCTAssertTrue(PriceRecognition.read("USD 12.50", currency: .named("JPY")).isEmpty)
     }
+    func testUnmarkedNumbersRequireOptInAndAStandaloneValue() {
+        XCTAssertTrue(PriceRecognition.read("2,990", currency: .named("JPY")).isEmpty)
+        XCTAssertEqual(PriceRecognition.read("2,990\n12.50", currency: .named("JPY"), includeUnmarked: true).map(\.value), [2990, Decimal(string: "12.50")!])
+        XCTAssertTrue(PriceRecognition.read("SKU: 486556\n3XL\nSize 12\n2O90", currency: .named("JPY"), includeUnmarked: true).isEmpty)
+    }
     func testPriceLabelsAndDecimalSeparators() {
         XCTAssertEqual(PriceRecognition.read("Price: 12.50\nTotal: 1,234.56", currency: .named("USD")).map(\.value), [Decimal(string:"12.50")!, Decimal(string:"1234.56")!])
         XCTAssertEqual(PriceRecognition.read("€1.234,56\n12,50 EUR", currency: .named("EUR")).map(\.value), [Decimal(string:"1234.56")!, Decimal(string:"12.50")!])

@@ -31,9 +31,11 @@ struct PriceImageView: View {
     @State private var page = 0
     @State private var pricesHeld = false
     @State private var scanID = UUID()
+    @State private var includeUnmarked = false
     var body: some View {
         VStack(spacing: 12) {
             CurrencyPairControl(store: store)
+            Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
             Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
             if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
@@ -53,15 +55,19 @@ struct PriceImageView: View {
             }
             if prices.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= prices.count) } }
             Text(error).font(.caption).foregroundStyle(.red)
-            Text("Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
+            Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
+        .onChange(of: includeUnmarked) { _, _ in
+            prices = []; page = 0; pricesHeld = false; scanID = UUID()
+            if !live, let data { Task { await recognize(data) } }
+        }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
         .sheet(isPresented: $camera) { ConversionCamera { image in camera = false; if let image, let raw = ConversionPhoto.jpeg(from: image) { Task { await recognize(raw) } } } }
     }
     private func captureLivePrices(_ text: String) {
         guard !pricesHeld else { return }
-        let captured = PriceRecognition.read(text, currency: .named(store.source))
+        let captured = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
         guard !captured.isEmpty else { return }
         prices = captured
         page = 0
@@ -72,7 +78,7 @@ struct PriceImageView: View {
         live = false; data = sanitized; busy = true; error = ""; defer { busy = false }
         do {
             let text = try await ImageText.read(sanitized).map(\.text).joined(separator: "\n")
-            prices = PriceRecognition.read(text, currency: .named(store.source))
+            prices = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
             page = 0
             if prices.isEmpty { error = "No marked prices found. Include a currency symbol, code or price label in the photo." }
         } catch { self.error = error.localizedDescription }
