@@ -29,24 +29,43 @@ struct PriceImageView: View {
     @State private var camera = false
     @State private var live = true
     @State private var page = 0
+    @State private var pricesHeld = false
     var body: some View {
         VStack(spacing: 12) {
             CurrencyPairControl(store: store)
             Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
-            if live { LiveTextCamera(onText: { text in lines = text.split(separator: "\n").map { RecognizedLine(text: String($0)) }; page = 0 }, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
+            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
+            if live {
+                HStack {
+                    Text(pricesHeld ? "Prices held" : "Point at prices").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { lines = []; page = 0; pricesHeld = false } label: {
+                        Label("Scan again", systemImage: "arrow.clockwise")
+                    }.disabled(!pricesHeld)
+                }
+            }
             if busy { ProgressView("Reading prices…") }
             ForEach(Array(lines.dropFirst(page*4).prefix(4))) { line in
                 VStack(alignment: .leading) { Text(line.text).font(.subheadline); Text(convert(line.text)).font(.headline) }.frame(maxWidth: .infinity, alignment: .leading)
             }
             if lines.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= lines.count) } }
             Text(error).font(.caption).foregroundStyle(.red)
-            Text("Prices update as the camera reads text. Check the selected source currency and recognized values.").font(.caption).foregroundStyle(.secondary)
+            Text("Prices stay visible until you scan again. Check the source currency and recognized values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
         .sheet(isPresented: $camera) { ConversionCamera { image in camera = false; if let image, let raw = ConversionPhoto.jpeg(from: image) { Task { await recognize(raw) } } } }
+    }
+    private func captureLivePrices(_ text: String) {
+        guard !pricesHeld else { return }
+        let captured = text.split(separator: "\n").map { RecognizedLine(text: String($0)) }
+            .filter { !convert($0.text).isEmpty }
+        guard !captured.isEmpty else { return }
+        lines = captured
+        page = 0
+        pricesHeld = true
     }
     private func recognize(_ raw: Data) async {
         guard let sanitized = ConversionPhoto.jpeg(from: raw) else { error = "Couldn’t read that image."; return }
