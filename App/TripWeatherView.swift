@@ -183,8 +183,17 @@ struct TripWeatherSearchView: View {
     private func weekly(_ result: CachedWeather) -> some View {
         let days = result.upcomingDays()
         return VStack(spacing: 4) {
-            ForEach(days) { day in
-                HStack(spacing: 8) {
+            ForEach(days) { day in dailyRow(day, result: result) }
+            if days.isEmpty { Text("No upcoming daily forecast saved. Refresh when connected.").font(.caption).foregroundStyle(.secondary) }
+            else { Text("Daily high / low · precipitation chance").font(.caption2).foregroundStyle(.secondary) }
+        }
+    }
+    private func dailyRow(_ day: CachedWeatherDay, result: CachedWeather) -> some View {
+        let chance = Int((day.precipitationChance * 100).rounded())
+        let label = [stamp(day.date, format: "EEEE MMMM d", result: result), day.condition,
+                     "high " + result.temperatures(day.high), "low " + result.temperatures(day.low),
+                     "precipitation chance \(chance) percent"].joined(separator: ", ")
+        return HStack(spacing: 8) {
                     Text(stamp(day.date, format: "EEE d", result: result)).font(.caption).frame(width: 55, alignment: .leading)
                     Image(systemName: day.symbol).symbolRenderingMode(.multicolor).frame(width: 26)
                     VStack(alignment: .leading, spacing: 1) {
@@ -194,11 +203,7 @@ struct TripWeatherSearchView: View {
                     Spacer(minLength: 2)
                     Text("\(Int((day.precipitationChance * 100).rounded()))%").font(.caption).foregroundStyle(.secondary)
                 }.frame(minHeight: 38).accessibilityElement(children: .combine)
-                    .accessibilityLabel(stamp(day.date, format: "EEEE MMMM d", result: result) + ", " + day.condition + ", high " + result.temperatures(day.high) + ", low " + result.temperatures(day.low) + ", precipitation chance \(Int((day.precipitationChance * 100).rounded())) percent")
-            }
-            if days.isEmpty { Text("No upcoming daily forecast saved. Refresh when connected.").font(.caption).foregroundStyle(.secondary) }
-            else { Text("Daily high / low · precipitation chance").font(.caption2).foregroundStyle(.secondary) }
-        }
+                    .accessibilityLabel(label)
     }
     private func stamp(_ date: Date, format: String, result: CachedWeather) -> String {
         let formatter = DateFormatter()
