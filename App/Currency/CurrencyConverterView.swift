@@ -3,10 +3,11 @@ import SwiftUI
 private enum PickerSide: String, Identifiable { case source, target; var id: String { rawValue } }
 
 struct CurrencyConverterView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .title2) private var featureIconSize = 36.0
     @ObservedObject var store: ConverterStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var picker: PickerSide?
-    @State private var showsAbout = false
     @StateObject private var saved = SavedConversions()
     @State private var draft: SavedConversion?
     @State private var showsSaved = false
@@ -38,20 +39,17 @@ struct CurrencyConverterView: View {
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
                             }
                             saveButtons
-                            TripArtwork(symbol: "banknote")
+                            if geometry.size.height >= 700 && !typeSize.isAccessibilitySize { TripArtwork(symbol: "banknote") }
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
-                                Button("About rates & privacy") { showsAbout = true }
-                                    .font(.caption2).foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                                    .accessibilityLabel("About exchange rates and privacy")
                             }
                         }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 8)
                 }
+                .scrollBounceBehavior(.basedOnSize)
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: editing) { _, active in
                     if active { proxy.scrollTo("amounts", anchor: .top) }
@@ -67,8 +65,7 @@ struct CurrencyConverterView: View {
                 if side == .source { store.source = code } else { store.target = code }; picker = nil
             }) }
             .sheet(isPresented: $showsItems) { NavigationStack { ItemConversionView(store: store) } }
-            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { Button("Done") { showsPhotoPrices = false } } } }
-            .sheet(isPresented: $showsAbout) { about }
+            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { TripNavigationButton(title: "Done") { showsPhotoPrices = false } } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
             .task { await store.refresh() }
@@ -79,8 +76,8 @@ struct CurrencyConverterView: View {
     private func featureTile(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 10) {
-                Image(systemName: icon).font(.system(size: 42, weight: .regular)).foregroundStyle(.blue)
-                Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.65)
+                Image(systemName: icon).font(.system(size: featureIconSize, weight: .regular)).foregroundStyle(.blue)
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(0.75)
                 Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
@@ -123,9 +120,7 @@ struct CurrencyConverterView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.detail)
                 if let checked = store.lastChecked { Text(checked) }
-                if store.updateFailed {
-                    Label(store.snapshot == nil ? "Couldn’t load rates. Try again when connected." : "Couldn’t refresh. Showing saved rates.", systemImage: "wifi.slash")
-                }
+                TripRateStatus(store: store)
                 if store.cacheWriteFailed { Text("Rates loaded, but couldn’t save for offline use.") }
             }.font(.caption2).foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -207,21 +202,6 @@ struct CurrencyConverterView: View {
         }.buttonStyle(.plain).accessibilityLabel("\(side == .source ? "From" : "To"): \(Currency.named(code).name), \(Currency.named(code).countryLabel). Change currency")
     }
 
-    private var about: some View {
-        NavigationStack {
-            List {
-                Section("Exchange rates") {
-                    Text("Daily reference rates from Frankfurter. These are estimates, not guaranteed transaction prices. Different currencies can have different rate dates; both dates appear when needed. Last checked shows when this device last downloaded rates, in your local time zone. The provider supplies a rate date, not an exact publication time.")
-                    Link("Frankfurter and data sources", destination: URL(string: "https://frankfurter.dev/")!)
-                    Link("Provider terms", destination: URL(string: "https://frankfurter.dev/license/")!)
-                }
-                Section("Offline use") { Text("After a successful update, rates are saved on this iPhone. Refresh requires internet. Older rates stay clearly dated.") }
-                Section("Privacy") { Text("No account, ads, or analytics. Your amount, favorites, saved conversions, notes and attached photos are stored locally and may be included in your device backups. The app does not upload notes or photos. Camera access is used only when you choose Take photo; Photos lets you select an individual image. The app requests a USD rate table over HTTPS; it does not send your entered amount. The rate service and network infrastructure process the request.") }
-                Section("Currency search") { Text("Search the full travel currency catalogue by country, currency name or code. Favorites appear first. Croatia uses EUR; Tahiti and Bora Bora use XPF. Availability depends on the rate provider; unavailable conversions show a dash.") }
-            }.navigationTitle("About").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsAbout = false } } }
-        }
-    }
 }
 
 private struct ConverterPageLayout: Layout {
@@ -280,7 +260,7 @@ struct CurrencyPicker: View {
                 if results.isEmpty { Text(query.isEmpty ? "Search for a country, currency, or code." : "No currency found. Try a country name, currency name or three-letter code.").foregroundStyle(.secondary) }
             }.searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Country, currency or code")
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
         }
     }
 }

@@ -105,7 +105,7 @@ struct TripUnitsView: View {
                     }.padding().navigationTitle("Saved conversion")
                 } label: { VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } }
             }.onDelete { saved.remove(at: $0) }
-        }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }.navigationTitle("Saved units").toolbar { Button("Done") { showSaved = false } } } }
+        }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }.navigationTitle("Saved units").toolbar { TripNavigationButton(title: "Done") { showSaved = false } } } }
         .onChange(of: photo) { _, item in
             Task {
                 do {
@@ -150,7 +150,7 @@ struct UnitSearchView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View { NavigationStack { List(TravelUnit.all.filter { $0.category == category && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.symbol.localizedCaseInsensitiveContains(query)) }) { unit in
         Button { select(unit) } label: { HStack { Text(unit.name); Spacer(); Text(unit.symbol).foregroundStyle(.secondary); if unit.id == selected { Image(systemName: "checkmark") } } }
-    }.searchable(text: $query, prompt: "Search units").navigationTitle("Choose unit").toolbar { Button("Cancel") { dismiss() } } } }
+    }.searchable(text: $query, prompt: "Search units").navigationTitle("Choose unit").toolbar { TripActionButton("Cancel", primary: false) { dismiss() } } } }
 }
 struct UnitReadingView: View {
     let select: (UnitConversion.Reading) -> Void
@@ -162,7 +162,7 @@ struct UnitReadingView: View {
         Text("Point at a value with a unit. Tap a recognized measurement to convert.").font(.caption).foregroundStyle(.secondary)
         if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
         List(UnitConversion.readings(text)) { reading in Button(reading.text) { select(reading) } }
-    }.padding(12).navigationTitle("Live unit scan").toolbar { Button("Done") { dismiss() } } } }
+    }.padding(12).navigationTitle("Live unit scan").toolbar { TripNavigationButton(title: "Done") { dismiss() } } } }
 }
 struct UnitPhotoReview: View {
     let readings: [UnitConversion.Reading]
@@ -174,5 +174,5 @@ struct UnitPhotoReview: View {
             if readings.isEmpty { Text("No unambiguous unit found. Return to the converter and enter the value with your chosen units.") }
         }
         Section("Recognized text — review for accuracy") { Text(text.isEmpty ? "No text found" : text).textSelection(.enabled) }
-    }.navigationTitle("Photo measurements").toolbar { Button("Done") { dismiss() } } } }
+    }.navigationTitle("Photo measurements").toolbar { TripNavigationButton(title: "Done") { dismiss() } } } }
 }

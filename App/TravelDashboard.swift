@@ -19,9 +19,9 @@ struct TravelDashboard: View {
         TabView(selection: $tab) {
             NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
             CurrencyConverterView(store: currency).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
-            NavigationStack { world.navigationTitle("World Time").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
-            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
-            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { Button("Back") { tab = 0 } } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
+            NavigationStack { world.navigationTitle("World Time").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
+            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
+            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
         }
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .environmentObject(weather)
@@ -45,7 +45,15 @@ struct TravelDashboard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Currency", systemImage: "banknote").font(.headline)
                 HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
-                HStack { Text(currency.detail).font(.caption); Spacer(); Button("Full converter") { tab = 1 } }
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(currency.detail)
+                        TripRateStatus(store: currency)
+                        if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
+                    }.font(.caption2).foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
+                    Button("Full converter") { tab = 1 }.font(.subheadline)
+                }
             }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
@@ -62,7 +70,8 @@ struct TravelDashboard: View {
     private var world: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let date = context.date.addingTimeInterval(shift * 3600)
-            VStack(spacing: 12) {
+            ScrollView {
+            VStack(spacing: 10) {
                 Text(shift == 0 ? "Live time" : "Preview — all times shifted").font(.headline)
                 clocks(at: date, selectable: false)
                 ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
@@ -71,7 +80,8 @@ struct TravelDashboard: View {
                 VStack { HStack { Text("Compare all cities"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -12...24, step: 0.5); Text(shift == 0 ? "Live time" : "Preview: \(shift.formatted()) hours from now").font(.caption) }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 TripArtwork(symbol: "globe")
             Spacer(minLength: 0)
-            }.padding()
+            }.padding(12)
+            }.scrollBounceBehavior(.basedOnSize)
         }.navigationBarTitleDisplayMode(.inline)
     }
     private func clocks(at date: Date, selectable: Bool) -> some View {
@@ -95,7 +105,8 @@ struct TravelDashboard: View {
 }
 struct TripCityPicker: View {
     @EnvironmentObject private var clock: UsefulTravelClockStore
+    @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     let select: (City) -> Void
-    var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city") } }
+    var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city").toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } } } } }
 }

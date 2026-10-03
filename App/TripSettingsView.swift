@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 struct TripSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var clock: UsefulTravelClockStore
     @AppStorage("trip-home-color") private var home = "EAF4ED"
     @AppStorage("trip-destination-color") private var destination = "EAF1FC"
@@ -45,12 +46,14 @@ struct TripSettingsView: View {
                 Section("Utilities") { NavigationLink("Unit Converter") { TripUnitsView() } }
                 Section("About & support") {
                     NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Travel details unlock using device authentication.").padding() }
-                    NavigationLink("Privacy") { Text("Travel records are encrypted on device. Photos and translations stay locally. Exchange rate requests go to Frankfurter. Weather requests go to Apple WeatherKit; city search uses Apple Maps. Apple’s translation framework may collect API usage metrics; translated content is not included. No app analytics are added.").padding() }
+                    NavigationLink("Rates & privacy") { CurrencyInformationView() }
                     NavigationLink("Credits") { Text("Built from SimpleCurrency and UsefulTravelClock. Rates: Frankfurter. Text recognition and translation: Apple.").padding() }
-                    Text("Trip Info · Version 1.1")
+                    Text("Trip Info · Version " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"))
                     Text("© 2026 Irvine Dynamics").font(.caption)
                 }
-            }.navigationTitle("Settings").onAppear {
+            }.navigationTitle("Settings")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
+            .onAppear {
                 if !BoxTheme.allCases.contains(where: { $0.colors == [home, destination, currency] }) { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" }
             }
         }

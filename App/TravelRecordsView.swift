@@ -48,7 +48,7 @@ struct RecordEditor: View {
         NavigationStack {
             RecordForm(record: record, onSave: { dismiss() })
                 .navigationTitle("Travel details").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { TripNavigationButton(title: "Back") { dismiss() } } }
         }
     }
 }

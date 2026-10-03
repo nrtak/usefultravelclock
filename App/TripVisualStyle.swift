@@ -47,11 +47,25 @@ struct TripActionButton: View {
     }
     var body: some View {
         if primary {
-            Button(action: action) { Label(title, systemImage: "checkmark").fontWeight(.semibold) }
+            Button(action: action) { HStack(spacing: 6) { Image(systemName: "checkmark"); Text(title).fontWeight(.semibold) }.fixedSize(horizontal: true, vertical: false) }
                 .buttonStyle(.borderedProminent).tint(.blue)
         } else {
-            Button(action: action) { Label(title, systemImage: "xmark") }
+            Button(action: action) { HStack(spacing: 6) { Image(systemName: "xmark"); Text(title) }.fixedSize(horizontal: true, vertical: false) }
                 .buttonStyle(.bordered).tint(.gray)
         }
+    }
+}
+
+struct TripNavigationButton: View {
+    let title: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: title == "Back" ? "arrow.left" : "checkmark")
+                Text(title)
+            }.font(.subheadline.weight(.semibold)).fixedSize(horizontal: true, vertical: false)
+                .frame(minHeight: 32)
+        }.buttonStyle(.bordered).tint(.blue)
     }
 }
