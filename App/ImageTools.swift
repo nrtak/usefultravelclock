@@ -30,18 +30,19 @@ struct PriceImageView: View {
     @State private var live = true
     @State private var page = 0
     @State private var pricesHeld = false
+    @State private var scanID = UUID()
     var body: some View {
         VStack(spacing: 12) {
             CurrencyPairControl(store: store)
             Picker("Mode", selection: $live) { Text("Live camera").tag(true); Text("Photo").tag(false) }.pickerStyle(.segmented)
-            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
+            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
             HStack { PhotosPicker("Choose photo", selection: $photo, matching: .images); if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Take photo") { camera = true } } }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
             if live {
                 HStack {
                     Text(pricesHeld ? "Prices held" : "Point at prices").font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button { lines = []; page = 0; pricesHeld = false } label: {
+                    Button { lines = []; page = 0; pricesHeld = false; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
                     }.disabled(!pricesHeld)
                 }
