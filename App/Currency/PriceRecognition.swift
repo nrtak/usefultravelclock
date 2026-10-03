@@ -2,7 +2,7 @@ import Foundation
 
 struct RecognizedPrice: Identifiable {
     let id = UUID()
-    let value: Decimal
+    var value: Decimal
 }
 
 enum PriceRecognition {
@@ -41,6 +41,13 @@ enum PriceRecognition {
             output += matches.sorted { $0.0.location < $1.0.location }.map { RecognizedPrice(value: $0.1) }
         }
         return output
+    }
+
+    static func correcting(_ prices: [RecognizedPrice], id: UUID, text: String, locale: Locale = .current) -> [RecognizedPrice]? {
+        guard let value = Amount.parse(text, locale: locale), let index = prices.firstIndex(where: { $0.id == id }) else { return nil }
+        var next = prices
+        next[index].value = value
+        return next
     }
 
     static func parseNumber(_ text: String) -> Decimal? {

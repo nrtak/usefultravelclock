@@ -129,7 +129,7 @@ struct SavedConversionsView: View {
                     }
                 }
             }.navigationTitle("Saved conversions")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
         }
     }
 }

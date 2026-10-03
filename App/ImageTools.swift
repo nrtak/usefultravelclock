@@ -32,8 +32,23 @@ struct PriceImageView: View {
     @State private var pricesHeld = false
     @State private var scanID = UUID()
     @State private var includeUnmarked = false
+    @State private var editingPrice: RecognizedPrice?
     var body: some View {
-        VStack(spacing: 12) {
+        GeometryReader { geometry in
+            ScrollView {
+                content(cameraHeight: max(150, min(240, geometry.size.height * 0.32)), pageSize: geometry.size.height < 650 ? 2 : 4)
+            }.scrollBounceBehavior(.basedOnSize)
+        }
+        .sheet(item: $editingPrice) { price in
+            PriceCorrectionView(price: price, currency: .named(store.source)) { text in
+                guard let corrected = PriceRecognition.correcting(prices, id: price.id, text: text) else { return false }
+                prices = corrected
+                return true
+            }
+        }
+    }
+    private func content(cameraHeight: CGFloat, pageSize: Int) -> some View {
+        VStack(spacing: 10) {
             CurrencyPairControl(store: store)
             Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
             HStack(spacing: 16) {
@@ -46,7 +61,7 @@ struct PriceImageView: View {
                     live = false; error = ""
                 }
             }
-            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 14)) }
+            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14)) }
             if !live {
                 HStack(spacing: 20) {
                     PhotosPicker(selection: $photo, matching: .images) { Label("Choose photo", systemImage: "photo.on.rectangle") }
@@ -66,14 +81,28 @@ struct PriceImageView: View {
                 }
             }
             if busy { ProgressView("Reading prices…") }
-            ForEach(Array(prices.dropFirst(page*4).prefix(4))) { price in
-                VStack(alignment: .leading) { Text(Currency.named(store.source).symbol + " " + Amount.format(price.value, currency: .named(store.source))).font(.subheadline); Text(convert(price.value)).font(.headline) }.frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(Array(prices.dropFirst(page * pageSize).prefix(pageSize))) { price in
+                Button { editingPrice = price } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(Currency.named(store.source).symbol + " " + Amount.format(price.value, currency: .named(store.source))).font(.subheadline)
+                            Text(convert(price.value)).font(.headline)
+                        }
+                        Spacer()
+                        Image(systemName: "pencil").foregroundStyle(.blue)
+                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(8)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                }.buttonStyle(.plain).accessibilityLabel("Edit recognized price " + Amount.format(price.value, currency: .named(store.source)))
             }
-            if prices.count > 4 { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*4 >= prices.count) } }
+            if !prices.isEmpty { Text("Tap a price to correct it.").font(.caption2).foregroundStyle(.secondary) }
+            if prices.count > pageSize { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*pageSize >= prices.count) } }
+            TripRateStatus(store: store).font(.caption2).foregroundStyle(.secondary)
+            if let checked = store.lastChecked { Text(checked).font(.caption2).foregroundStyle(.secondary) }
             Text(error).font(.caption).foregroundStyle(.red)
             Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
+        .onChange(of: pageSize) { _, _ in page = 0 }
         .onChange(of: includeUnmarked) { _, _ in
             prices = []; page = 0; pricesHeld = false; scanID = UUID()
             if !live, let data { Task { await recognize(data) } }
@@ -207,7 +236,7 @@ struct TripTranslateView: View {
             do { let response = try await session.translate(requested); if requested == input { output = response.targetText; message = "" } } catch { message = error.localizedDescription }
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
-        .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { Button("Done") { saved = false } } } }
+        .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { TripNavigationButton(title: "Done") { saved = false } } } }
     }
     private func languageButton(_ role: String, selection: Binding<String>, side: TranslationLanguageSide) -> some View {
         Button { languageSide = side } label: {

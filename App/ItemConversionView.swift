@@ -47,6 +47,7 @@ struct ItemConversionView: View {
     private var content: some View {
         VStack(spacing: 10) {
             CurrencyPairControl(store: store)
+            TripRateStatus(store: store).font(.caption2).foregroundStyle(.secondary)
             ForEach(Array(items.enumerated()).filter { $0.offset / pageSize == page }, id: \.element.id) { pair in
                 HStack {
                     Text("Item \(pair.offset + 1)").font(.subheadline)

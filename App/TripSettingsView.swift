@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 struct TripSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var clock: UsefulTravelClockStore
     @AppStorage("trip-home-color") private var home = "EAF4ED"
     @AppStorage("trip-destination-color") private var destination = "EAF1FC"
@@ -50,7 +51,9 @@ struct TripSettingsView: View {
                     Text("Trip Info · Version " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"))
                     Text("© 2026 Irvine Dynamics").font(.caption)
                 }
-            }.navigationTitle("Settings").onAppear {
+            }.navigationTitle("Settings")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
+            .onAppear {
                 if !BoxTheme.allCases.contains(where: { $0.colors == [home, destination, currency] }) { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" }
             }
         }

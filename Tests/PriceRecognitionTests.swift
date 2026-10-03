@@ -27,3 +27,16 @@ final class PriceRecognitionTests: XCTestCase {
         XCTAssertEqual(PriceRecognition.read("€1.234,56\n12,50 EUR", currency: .named("EUR")).map(\.value), [Decimal(string:"1234.56")!, Decimal(string:"12.50")!])
     }
 }
+
+extension PriceRecognitionTests {
+    func testCorrectionChangesOnlySelectedPriceAndPreservesIdentity() throws {
+        let prices = PriceRecognition.read("$12.50 and $7.25", currency: .named("USD"))
+        let corrected = try XCTUnwrap(PriceRecognition.correcting(prices, id: prices[0].id, text: "15.75", locale: Locale(identifier: "en_US")))
+        XCTAssertEqual(corrected[0].id, prices[0].id)
+        XCTAssertEqual(corrected[0].value, Decimal(string: "15.75"))
+        XCTAssertEqual(corrected[1].value, prices[1].value)
+        XCTAssertNil(PriceRecognition.correcting(prices, id: prices[0].id, text: "-12", locale: Locale(identifier: "en_US")))
+        XCTAssertNil(PriceRecognition.correcting(prices, id: UUID(), text: "12", locale: Locale(identifier: "en_US")))
+        XCTAssertEqual(PriceRecognition.correcting(prices, id: prices[0].id, text: "15,75", locale: Locale(identifier: "de_DE"))?[0].value, Decimal(string: "15.75"))
+    }
+}
