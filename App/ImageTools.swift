@@ -132,7 +132,7 @@ struct TripTranslateView: View {
     @State private var saved = false
     @State private var liveTranslation = false
     @State private var liveText = ""
-    private let languages = ["en", "ja", "es", "fr", "de", "ko", "zh-Hans", "it", "pt"]
+    @State private var languageSide: TranslationLanguageSide?
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
@@ -143,9 +143,12 @@ struct TripTranslateView: View {
                         Button { saved = true } label: { Label("Saved", systemImage: "bookmark") }
                     }
                     HStack {
-                        languageMenu("From", selection: $source)
-                        Image(systemName: "arrow.right")
-                        languageMenu("To", selection: $target)
+                        languageButton("From", selection: $source, side: .source)
+                        Button {
+                            let previous = source; source = target; target = previous
+                        } label: { Image(systemName: "arrow.left.arrow.right").frame(width: 36, height: 44) }
+                            .buttonStyle(.plain).accessibilityLabel("Swap languages")
+                        languageButton("To", selection: $target, side: .target)
                     }
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
@@ -170,7 +173,7 @@ struct TripTranslateView: View {
                         let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
                         if config == next { config?.invalidate() } else { config = next }
                     } label: { Label("Translate", systemImage: "arrow.right").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).disabled(input.isEmpty)
+                    .buttonStyle(.borderedProminent).disabled(input.isEmpty || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Translation", systemImage: "character.bubble.fill").font(.headline)
@@ -184,6 +187,9 @@ struct TripTranslateView: View {
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             TripActionButton("Save", primary: true) { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
         } }
+        .sheet(item: $languageSide) { side in
+            TranslationLanguagePicker(selection: side == .source ? $source : $target, title: side == .source ? "From language" : "To language")
+        }
         .task(id: liveText) {
             guard liveTranslation else { return }
             do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
@@ -203,28 +209,21 @@ struct TripTranslateView: View {
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { Button("Done") { saved = false } } } }
     }
-    private func languageMenu(_ role: String, selection: Binding<String>) -> some View {
-        Menu {
-            ForEach(languages, id: \.self) { language in
-                Button { selection.wrappedValue = language } label: {
-                    if selection.wrappedValue == language {
-                        Label(Locale.current.localizedString(forIdentifier: language) ?? language, systemImage: "checkmark")
-                    } else {
-                        Text(Locale.current.localizedString(forIdentifier: language) ?? language)
-                    }
-                }
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 3) {
+    private func languageButton(_ role: String, selection: Binding<String>, side: TranslationLanguageSide) -> some View {
+        Button { languageSide = side } label: {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(role).font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)
-                        .font(.subheadline.weight(.medium)).lineLimit(1).minimumScaleFactor(0.5)
+                        .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.65)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "chevron.down").font(.caption2).fixedSize()
+                    Image(systemName: "magnifyingglass").font(.body)
                 }
-            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        }.accessibilityLabel("\(role) language: \(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)")
+            }.padding(10).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .background(Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
+        .accessibilityLabel("\(role) language: \(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)")
+        .accessibilityHint("Search supported languages")
     }
 
 }

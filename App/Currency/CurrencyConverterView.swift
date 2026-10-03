@@ -6,7 +6,6 @@ struct CurrencyConverterView: View {
     @ObservedObject var store: ConverterStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var picker: PickerSide?
-    @State private var showsAbout = false
     @StateObject private var saved = SavedConversions()
     @State private var draft: SavedConversion?
     @State private var showsSaved = false
@@ -43,10 +42,6 @@ struct CurrencyConverterView: View {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
-                                Button("About rates & privacy") { showsAbout = true }
-                                    .font(.caption2).foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                                    .accessibilityLabel("About exchange rates and privacy")
                             }
                         }
                     }
@@ -68,7 +63,6 @@ struct CurrencyConverterView: View {
             }) }
             .sheet(isPresented: $showsItems) { NavigationStack { ItemConversionView(store: store) } }
             .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { Button("Done") { showsPhotoPrices = false } } } }
-            .sheet(isPresented: $showsAbout) { about }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
             .task { await store.refresh() }
@@ -207,21 +201,6 @@ struct CurrencyConverterView: View {
         }.buttonStyle(.plain).accessibilityLabel("\(side == .source ? "From" : "To"): \(Currency.named(code).name), \(Currency.named(code).countryLabel). Change currency")
     }
 
-    private var about: some View {
-        NavigationStack {
-            List {
-                Section("Exchange rates") {
-                    Text("Daily reference rates from Frankfurter. These are estimates, not guaranteed transaction prices. Different currencies can have different rate dates; both dates appear when needed. Last checked shows when this device last downloaded rates, in your local time zone. The provider supplies a rate date, not an exact publication time.")
-                    Link("Frankfurter and data sources", destination: URL(string: "https://frankfurter.dev/")!)
-                    Link("Provider terms", destination: URL(string: "https://frankfurter.dev/license/")!)
-                }
-                Section("Offline use") { Text("After a successful update, rates are saved on this iPhone. Refresh requires internet. Older rates stay clearly dated.") }
-                Section("Privacy") { Text("No account, ads, or analytics. Your amount, favorites, saved conversions, notes and attached photos are stored locally and may be included in your device backups. The app does not upload notes or photos. Camera access is used only when you choose Take photo; Photos lets you select an individual image. The app requests a USD rate table over HTTPS; it does not send your entered amount. The rate service and network infrastructure process the request.") }
-                Section("Currency search") { Text("Search the full travel currency catalogue by country, currency name or code. Favorites appear first. Croatia uses EUR; Tahiti and Bora Bora use XPF. Availability depends on the rate provider; unavailable conversions show a dash.") }
-            }.navigationTitle("About").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsAbout = false } } }
-        }
-    }
 }
 
 private struct ConverterPageLayout: Layout {

@@ -150,7 +150,7 @@ struct UnitSearchView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View { NavigationStack { List(TravelUnit.all.filter { $0.category == category && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.symbol.localizedCaseInsensitiveContains(query)) }) { unit in
         Button { select(unit) } label: { HStack { Text(unit.name); Spacer(); Text(unit.symbol).foregroundStyle(.secondary); if unit.id == selected { Image(systemName: "checkmark") } } }
-    }.searchable(text: $query, prompt: "Search units").navigationTitle("Choose unit").toolbar { Button("Cancel") { dismiss() } } } }
+    }.searchable(text: $query, prompt: "Search units").navigationTitle("Choose unit").toolbar { TripActionButton("Cancel", primary: false) { dismiss() } } } }
 }
 struct UnitReadingView: View {
     let select: (UnitConversion.Reading) -> Void
