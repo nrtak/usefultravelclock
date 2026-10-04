@@ -34,23 +34,20 @@ struct ConsularHelpCard: View {
     @State private var settings = false
     @State private var openFailed = false
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
-    private var subtitle: String {
-        guard let country = PassportCountry.named(passportCountry) else { return "Choose passport country" }
-        let area = nearDestination ? destination?.name ?? "Current location" : "Current location"
-        return country.name + " · " + area
+    private var title: String {
+        guard let country = PassportCountry.named(passportCountry) else { return "Closest embassy or consulate" }
+        return "Closest " + country.name + " embassy or consulate"
     }
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "building.columns").font(.title3).foregroundStyle(.blue).accessibilityHidden(true)
             Button { settings = true } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Consular Help").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                    HStack(spacing: 4) {
-                        Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        Image(systemName: "pencil").font(.caption2).foregroundStyle(.blue)
-                    }
+                HStack(spacing: 6) {
+                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Image(systemName: "pencil").font(.caption2).foregroundStyle(.blue)
                 }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain).accessibilityLabel("Consular Help settings, " + subtitle)
+            }.buttonStyle(.plain).accessibilityLabel(title + ", choose country and search location")
             Button { openMaps() } label: {
                 Label("Map", systemImage: "map").font(.subheadline.weight(.semibold)).frame(minHeight: 32)
             }.buttonStyle(.bordered).accessibilityLabel("Open consular help search in Apple Maps")
