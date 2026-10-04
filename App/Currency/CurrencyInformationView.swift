@@ -15,7 +15,7 @@ struct CurrencyInformationView: View {
                 Text("Entered amounts, conversion notes and attached photos are not sent to the rate provider. Saved conversions stay on this device and may be included in device backups. Rate requests go over HTTPS; the provider and network infrastructure process those requests. The app adds no analytics.")
             }
             Section("Travel data & other services") {
-                Text("Travel records are encrypted on this device and unlock using device authentication. Translation notes, images and unit conversions stay locally. Weather requests go to Apple WeatherKit; city search uses Apple Maps. Apple’s translation framework may collect API usage metrics; translated content is not included.")
+                Text("Travel records remain encrypted on this device. Optional app lock uses Face ID, Touch ID or device passcode; My Trip has no separate lock. Existing protected records may require one authorization to migrate. Translation notes, images and unit conversions stay locally. Weather requests go to Apple WeatherKit; city search uses Apple Maps. Apple’s translation framework may collect API usage metrics; translated content is not included.")
             }
             Section("Currency search") {
                 Text("Search by currency name, country or code. Conversion availability depends on the provider; unavailable conversions are clearly indicated.")

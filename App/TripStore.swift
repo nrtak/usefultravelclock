@@ -24,6 +24,7 @@ struct TranslationRecord: Codable, Identifiable {
     @Published var records: [TravelRecord] = []
     @Published var translations: [TranslationRecord] = []
     @Published var unlocked = false
+    @Published var loading = false
     @Published var error: String?
     private var key: SymmetricKey?
     private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("TripNotes")
@@ -35,9 +36,12 @@ struct TranslationRecord: Codable, Identifiable {
         } catch { self.error = error.localizedDescription }
     }
     func unlock() async {
+        guard !loading && !unlocked else { return }
+        loading = true; error = nil
+        defer { loading = false }
         let context = LAContext()
+        context.localizedReason = "Preserve your existing travel details after this update"
         do {
-            try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock your travel and hotel details")
             let material = try await Task.detached { try Self.readKey(context: context) }.value
             let loadedKey = SymmetricKey(data: material)
             let url = directory.appendingPathComponent("travel.sealed")
@@ -71,7 +75,7 @@ struct TranslationRecord: Codable, Identifiable {
         } catch { self.error = error.localizedDescription; return false }
     }
     nonisolated private static func readKey(context: LAContext) throws -> Data {
-        let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.usefultravelclock.app.trip-vault", kSecAttrAccount as String: "travel-key"]
+        let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.usefultravelclock.app.trip-vault", kSecAttrAccount as String: "travel-key-v2"]
         var query = base
         query[kSecReturnData as String] = true
         query[kSecUseAuthenticationContext as String] = context
@@ -79,12 +83,19 @@ struct TranslationRecord: Codable, Identifiable {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecSuccess, let data = result as? Data { return data }
         guard status == errSecItemNotFound else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(status)) }
-        let data = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
-        var accessError: Unmanaged<CFError>?
-        guard let access = SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .userPresence, &accessError) else { throw accessError!.takeRetainedValue() as Error }
+        // Preserve the original protected key. Existing users may be asked once
+        // to authorize migration; never replace a key after failed authentication.
+        var legacy = query
+        legacy[kSecAttrAccount as String] = "travel-key"
+        var oldResult: CFTypeRef?
+        let legacyStatus = SecItemCopyMatching(legacy as CFDictionary, &oldResult)
+        let data: Data
+        if legacyStatus == errSecSuccess, let oldData = oldResult as? Data { data = oldData }
+        else if legacyStatus == errSecItemNotFound { data = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) } }
+        else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(legacyStatus)) }
         var insert = base
         insert[kSecValueData as String] = data
-        insert[kSecAttrAccessControl as String] = access
+        insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         let added = SecItemAdd(insert as CFDictionary, nil)
         guard added == errSecSuccess else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(added)) }
         return data

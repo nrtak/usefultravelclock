@@ -35,8 +35,11 @@ struct TravelDashboard: View {
         .sheet(isPresented: $settings) { TripSettingsView() }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
         .onChange(of: tab) { _, _ in shift = 0 }
-        .onChange(of: phase) { _, value in if value != .active { trip.lock(); shift = 0 } }
-        .task { await currency.refresh() }
+        .onChange(of: phase) { _, value in
+            if value == .background { trip.lock(); shift = 0 }
+            if value == .active { Task { await trip.unlock() } }
+        }
+        .task { await trip.unlock(); await currency.refresh() }
     }
     private var home: some View {
         ScrollView {

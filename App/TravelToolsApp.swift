@@ -4,9 +4,11 @@ import SwiftUI
 struct TravelToolsApp: App {
     @StateObject private var currency = ConverterStore()
     @StateObject private var clock = UsefulTravelClockStore()
+    @StateObject private var appLock = TripAppLock()
     var body: some Scene {
         WindowGroup {
-            TravelDashboard(currency: currency)
+            TripAppLockGate(lock: appLock) { TravelDashboard(currency: currency) }
+                .environmentObject(appLock)
                 .environmentObject(clock)
                 .preferredColorScheme(clock.preferredColorScheme)
         }

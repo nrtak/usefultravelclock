@@ -3,12 +3,19 @@ import UIKit
 struct TripSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var clock: UsefulTravelClockStore
+    @EnvironmentObject private var appLock: TripAppLock
     @AppStorage("trip-home-color") private var home = "EAF4ED"
     @AppStorage("trip-destination-color") private var destination = "EAF1FC"
     @AppStorage("trip-currency-color") private var currency = "F3F3F3"
     var body: some View {
         NavigationStack {
             List {
+                Section("Privacy") {
+                    Toggle("Require Face ID to open app", isOn: Binding(get: { appLock.enabled }, set: { value in Task { await appLock.setEnabled(value) } }))
+                        .disabled(appLock.authenticating)
+                    Text("Locks when you leave the app. Touch ID or your device passcode can also unlock it. Widgets are not protected by this app lock.").font(.caption).foregroundStyle(.secondary)
+                    if !appLock.error.isEmpty { Text(appLock.error).font(.caption).foregroundStyle(.secondary) }
+                }
                 Section("Appearance") {
                     Picker("Theme", selection: $clock.theme) { ForEach(ThemeMode.allCases) { Text($0.rawValue.capitalized).tag($0) } }
                     Text("Box theme").font(.caption).foregroundStyle(.secondary)
@@ -45,7 +52,7 @@ struct TripSettingsView: View {
                 }
                 Section("Utilities") { NavigationLink("Unit Converter") { TripUnitsView() } }
                 Section("About & support") {
-                    NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Travel details unlock using device authentication.").padding() }
+                    NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Enable the app lock in Privacy to require device authentication when opening Trip Info.").padding() }
                     NavigationLink("Rates & privacy") { CurrencyInformationView() }
                     NavigationLink("Credits") { Text("Built from SimpleCurrency and UsefulTravelClock. Rates: Frankfurter. Text recognition and translation: Apple.").padding() }
                     Text("Trip Info · Version " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"))

@@ -37,9 +37,8 @@ struct CurrencyConverterView: View {
                             HStack(spacing: 10) {
                                 featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }
+                            }.frame(height: min((geometry.size.width - 42) / 2, max(100, min(150, geometry.size.height - 440))))
                             saveButtons
-                            if geometry.size.height >= 700 && !typeSize.isAccessibilitySize { TripArtwork(symbol: "banknote") }
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -50,6 +49,7 @@ struct CurrencyConverterView: View {
                     .padding(.horizontal, 16).padding(.vertical, 8)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollDisabled(!editing && !typeSize.isAccessibilitySize)
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: editing) { _, active in
                     if active { proxy.scrollTo("amounts", anchor: .top) }
@@ -82,7 +82,7 @@ struct CurrencyConverterView: View {
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
-        }.buttonStyle(.plain).frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
+        }.buttonStyle(.plain).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     private func amountCard(source: Bool) -> some View {
         let code = source ? store.source : store.target
