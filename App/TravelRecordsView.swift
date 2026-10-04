@@ -36,7 +36,8 @@ struct TravelRecordsView: View {
                     }
                 }
             }
-        }.navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $draft) { record in RecordEditor(record: record) }
     }
 }
