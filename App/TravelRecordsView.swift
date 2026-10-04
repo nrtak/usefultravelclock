@@ -8,8 +8,11 @@ struct TravelRecordsView: View {
         Group {
             if !trip.unlocked {
                 VStack(spacing: 16) {
-                    ContentUnavailableView("Travel details locked", systemImage: "lock", description: Text("Unlock your lodging and transportation."))
-                    Button("Unlock") { Task { await trip.unlock() } }.buttonStyle(.borderedProminent)
+                    if trip.loading { ProgressView("Loading travel details…") }
+                    else {
+                        ContentUnavailableView("Travel details unavailable", systemImage: "suitcase", description: Text("Retry loading your saved details."))
+                        Button("Retry") { Task { await trip.unlock() } }.buttonStyle(.borderedProminent)
+                    }
                 }
             } else if entries.isEmpty {
                 RecordForm(record: TravelRecord())

@@ -182,17 +182,15 @@ struct TripTranslateView: View {
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Button { liveTranslation = false } label: { Label("Text", systemImage: "text.alignleft") }
-                            .buttonStyle(.bordered).tint(liveTranslation ? .gray : .blue)
-                        Button { liveTranslation.toggle() } label: { Label("Live camera", systemImage: "camera.viewfinder") }
-                            .buttonStyle(.borderedProminent)
-                            .accessibilityLabel(liveTranslation ? "Stop live camera translation" : "Start live camera translation")
+                        translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation) { liveTranslation = false }
+                        translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { liveTranslation = true }
                         Spacer(minLength: 0)
-                        PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(width: 44, height: 44) }
+                        PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                            .buttonStyle(.plain)
                             .accessibilityLabel("Choose photo to translate")
                     }
                     if liveTranslation {
-                        LiveTextCamera(onText: { liveText = $0 }, onError: { message = $0 }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+                        LiveTextCamera(onText: { if liveTranslation { liveText = $0 } }, onError: { message = $0 }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
                         Text("Translates as you point the camera at text.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
@@ -228,7 +226,10 @@ struct TripTranslateView: View {
             let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
             if config == next { config?.invalidate() } else { config = next }
         }
-        .onChange(of: liveTranslation) { _, _ in liveText = ""; output = "" }
+        .onChange(of: liveTranslation) { _, active in
+            liveText = ""; message = ""
+            if active { image = nil }
+        }
         .onChange(of: source) { _, _ in config = nil; output = ""; liveText = "" }
         .onChange(of: target) { _, _ in config = nil; output = ""; liveText = "" }
         .translationTask(config) { session in
@@ -237,6 +238,19 @@ struct TripTranslateView: View {
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { TripNavigationButton(title: "Done") { saved = false } } } }
+    }
+    private func translationModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                .padding(.horizontal, 12).frame(minHeight: 48)
+                .foregroundStyle(selected ? Color.white : Color.blue)
+                .background(selected ? Color.blue : Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.blue, lineWidth: selected ? 0 : 1.5))
+                .contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            .accessibilityValue(selected ? "Selected" : "Not selected")
     }
     private func languageButton(_ role: String, selection: Binding<String>, side: TranslationLanguageSide) -> some View {
         Button { languageSide = side } label: {

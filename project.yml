@@ -36,7 +36,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: UsefulTravelClock/UsefulTravelClock.entitlements
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
-        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock private hotel and travel details.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Trip Info and private hotel and travel details.
     entitlements:
       path: UsefulTravelClock/UsefulTravelClock.entitlements
       properties:
