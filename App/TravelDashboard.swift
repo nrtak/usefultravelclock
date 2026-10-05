@@ -13,6 +13,8 @@ struct TravelDashboard: View {
     @AppStorage("trip-selected-tab") private var tab = 0
     @AppStorage("trip-tab-order") private var savedTabOrder = "0,1,2,3,4"
     @AppStorage("trip-tab-reorder-hint-seen") private var tabHintSeen = false
+    @State private var editingCities = false
+    @State private var cityEditFeedback = 0
     @State private var editingTabs = false
     @State private var tabEditFeedback = 0
     private let tabTitles = ["Home", "Conversions", "World Time", "My Trip", "Translate"]
@@ -55,9 +57,9 @@ struct TravelDashboard: View {
         }
         .sheet(isPresented: $settings) { TripSettingsView() }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
-        .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil }
+        .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil; editingCities = false }
         .onChange(of: phase) { _, value in
-            if value == .background { trip.lock(); shift = 0; editingTabs = false }
+            if value == .background { trip.lock(); shift = 0; editingTabs = false; editingCities = false }
             if value == .active { Task { await trip.unlock() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
@@ -245,16 +247,17 @@ struct TravelDashboard: View {
             ScrollView {
             VStack(spacing: 10) {
                 Text(shift == 0 ? "Live time" : "Preview — all times shifted").font(.headline)
-                Text("Hold a city to edit").font(.caption2).foregroundStyle(.secondary)
+                HStack {
+                    Text(editingCities ? "Drag cities to reorder · Tap pencil to change" : "Hold a city to edit or reorder")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if editingCities {
+                        Spacer()
+                        Button("Done") { editingCities = false }.font(.caption).frame(minHeight: 44)
+                    }
+                }
                 clocks(at: date, selectable: false)
                 ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
-                    HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); VStack(alignment: .trailing, spacing: 3) {
-                        Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit()
-                        if let day = comparisonDay(date, zone: city.timeZoneID) {
-                            Text(day).font(.caption).foregroundStyle(.secondary)
-                        }
-                    } }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-                        .modifier(TripCityLongPress(enabled: true) { picker = "city:" + city.id })
+                    reorderableCity(city, at: date)
                 }
                 VStack { HStack { Text("Compare city times"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5)
                     .overlay(alignment: .bottom) {
@@ -268,6 +271,72 @@ struct TravelDashboard: View {
             }.padding(12)
             }.scrollBounceBehavior(.basedOnSize)
         }.navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func reorderableCity(_ city: City, at date: Date) -> some View {
+        if editingCities {
+            comparisonCityRow(city, at: date)
+                .draggable(city.id)
+                .dropDestination(for: String.self) { items, _ in
+                    guard let moved = items.first, moved != city.id,
+                          let from = clock.cityIDs.firstIndex(of: moved),
+                          let to = clock.cityIDs.firstIndex(of: city.id),
+                          moved != destinationID, moved != clock.homeCityID else { return false }
+                    var order = clock.cityIDs
+                    order.remove(at: from)
+                    order.insert(moved, at: to)
+                    withAnimation { clock.edit { clock.cityIDs = order; clock.sortOrder = .custom } }
+                    return true
+                }
+                .accessibilityActions {
+                    Button("Move up") { moveComparisonCity(city.id, by: -1) }
+                    Button("Move down") { moveComparisonCity(city.id, by: 1) }
+                    Button("Change city") { picker = "city:" + city.id }
+                }
+        } else {
+            comparisonCityRow(city, at: date)
+                .onLongPressGesture(minimumDuration: 0.6) {
+                    editingCities = true
+                    cityEditFeedback += 1
+                }
+                .accessibilityAction(named: "Reorder cities") { editingCities = true }
+                .accessibilityAction(named: "Change city") { picker = "city:" + city.id }
+        }
+    }
+    private func comparisonCityRow(_ city: City, at date: Date) -> some View {
+        HStack {
+            if editingCities {
+                Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
+                Button { picker = "city:" + city.id } label: {
+                    Image(systemName: "pencil").frame(width: 44, height: 44)
+                }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
+            }
+            VStack(alignment: .leading) {
+                Text(city.name).font(.headline)
+                Text(city.country).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit()
+                if let day = comparisonDay(date, zone: city.timeZoneID) {
+                    Text(day).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+            .rotationEffect(.degrees(editingCities ? 0.5 : 0))
+            .animation(editingCities ? .easeInOut(duration: 0.18).repeatForever(autoreverses: true) : .default, value: editingCities)
+            .sensoryFeedback(.impact(weight: .light), trigger: cityEditFeedback)
+            .accessibilityHint(editingCities ? "Drag to reorder" : "Touch and hold to edit or reorder")
+    }
+    private func moveComparisonCity(_ id: String, by offset: Int) {
+        let cities = Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))
+        guard let index = cities.firstIndex(where: { $0.id == id }), cities.indices.contains(index + offset),
+              let from = clock.cityIDs.firstIndex(of: id),
+              let to = clock.cityIDs.firstIndex(of: cities[index + offset].id) else { return }
+        var order = clock.cityIDs
+        order.swapAt(from, to)
+        clock.edit { clock.cityIDs = order; clock.sortOrder = .custom }
     }
     private func clocks(at date: Date, selectable: Bool, compact: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 10) {
