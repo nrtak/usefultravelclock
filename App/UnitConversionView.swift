@@ -217,6 +217,7 @@ struct UnitReadingView: View {
         }
     }.padding(12).navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } }
 }
+}
 struct UnitPhotoReview: View {
     let readings: [UnitConversion.Reading]
     let text: String
