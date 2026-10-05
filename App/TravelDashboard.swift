@@ -10,7 +10,7 @@ struct TravelDashboard: View {
     @AppStorage("trip-home-color") private var homeColor = "EAF4ED"
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
     @AppStorage("trip-currency-color") private var currencyColor = "F3F3F3"
-    @State private var tab = 0
+    @AppStorage("trip-selected-tab") private var tab = 0
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
