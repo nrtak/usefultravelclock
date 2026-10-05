@@ -6,6 +6,7 @@ struct TravelDashboard: View {
     @StateObject private var trip = TripStore()
     @StateObject private var weather = TripWeatherStore()
     @Environment(\.scenePhase) private var phase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("travel-destination") private var destinationID = "tyo"
     @AppStorage("trip-home-color") private var homeColor = "EAF4ED"
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
@@ -33,7 +34,7 @@ struct TravelDashboard: View {
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.toolbar(.hidden, for: .tabBar).tag(0)
+            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape").frame(width: 44, height: 44) }.accessibilityLabel("Settings") } }.tabItem { Label("Home", systemImage: "house") }.toolbar(.hidden, for: .tabBar).tag(0)
             CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Conversions", systemImage: "banknote") }.toolbar(.hidden, for: .tabBar).tag(1)
             NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.toolbar(.hidden, for: .tabBar).tag(2)
             NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.toolbar(.hidden, for: .tabBar).tag(3)
@@ -134,10 +135,10 @@ struct TravelDashboard: View {
             VStack(spacing: 4) {
                 Image(systemName: tabSymbols[id]).font(.system(size: 25, weight: .medium))
                     .frame(height: 30)
-                    .rotationEffect(.degrees(editingTabs ? (id.isMultiple(of: 2) ? 2 : -2) : 0))
-                    .animation(editingTabs ? .easeInOut(duration: 0.15).repeatForever(autoreverses: true) : .default, value: editingTabs)
-                Text(tabTitles[id]).font(.caption2.weight(tab == id ? .semibold : .regular))
-                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .rotationEffect(.degrees(editingTabs && !reduceMotion ? (id.isMultiple(of: 2) ? 2 : -2) : 0))
+                    .animation(editingTabs && !reduceMotion ? .easeInOut(duration: 0.15).repeatForever(autoreverses: true) : .default, value: editingTabs)
+                Text(typeSize.isAccessibilitySize && id == 1 ? "Convert" : tabTitles[id]).font(.caption2.weight(tab == id ? .semibold : .regular))
+                    .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
             }
             .foregroundStyle(tab == id ? Color.blue : Color.primary)
             .frame(maxWidth: .infinity, minHeight: 48)
@@ -148,7 +149,8 @@ struct TravelDashboard: View {
         .buttonStyle(.plain)
         .accessibilityLabel(tabTitles[id])
         .accessibilityAddTraits(tab == id ? .isSelected : [])
-        .accessibilityHint(editingTabs ? "Drag to change tab order" : "Touch and hold to reorder tabs")
+        .accessibilityValue("Tab \(tabOrder.firstIndex(of: id).map { $0 + 1 } ?? 1) of \(tabOrder.count)")
+        .accessibilityHint(editingTabs ? "Use Move left or Move right actions to change order" : "Use the Reorder tabs action to change order")
     }
     private func moveTab(_ id: Int, by offset: Int) {
         var order = tabOrder
@@ -200,7 +202,7 @@ struct TravelDashboard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(currency.detail)
                     TripRateStatus(store: currency)
-                    if let snapshot = currency.snapshot { TripRefreshStamp(success: currency.lastManualRefresh, fallback: "Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
+                    if let checked = currency.lastChecked { TripRefreshStamp(success: currency.lastManualRefresh, fallback: checked) }
                 }.font(.caption2).foregroundStyle(.secondary)
             }.tripPanel().id("home-currency")
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
@@ -246,7 +248,7 @@ struct TravelDashboard: View {
             let date = context.date.addingTimeInterval(shift * 3600)
             ScrollView {
             VStack(spacing: 10) {
-                Text(shift == 0 ? "Live time" : "Preview — all times shifted").font(.headline)
+                if shift != 0 { Text("Comparing times").font(.headline) }
                 HStack {
                     Text(editingCities ? "Drag cities to reorder · Tap pencil to change" : "Hold a city to edit or reorder")
                         .font(.caption2).foregroundStyle(.secondary)
@@ -324,10 +326,11 @@ struct TravelDashboard: View {
                 }
             }
         }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-            .rotationEffect(.degrees(editingCities ? 0.5 : 0))
-            .animation(editingCities ? .easeInOut(duration: 0.18).repeatForever(autoreverses: true) : .default, value: editingCities)
+            .rotationEffect(.degrees(editingCities && !reduceMotion ? 0.5 : 0))
+            .animation(editingCities && !reduceMotion ? .easeInOut(duration: 0.18).repeatForever(autoreverses: true) : .default, value: editingCities)
             .sensoryFeedback(.impact(weight: .light), trigger: cityEditFeedback)
-            .accessibilityHint(editingCities ? "Drag to reorder" : "Touch and hold to edit or reorder")
+            .accessibilityElement(children: editingCities ? .contain : .combine)
+            .accessibilityHint(editingCities ? "Use Move up or Move down actions to reorder" : "Use Reorder cities or Change city actions")
     }
     private func moveComparisonCity(_ id: String, by offset: Int) {
         let cities = Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))

@@ -82,9 +82,9 @@ struct TripUnitsView: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { selectedInput = "Text"; focusSource = inputSource } label: { Label(selectedInput == "Text" ? "✓ Text" : "Text", systemImage: "keyboard").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
-                    Button { selectedInput = "Camera"; focusSource = nil; showScanner = true } label: { Label(selectedInput == "Camera" ? "✓ Camera" : "Camera", systemImage: "camera.viewfinder").font(.caption).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.borderedProminent)
-                    PhotosPicker(selection: $photo, matching: .images) { Label(selectedInput == "Photo" ? "✓ Photo" : "Photo", systemImage: "photo").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
+                    Button { selectedInput = "Text"; focusSource = inputSource } label: { Label("Text", systemImage: selectedInput == "Text" ? "checkmark.circle.fill" : "keyboard").font(.caption).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Text" ? .isSelected : [])
+                    Button { selectedInput = "Camera"; focusSource = nil; showScanner = true } label: { Label("Camera", systemImage: selectedInput == "Camera" ? "checkmark.circle.fill" : "camera.viewfinder").font(.caption).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.borderedProminent).accessibilityAddTraits(selectedInput == "Camera" ? .isSelected : [])
+                    PhotosPicker(selection: $photo, matching: .images) { Label("Photo", systemImage: selectedInput == "Photo" ? "checkmark.circle.fill" : "photo").font(.caption).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Photo" ? .isSelected : [])
                 }
                 VStack(spacing: 6) {
                     amountBox(true)
@@ -149,7 +149,7 @@ struct TripUnitsView: View {
             Button { focusSource = nil; pickerSource = sourceSide; showPicker = true } label: {
                 HStack { Text(sourceSide ? "From" : "To").font(.caption).foregroundStyle(.secondary); Text(unit.name).font(.headline).lineLimit(1).minimumScaleFactor(0.6); Spacer(); Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }.contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("Change \(sourceSide ? "source" : "target") unit")
-            HStack { TextField("Amount", text: field(sourceSide)).keyboardType(category == .temperature ? .numbersAndPunctuation : .decimalPad).focused($focusSource, equals: sourceSide).font(.system(size: 32, weight: .semibold)).monospacedDigit(); Text(unit.symbol).foregroundStyle(.secondary) }
+            HStack { TextField("Amount", text: field(sourceSide)).accessibilityLabel("\(sourceSide ? "From" : "To") amount in \(unit.name)").keyboardType(category == .temperature ? .numbersAndPunctuation : .decimalPad).focused($focusSource, equals: sourceSide).font(.title.weight(.semibold)).monospacedDigit(); Text(unit.symbol).foregroundStyle(.secondary) }
         }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
     }
     private func select(_ kind: UnitCategory) {

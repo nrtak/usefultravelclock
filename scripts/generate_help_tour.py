@@ -25,11 +25,12 @@ scenes=[
  ('Weather','Choose a city; Refresh while connected.','Check retrieved time and forecast time zone.'),
  ('Settings','Choose a theme and your clock options.','Enable Lock app if wanted, then Done.'),
  ('Before you leave','Refresh rates/weather; download languages.','Saved entries and this tour work offline.')]
-DURATION=84
+scenes.insert(4,("Saved conversions","Open Saved and select your conversion.","Your photo, note and original rate stay together."))
+DURATION=90
 p=subprocess.Popen(['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r','24','-i','-','-an','-c:v','libx264','-preset','fast','-crf','24','-pix_fmt','yuv420p','-movflags','+faststart',str(OUTPUT/'Trip_Info_Quick_Tour.mp4')],stdin=subprocess.PIPE)
 samples=[]
 for frame in range(DURATION*24):
- t=frame/24;scene=int(t/6);local=t%6
+ t=frame/24;chapter=int(t/6);scene=chapter if chapter<4 else chapter-1;local=t%6
  im=Image.new('RGB',(W,H),'#F9FBFF');d=ImageDraw.Draw(im)
  def text(x,y,s,n=22,b=False,c=INK):d.text((x,y),s,font=font(n,b),fill=c)
  def center(y,s,n=22,b=False,c=INK):d.text((W/2,y),s,font=font(n,b),fill=c,anchor='mt')
@@ -48,11 +49,18 @@ for frame in range(DURATION*24):
  def photo(x,y,w,h,source=cafe):
   preview=ImageOps.contain(source,(w,h),method=Image.Resampling.LANCZOS)
   box(x,y,w,h,'#ECE9E3');im.paste(preview,(x+(w-preview.width)//2,y+(h-preview.height)//2))
- text(32,30,'TRIP INFO',17,True,BLUE);text(388,30,f'STEP {scene+1} OF 14',15,True,GREY)
- center(84,scenes[scene][0],28,True)
+ text(32,30,'TRIP INFO',17,True,BLUE);text(388,30,f'STEP {chapter+1} OF 15',15,True,GREY)
+ center(84,scenes[chapter][0],28,True)
  box(36,150,528,650,'#DDE5F0');box(42,144,516,650,'white')
- text(65,170,scenes[scene][0],22,True);text(477,173,'Save' if scene in [3,6,7,8,9] else 'Done',16,True,BLUE)
- if scene==0:
+ if scene==3 and chapter!=4:center(170,'Save conversion',22,True)
+ else:text(65,170,scenes[chapter][0],22,True)
+ text(477,173,'Save' if scene in [3,6,7,8,9] and chapter!=4 else 'Done',16,True,BLUE)
+ if chapter==4:
+  if local<2.5:
+   photo(65,231,84,74);text(164,239,"JPY 500 → USD 3.17",21,True);text(164,276,"Coffee at the station café",17);text(164,308,"Saved Oct 5, 2026",15,c=GREY);hand(421,277)
+  else:
+   center(226,"JPY 500 → USD 3.17",25,True);text(80,266,"Saved Oct 5, 2026",16,c=GREY);photo(65,310,470,240);text(80,579,"Coffee at the station café",21,True);text(80,627,"Rates dated Oct 5, 2026",17,c=GREY);text(80,670,"Original saved estimate",17,c=GREY)
+ elif scene==0:
   for x,role,city,time in [(65,'Home','Los Angeles','1:08 PM'),(310,'Destination','Tokyo','5:08 AM')]:
    box(x,226,225,158,'#EAF4ED' if role=='Home' else '#EAF1FC');text(x+17,244,role,16,c=GREY);text(x+17,279,city,21,True);text(x+17,329,time,25,True)
   field(414,'From currency','USD · United States');field(479,'To currency','JPY · Japan')
@@ -74,10 +82,11 @@ for frame in range(DURATION*24):
   elif local<3.3:hand(300,593)
   else:hand(300,741)
  elif scene==3:
-  field(221,'Conversion preview','¥500 JPY → ≈ $3.17 USD');photo(65,289,470,230)
-  field(541,'Note','Coffee at the station café',local<3)
-  field(608,'Reference photo','Café menu attached');field(675,'Rate date','Oct 5, 2026 · original estimate')
-  if local<3:hand(400,566)
+  text(66,174,'Cancel',16,True,BLUE)
+  photo(65,221,470,210);field(450,'Original','500 JPY');field(511,'Converted','3.17 USD')
+  field(572,'Note (optional)','Coffee at the station café',local<3);field(633,'Photo (optional)','Café menu attached')
+  text(80,716,'Rates dated Oct 5, 2026',16,c=GREY)
+  if local<3:hand(400,597)
   else:hand(496,185)
   if local>4.6:center(746,'✓ Saved on this device',18,True,BLUE)
  elif scene==4:
@@ -96,7 +105,7 @@ for frame in range(DURATION*24):
   hand(x,628) if local<4.5 else hand(428,577)
  elif scene==6:
   field(221,'From language','English (General)');field(285,'To language','Spanish');field(349,'Text','A coffee, please.',local<2)
-  button(415,'Translate');field(485,'Translation','Un café, por favor.');field(549,'Note','Ordering at the café');photo(65,616,174,116);text(257,642,'Reference photo',17,True);text(257,675,'Café menu attached',16,c=GREY)
+  button(415,'Translate');field(485,'Translation','Un café, por favor.');field(549,'Note','Ordering at the café');field(616,'Input mode','Text selected ✓');text(80,696,'Saved keeps this text and note together.',16,c=GREY)
   if local<2:hand(337,374)
   elif local<4:hand(300,440)
   else:hand(497,185)
@@ -130,11 +139,15 @@ for frame in range(DURATION*24):
   for i,(label,value) in enumerate([('Currency','Bundled or saved reference rates'),('Rate date','Oct 5, 2026 · example snapshot'),('Weather','Saved forecast · check retrieval time'),('Translation languages','Downloaded · ready offline'),('Saved entries','Coffee · suitcase · travel details'),('Help video','Included in the app · no connection')]):field(234+i*75,label,value)
   center(715,'Fresh updates require internet.',19,True,BLUE)
  action=['Edit either amount','Tap Use total','Tap Capture' if local<3.3 else 'Check price → Save','Add note → Tap Save','Choose units → Save','Drag → Return to now','Translate → Review → Save','Fill fields → Tap Save','Set local times → Save','Fill journey → Tap Save','Hold → Drag → Done','Refresh → Check dates','Choose options → Done','Prepare while connected'][scene]
+ if chapter==4:action="Saved → Open entry → Review"
  center(119,action,14,True,BLUE)
+ if chapter==4:action='Saved → Open entry → Review'
+ if scene in [4,6,7,8,9] and chapter!=4 and local>4.8:
+  box(85,726,430,47,'#EAF4ED');center(739,'✓ Saved on this device',18,True)
  box(24,832,552,146,'#EAF1FC')
- center(855,scenes[scene][1],20,True);center(900,scenes[scene][2],19)
+ center(855,scenes[chapter][1],20,True);center(900,scenes[chapter][2],19)
  center(996,'Illustrated worked example · captions only',15,c=GREY)
- for i in range(14):d.rounded_rectangle((28+i*39,1034,61+i*39,1040),radius=3,fill=BLUE if i<=scene else '#D8E1EF')
+ for i in range(15):d.rounded_rectangle((25+i*37,1034,56+i*37,1040),radius=3,fill=BLUE if i<=chapter else '#D8E1EF')
  if frame%144==84:samples.append(im.copy())
  p.stdin.write(im.tobytes())
 p.stdin.close();assert p.wait()==0

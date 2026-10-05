@@ -47,6 +47,7 @@ struct CurrencyConverterView: View {
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
                             }.frame(height: min((geometry.size.width - 42) / 2, max(80, min(120, geometry.size.height - 520))))
                             saveButtons
+                            SavedConversionNotice(saved: saved) { showsSaved = true }
                             Button { showsUnits = true } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "ruler").foregroundStyle(.teal)
@@ -65,7 +66,6 @@ struct CurrencyConverterView: View {
                     .padding(.horizontal, 16).padding(.vertical, 8)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .scrollDisabled(!editing && !typeSize.isAccessibilitySize)
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: editing) { _, active in
                     if active { proxy.scrollTo("amounts", anchor: .top) }

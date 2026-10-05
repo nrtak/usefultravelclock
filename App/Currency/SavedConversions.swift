@@ -23,6 +23,8 @@ struct SavedConversion: Codable, Identifiable, Equatable {
 final class SavedConversions: ObservableObject {
     @Published private(set) var items: [SavedConversion] = []
     @Published private(set) var loadError: String?
+    @Published private(set) var lastSavedID: UUID?
+    func clearSaveNotice() { lastSavedID = nil }
     @Published private(set) var canUndo = false
     @Published var actionError: String?
     private var removed: [(Int, SavedConversion)] = []
@@ -50,6 +52,7 @@ final class SavedConversions: ObservableObject {
         next.remove(atOffsets: IndexSet(valid))
         do {
             try JSONEncoder().encode(next).write(to: indexURL, options: [.atomic, .completeFileProtection])
+            if let lastSavedID, deleted.contains(where: { $0.1.id == lastSavedID }) { self.lastSavedID = nil }
             items = next; removed = deleted; canUndo = true; actionError = nil
             // Keep the photo so Undo restores the original reference image.
         } catch { actionError = "Couldn’t delete. Your saved entries were kept. Try again." }
@@ -67,6 +70,7 @@ final class SavedConversions: ObservableObject {
     }
 
     func save(_ draft: SavedConversion, photo: Data?) throws {
+        lastSavedID = nil
         guard loadError == nil else { throw CocoaError(.fileReadCorruptFile) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var entry = draft
@@ -80,6 +84,7 @@ final class SavedConversions: ObservableObject {
         do {
             try JSONEncoder().encode(next).write(to: indexURL, options: [.atomic, .completeFileProtection])
             items = next
+            lastSavedID = entry.id
         } catch {
             if photo != nil { try? FileManager.default.removeItem(at: photoURL) }
             throw error

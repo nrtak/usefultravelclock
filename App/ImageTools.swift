@@ -38,6 +38,7 @@ struct PriceImageView: View {
     @State private var scanningPaused = false
     @ObservedObject var savedPrices: SavedConversions
     @State private var priceDraft: SavedConversion?
+    @State private var showsSavedPrices = false
     @State private var referencePhoto: Data?
     @State private var noPriceFound = false
     var body: some View {
@@ -70,6 +71,7 @@ struct PriceImageView: View {
                 }
             }
             .photosPicker(isPresented: $choosesPhoto, selection: $photo, matching: .images)
+            SavedConversionNotice(saved: savedPrices) { showsSavedPrices = true }
             if live {
                 LiveTextCamera(recognitionEnabled: live && !pricesHeld && !scanningPaused && !busy, onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, resetID: scanID, captureID: captureID, onPhoto: { image in
                     let manualCapture = capturingPhoto
@@ -140,6 +142,7 @@ struct PriceImageView: View {
             Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsSavedPrices) { SavedConversionsView(saved: savedPrices) }
         .sheet(item: $priceDraft) { draft in SaveConversionView(draft: draft, initialPhoto: referencePhoto ?? data, saved: savedPrices) }
         .task(id: scanID) {
             noPriceFound = false
@@ -262,6 +265,8 @@ struct TripTranslateView: View {
                         }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Choose photo to translate")
+                            .accessibilityAddTraits(!liveTranslation && image != nil ? .isSelected : [])
+                            .accessibilityValue(!liveTranslation && image != nil ? "Selected" : "Not selected")
                     }
                     if liveTranslation {
                         LiveTextCamera(recognitionEnabled: liveTranslation && !livePaused && !keepingPhoto, onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, resetID: liveScanID, captureID: liveCaptureID, onPhoto: { photo in
@@ -297,7 +302,7 @@ struct TripTranslateView: View {
                         Text("Translates as you point the camera at text.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
-                    TextField("Enter text, or choose a photo to read it", text: $input, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
+                    TextField("Enter text, or choose a photo to read it", text: $input, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder).accessibilityLabel("Text to translate")
                     Button {
                         output = ""; message = "Translating…"
                         let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
@@ -307,7 +312,7 @@ struct TripTranslateView: View {
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     TripSectionLabel(title: "Translation", symbol: "character.bubble.fill", color: .purple)
-                    TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
+                    TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder).accessibilityLabel("Translation result, editable")
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 }.tripPanel()
                 if !message.isEmpty { Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently) }

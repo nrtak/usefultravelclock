@@ -44,11 +44,12 @@ struct TranslationRecord: Codable, Identifiable {
     @Published var loading = false
     @Published var error: String?
     private var key: SymmetricKey?
-    private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("TripNotes")
-    init() {
+    private let directory: URL
+    init(directory: URL? = nil) {
+        self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("TripNotes")
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent("translations.json")
+            try FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
+            let url = self.directory.appendingPathComponent("translations.json")
             if FileManager.default.fileExists(atPath: url.path) { translations = try JSONDecoder().decode([TranslationRecord].self, from: Data(contentsOf: url)) }
         } catch { self.error = error.localizedDescription }
     }
