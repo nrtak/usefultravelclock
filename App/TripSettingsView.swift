@@ -93,6 +93,10 @@ private enum TripAppInformation {
 private struct TripHelpView: View {
     var body: some View {
         List {
+            Section("Quick tour") {
+                NavigationLink { TripHelpVideoView() } label: { Label("How to use Trip Info", systemImage: "play.circle") }
+                Text("32 seconds · captioned · works offline").font(.caption).foregroundStyle(.secondary)
+            }
             Section("Home") { Text("Choose your Home and Destination cities. Edit either currency amount to convert both ways. Tap the swap arrows to reverse currencies, or Full converter for more tools.") }
             Section("Conversions") { Text("Currency is the main tool. Add multiple prices supports addition and subtraction; Clear all asks before removing entries. Unit converter handles measurements such as distance, temperature and volume.") }
             Section("Camera & photos") {
@@ -104,9 +108,9 @@ private struct TripHelpView: View {
                 Text("The comparison slider starts at Now, centered at zero. Move it to compare all cities at another time; Return to now restores live clocks. Yesterday and Tomorrow compare each city's date with Home.")
                 Text("Hold Home or Destination to change its city. Hold an additional city to edit or reorder the list, then tap Done.")
             }
-            Section("Translate") { Text("Choose source and target languages, then enter text or use Camera or Photo. English (General) has no country specified. Language downloads may be needed. Save a translation with a reference image and note.") }
+            Section("Translate") { Text("Choose source and target languages, then enter text or use Camera or Photo. English (General) has no country specified. Tap Prepare for offline use to download the selected language pair while connected. Save a translation with a reference image and note.") }
             Section("My Trip") { Text("Add hotel and transport details. Set departure and arrival locations to display their local times. Entries without a selected location use device time.") }
-            Section("Weather & offline use") { Text("Tap Weather for hourly and daily forecasts. Refresh updates the selected city when connected. Saved rates and forecasts show their update time; live refreshes and city search need internet.") }
+            Section("Weather & offline use") { Text("Tap Weather for hourly and daily forecasts. Refresh updates the selected city when connected. Clocks, built-in city search, unit conversion, camera text recognition, saved entries and this guide work offline. Currency uses downloaded or bundled dated reference rates. Weather uses saved forecasts. Fresh rates, fresh weather, weather location search and language downloads need internet. Photos stored only in iCloud may also need downloading before your trip.") }
             Section("Tab order & app lock") { Text("Hold a bottom tab, drag to reorder, and tap Done. The app remembers your tab order and last-used tab. Enable Lock app in Settings to use Face ID, Touch ID or your iPhone passcode. Widgets are not protected by the app lock.") }
             Section("Troubleshooting") {
                 Text("If scanning finds nothing, move closer, improve lighting or choose a clearer photo. Check camera permission in iPhone Settings. If a rate or forecast is unavailable, connect and retry Refresh.")

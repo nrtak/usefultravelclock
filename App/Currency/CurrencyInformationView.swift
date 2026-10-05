@@ -5,7 +5,7 @@ struct CurrencyInformationView: View {
         List {
             Section("Exchange rates") {
                 Text("Frankfurter supplies daily reference rates. Conversions are estimates; bank and card rates, fees and final charges may differ.")
-                Text("Rate dates and the last check appear with the converter. Refresh requires internet. Saved rates can be used offline; unavailable rates are shown clearly.")
+                Text("Rate dates and the last check appear with the converter. Refresh requires internet. Downloaded rates are kept for offline use; a dated bundled reference snapshot is available on first launch. The label identifies bundled rates. Values are estimates, not live market quotes.")
                 Link("Frankfurter & data sources", destination: URL(string: "https://frankfurter.dev/")!)
                 Link("Provider terms", destination: URL(string: "https://frankfurter.dev/license/")!)
             }
@@ -28,7 +28,7 @@ struct CurrencyInformationView: View {
                 Text("An older protected travel record may require device authentication once when first opened after an update.")
             }
             Section("Offline limits") {
-                Text("Saved entries and downloaded rates remain accessible offline. New rates, weather refreshes, city search and language downloads need a connection. Check the saved-data label and update time before relying on older information.")
+                Text("Saved entries and downloaded rates remain accessible offline. Fresh rates, fresh weather, weather location search and language downloads need a connection. Clocks, built-in city search, units, text recognition, saved entries and the Help video work offline. Translate needs the selected languages installed first. iCloud-only photos need downloading before use. Check the saved-data label and update time before relying on older information.")
             }
         }.navigationTitle("Rates & privacy").navigationBarTitleDisplayMode(.inline)
     }

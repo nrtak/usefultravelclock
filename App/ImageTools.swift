@@ -212,6 +212,9 @@ struct TripTranslateView: View {
     @AppStorage("trip-translation-source") private var source = "ja"
     @AppStorage("trip-translation-target") private var target = "en"
     @State private var config: TranslationSession.Configuration?
+    @State private var preparationConfig: TranslationSession.Configuration?
+    @State private var languageStatus = "Checking offline languages…"
+    @ObservedObject private var connection = TripConnectionStore.shared
     @State private var message = ""
     @State private var saved = false
     @State private var liveTranslation = false
@@ -239,6 +242,11 @@ struct TripTranslateView: View {
                             .buttonStyle(.plain).accessibilityLabel("Swap languages")
                         languageButton("To", selection: $target, side: .target)
                     }
+                    Text(languageStatus).font(.caption).foregroundStyle(.secondary)
+                    Button("Prepare for offline use", systemImage: "arrow.down.circle") {
+                        let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
+                        if preparationConfig == next { preparationConfig?.invalidate() } else { preparationConfig = next }
+                    }.font(.caption).disabled(connection.isOffline || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -330,15 +338,33 @@ struct TripTranslateView: View {
             liveText = ""; message = ""; livePaused = false
             if active { resetTranslationScan() }
         }
-        .onChange(of: source) { _, _ in config = nil; output = ""; liveText = "" }
-        .onChange(of: target) { _, _ in config = nil; output = ""; liveText = "" }
+        .onChange(of: source) { _, _ in config = nil; preparationConfig = nil; output = ""; liveText = "" }
+        .onChange(of: target) { _, _ in config = nil; preparationConfig = nil; output = ""; liveText = "" }
+        .task(id: source + "|" + target) { await checkOfflineLanguages() }
+        .translationTask(preparationConfig) { session in
+            let selectedSource = source, selectedTarget = target
+            do {
+                try await session.prepareTranslation()
+                guard !Task.isCancelled, selectedSource == source, selectedTarget == target else { return }
+                await checkOfflineLanguages()
+            } catch {
+                guard !Task.isCancelled, selectedSource == source, selectedTarget == target else { return }
+                message = "Languages were not prepared. Connect and try Prepare for offline use again."
+            }
+        }
         .translationTask(config) { session in
             let requested = input
             let requestedSource = source, requestedTarget = target
             do {
+                let status = await LanguageAvailability().status(from: Locale.Language(identifier: requestedSource), to: Locale.Language(identifier: requestedTarget))
+                guard !Task.isCancelled else { return }
+                if connection.isOffline && status != .installed {
+                    message = "Offline · these languages are not downloaded. Prepare them while connected. Saved translations are still available."
+                    return
+                }
                 let response = try await session.translate(requested)
                 if !Task.isCancelled && requested == input && requestedSource == source && requestedTarget == target {
-                    output = response.targetText; message = ""
+                    output = response.targetText; message = ""; await checkOfflineLanguages()
                 }
             } catch {
                 if !Task.isCancelled && requested == input && requestedSource == source && requestedTarget == target {
@@ -348,6 +374,17 @@ struct TripTranslateView: View {
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { HStack { if let data = record.image { TripPhotoThumbnail(id: "translation-" + record.id.uuidString, data: data) }; VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption).lineLimit(2) } } } }.navigationTitle("Saved translations").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { saved = false }  }.tripToolbarBackground() } } }
+    }
+    private func checkOfflineLanguages() async {
+        let from = source, to = target
+        let status = await LanguageAvailability().status(from: Locale.Language(identifier: from), to: Locale.Language(identifier: to))
+        guard !Task.isCancelled, from == source, to == target else { return }
+        switch status {
+        case .installed: languageStatus = "Languages downloaded · ready offline"
+        case .supported: languageStatus = "Language download needed · prepare while online"
+        case .unsupported: languageStatus = "This language pair is unavailable"
+        @unknown default: languageStatus = "Offline language availability unknown"
+        }
     }
     private func resetTranslationScan() {
         livePaused = false; liveText = ""; image = nil; input = ""; output = ""; message = ""

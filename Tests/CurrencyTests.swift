@@ -81,7 +81,7 @@ final class CurrencyTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let url = directory.appendingPathComponent("rates.json")
         defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
-        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: snapshot))
+        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: snapshot), isOffline: { false })
         await store.refresh(force: true)
         store.source = "USD"
         store.target = "EUR"
@@ -93,7 +93,7 @@ final class CurrencyTests: XCTestCase {
         let saved = try XCTUnwrap(store.savedDraft())
         XCTAssertEqual(saved.amount, Decimal(string: "22.5"))
         XCTAssertEqual(saved.convertedAmount, 18)
-        let reopened = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService())
+        let reopened = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService(), isOffline: { false })
         XCTAssertEqual(reopened.inputSide, .target)
         XCTAssertEqual(reopened.amount, "18")
         XCTAssertEqual(reopened.value(for: "USD"), Decimal(string: "22.5"))
@@ -117,7 +117,7 @@ final class CurrencyTests: XCTestCase {
         let preferences = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
-        let store = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot))
+        let store = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot), isOffline: { false })
         await store.refresh(force: true)
         store.source = "USD"; store.target = "JPY"
         store.edit("100", side: .source)
@@ -139,7 +139,7 @@ final class CurrencyTests: XCTestCase {
         let preferences = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
-        let store = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot))
+        let store = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot), isOffline: { false })
         store.source = "USD"
         store.target = "EUR"
         store.edit("80", side: .target)
@@ -164,7 +164,7 @@ final class CurrencyTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let url = directory.appendingPathComponent("rates.json")
         defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
-        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: snapshot))
+        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: snapshot), isOffline: { false })
         await store.refresh(force: true)
         XCTAssertNotNil(store.snapshot)
         XCTAssertFalse(store.cacheWriteFailed)
@@ -172,7 +172,7 @@ final class CurrencyTests: XCTestCase {
         store.target = "JPY"
         store.amount = "250"
         store.toggleFavorite("XPF")
-        let offline = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService())
+        let offline = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService(), isOffline: { false })
         XCTAssertEqual(offline.source, "EUR")
         XCTAssertEqual(offline.target, "JPY")
         XCTAssertEqual(offline.amount, "250")
@@ -184,7 +184,7 @@ final class CurrencyTests: XCTestCase {
         XCTAssertEqual(offline.snapshot?.multiplier(from: "EUR", to: "JPY"), 200)
         XCTAssertEqual(offline.result, Amount.format(50000, currency: .named("JPY")))
         offline.amount = ""
-        let reopened = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService())
+        let reopened = ConverterStore(preferences: preferences, cacheURL: url, service: FailedService(), isOffline: { false })
         XCTAssertEqual(reopened.amount, "")
     }
 
@@ -194,7 +194,7 @@ final class CurrencyTests: XCTestCase {
         let preferences = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
-        let converter = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot))
+        let converter = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot), isOffline: { false })
         XCTAssertNil(converter.savedDraft())
         await converter.refresh(force: true)
         converter.source = "EUR"
@@ -244,7 +244,7 @@ final class CurrencyTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(snapshot).write(to: url)
         let partial = RateSnapshot(fetchedAt: Date(), rows: [Rate(date: "2026-09-26", base: "USD", quote: "EUR", rate: 1)])
-        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: partial))
+        let store = ConverterStore(preferences: preferences, cacheURL: url, service: StubService(snapshot: partial), isOffline: { false })
         await store.refresh(force: true)
         XCTAssertEqual(store.snapshot?.row("JPY")?.date, "2026-09-24")
         XCTAssertEqual(store.snapshot?.row("EUR")?.date, "2026-09-26")

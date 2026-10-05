@@ -48,6 +48,7 @@ struct CachedWeather: Codable {
     }
     func load(city: City, force: Bool = false) async {
         guard !loading.contains(city.id) else { return }
+        if TripConnectionStore.shared.isOffline && locations[city.id] == nil { errors[city.id] = "Offline · no saved weather location. Choose and refresh this city before traveling."; return }
         loading.insert(city.id); defer { loading.remove(city.id) }
         do {
             let location: WeatherLocation
@@ -63,6 +64,7 @@ struct CachedWeather: Codable {
         } catch { errors[city.id] = "Couldn’t find this city. Try location search." }
     }
     func search(_ query: String) async throws -> [WeatherLocation] {
+        guard !TripConnectionStore.shared.isOffline else { throw URLError(.notConnectedToInternet) }
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = .address
@@ -73,9 +75,10 @@ struct CachedWeather: Codable {
         guard !loading.contains(place.id) else { return }
         loading.insert(place.id); defer { loading.remove(place.id) }
         if force { lastManualRefresh[place.id] = nil }
-        if attribution == nil { attribution = try? await service.attribution }
         if !force, let saved = cache[place.id], saved.hourly != nil, saved.daily != nil, (0..<1800).contains(Date().timeIntervalSince(saved.fetchedAt)) { return }
+        guard !TripConnectionStore.shared.isOffline else { errors[place.id] = "Offline · fresh weather needs internet."; return }
         do {
+            if attribution == nil { attribution = try? await service.attribution }
             let weather = try await service.weather(for: place.location)
             let current = weather.currentWeather
             let day = weather.dailyForecast.forecast.first
