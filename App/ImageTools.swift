@@ -39,7 +39,7 @@ struct PriceImageView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                content(cameraHeight: max(150, min(240, geometry.size.height * 0.32)), pageSize: geometry.size.height < 650 ? 2 : 4)
+                content(cameraHeight: max(240, min(360, geometry.size.height * 0.46)), pageSize: geometry.size.height < 650 ? 2 : 4)
             }.scrollBounceBehavior(.basedOnSize)
         }
         .sheet(item: $editingPrice) { price in
@@ -212,7 +212,7 @@ struct TripTranslateView: View {
                             .accessibilityLabel("Choose photo to translate")
                     }
                     if liveTranslation {
-                        LiveTextCamera(onText: { if liveTranslation { liveText = $0 } }, onError: { message = $0 }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+                        LiveTextCamera(onText: { if liveTranslation { liveText = $0 } }, onError: { message = $0 }).frame(height: 340).clipShape(RoundedRectangle(cornerRadius: 14))
                         Text("Translates as you point the camera at text.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
