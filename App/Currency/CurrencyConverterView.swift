@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum PickerSide: String, Identifiable { case source, target; var id: String { rawValue } }
 
@@ -14,6 +15,8 @@ struct CurrencyConverterView: View {
     @State private var showsSaved = false
     @State private var showsItems = false
     @State private var showsPhotoPrices = false
+    @State private var showsUnits = false
+    @State private var copiedAmount = false
     @AppStorage("trip-currency-color") private var boxColor = "F3F3F3"
     @FocusState private var editingSide: AmountSide?
     private var editing: Bool { editingSide != nil }
@@ -25,6 +28,10 @@ struct CurrencyConverterView: View {
                 ScrollView {
                     VStack(spacing: 10) {
                         VStack(spacing: 6) {
+                            HStack {
+                                TripSectionLabel(title: "Currency", symbol: "banknote")
+                                Spacer()
+                            }
                             amountCard(source: true)
                             Button { editingSide = nil; store.swap() } label: {
                                 Image(systemName: "arrow.up.arrow.down").font(.title3).frame(width: 44, height: 44)
@@ -38,8 +45,16 @@ struct CurrencyConverterView: View {
                             HStack(spacing: 10) {
                                 featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }.frame(height: min((geometry.size.width - 42) / 2, max(100, min(150, geometry.size.height - 440))))
+                            }.frame(height: min((geometry.size.width - 42) / 2, max(80, min(120, geometry.size.height - 520))))
                             saveButtons
+                            Button { showsUnits = true } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "ruler").foregroundStyle(.teal)
+                                    Text("Unit converter").font(.subheadline.weight(.medium)).foregroundStyle(Color.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.secondary)
+                                }.frame(minHeight: 44).contentShape(Rectangle())
+                            }.buttonStyle(.plain).accessibilityHint("Convert distance, temperature, volume and weight")
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -57,7 +72,7 @@ struct CurrencyConverterView: View {
                 }
             }
             }
-            .navigationTitle("Currency")
+            .navigationTitle("Conversions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onBack {
@@ -79,7 +94,22 @@ struct CurrencyConverterView: View {
             .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
+            .sheet(isPresented: $showsUnits) {
+                NavigationStack {
+                    TripUnitsView().toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            TripNavigationButton(title: "Back") { showsUnits = false }
+                        }.tripToolbarBackground()
+                    }
+                }
+            }
             .task { await store.refresh() }
+            .task(id: copiedAmount) {
+                if copiedAmount {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    if !Task.isCancelled { copiedAmount = false }
+                }
+            }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.refresh() } } }
         }
     }
@@ -115,6 +145,16 @@ struct CurrencyConverterView: View {
                 .monospacedDigit().keyboardType(.decimalPad)
                 .focused($editingSide, equals: source ? .source : .target)
                 .accessibilityLabel("\(source ? "From" : "To") amount in \(Currency.named(code).name)")
+                if !source {
+                    Button {
+                        UIPasteboard.general.string = Currency.named(code).symbol + " " + store.result(for: code) + " " + code
+                        copiedAmount = true
+                    } label: {
+                        Image(systemName: copiedAmount ? "checkmark" : "doc.on.doc")
+                            .font(.subheadline).foregroundStyle(.blue).frame(width: 44, height: 44)
+                    }.buttonStyle(.plain).disabled(store.value(for: code) == nil)
+                        .accessibilityLabel(copiedAmount ? "Amount copied" : "Copy converted amount")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +170,7 @@ struct CurrencyConverterView: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.detail)
-                if let checked = store.lastChecked { Text(checked) }
+                if let checked = store.lastChecked { TripRefreshStamp(success: store.lastManualRefresh, fallback: checked) }
                 TripRateStatus(store: store)
                 if store.cacheWriteFailed { Text("Rates loaded, but couldn’t save for offline use.") }
             }.font(.caption2).foregroundStyle(.secondary)

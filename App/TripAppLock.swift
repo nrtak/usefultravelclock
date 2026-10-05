@@ -29,7 +29,7 @@ final class TripAppLock: ObservableObject {
         guard !authenticating else { return false }
         authenticating = true; error = ""
         let request = UUID(); generation = request
-        let auth = LAContext(); context = auth
+        let auth = LAContext(); auth.localizedFallbackTitle = "Use Passcode"; context = auth
         defer { if generation == request { authenticating = false; context = nil } }
         var failure: NSError?
         guard auth.canEvaluatePolicy(.deviceOwnerAuthentication, error: &failure) else {
@@ -65,8 +65,9 @@ struct TripAppLockGate<Content: View>: View {
                     Image(systemName: "lock.fill").font(.largeTitle).foregroundStyle(.blue)
                     Text("Trip Info is locked").font(.title2.weight(.semibold))
                     Button { Task { await lock.authenticate() } } label: {
-                        Label("Unlock", systemImage: "faceid").frame(minWidth: 120, minHeight: 44)
+                        Label("Unlock", systemImage: "lock.open").frame(minWidth: 120, minHeight: 44)
                     }.buttonStyle(.borderedProminent).disabled(lock.authenticating)
+                    Text("Face ID, Touch ID or iPhone passcode").font(.caption).foregroundStyle(.secondary)
                     if !lock.error.isEmpty { Text(lock.error).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center) }
                 }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(.systemBackground).ignoresSafeArea())

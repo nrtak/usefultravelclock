@@ -1,6 +1,18 @@
 import SwiftUI
 import Network
 
+struct TripRefreshStamp: View {
+    let success: Date?
+    let fallback: String
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+            let fresh = success.map { context.date.timeIntervalSince($0) < 8 } ?? false
+            Text(fresh ? "Updated just now" : fallback)
+                .foregroundStyle(fresh ? Color.teal : Color.secondary)
+        }
+    }
+}
+
 @MainActor final class TripConnectionStore: ObservableObject {
     static let shared = TripConnectionStore()
     @Published private(set) var isOffline = false

@@ -11,9 +11,9 @@ struct TripSettingsView: View {
         NavigationStack {
             List {
                 Section("Privacy") {
-                    Toggle("Require Face ID to open app", isOn: Binding(get: { appLock.enabled }, set: { value in Task { await appLock.setEnabled(value) } }))
+                    Toggle("Lock app", isOn: Binding(get: { appLock.enabled }, set: { value in Task { await appLock.setEnabled(value) } }))
                         .disabled(appLock.authenticating)
-                    Text("Locks when you leave the app. Touch ID or your device passcode can also unlock it. Widgets are not protected by this app lock.").font(.caption).foregroundStyle(.secondary)
+                    Text("Unlock with Face ID, Touch ID or your iPhone passcode (PIN). Uses the security already set up on your iPhone. Locks when you leave the app; widgets are not protected.").font(.caption).foregroundStyle(.secondary)
                     if !appLock.error.isEmpty { Text(appLock.error).font(.caption).foregroundStyle(.secondary) }
                 }
                 Section("Appearance") {
@@ -50,7 +50,6 @@ struct TripSettingsView: View {
                         }
                     }
                 }
-                Section("Utilities") { NavigationLink("Unit Converter") { TripUnitsView() } }
                 Section("About & support") {
                     NavigationLink("Help") { Text("Choose home and destination on Home. Currency supports both directions, saved notes and photos, totals, and photo price recognition. Enable the app lock in Privacy to require device authentication when opening Trip Info.").padding() }
                     NavigationLink("Rates & privacy") { CurrencyInformationView() }

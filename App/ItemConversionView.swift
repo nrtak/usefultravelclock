@@ -3,12 +3,17 @@ import SwiftUI
 struct ItemPrice: Identifiable {
     let id = UUID()
     var text = ""
+    var subtract = false
 }
 
 struct ItemConversionView: View {
     @ObservedObject var store: ConverterStore
     @Environment(\.dismiss) private var dismiss
-    @State private var items = [ItemPrice()]
+    private var items: [ItemPrice] {
+        get { store.multiplePriceItems }
+        nonmutating set { store.multiplePriceItems = newValue }
+    }
+    @State private var confirmClear = false
     @State private var page = 0
     @State private var selectedID: UUID?
     @State private var picker: CurrencySide?
@@ -17,7 +22,9 @@ struct ItemConversionView: View {
         case source, target
         var id: String { rawValue }
     }
-    private var total: Decimal? { ItemAmounts.total(items.map(\.text)) }
+    private var total: Decimal? {
+        ItemAmounts.total(items.map(\.text), subtracting: Set(items.indices.filter { items[$0].subtract }))
+    }
     private var pages: Int { max(1, (items.count + pageSize - 1) / pageSize) }
     private var converted: Decimal? {
         guard let total else { return nil }
@@ -34,7 +41,19 @@ struct ItemConversionView: View {
         .padding(.horizontal, 16)
         .navigationTitle("Add multiple prices")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Clear all") { confirmClear = true }.buttonStyle(TripButtonStyle())
+                    .disabled(items.count == 1 && items[0].text.isEmpty && !items[0].subtract)
+            }.tripToolbarBackground()
+        }
+        .confirmationDialog("Clear all entered prices?", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Clear all", role: .destructive) {
+                items = [ItemPrice()]; page = 0; selectedID = items.first?.id
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .sheet(item: $picker) { side in
             CurrencyPicker(store: store, title: "Search currency") { code in
                 if side == .source { store.source = code } else { store.target = code }
@@ -52,6 +71,15 @@ struct ItemConversionView: View {
             ForEach(Array(items.enumerated()).filter { $0.offset / pageSize == page }, id: \.element.id) { pair in
                 HStack {
                     Text("Item \(pair.offset + 1)").font(.subheadline)
+                    Button {
+                        items[pair.offset].subtract.toggle()
+                        selectedID = pair.element.id
+                    } label: {
+                        Image(systemName: pair.element.subtract ? "minus.circle.fill" : "plus.circle.fill")
+                            .foregroundStyle(pair.element.subtract ? Color.orange : Color.teal)
+                            .font(.title3).frame(width: 44, height: 44)
+                    }.buttonStyle(.plain)
+                        .accessibilityLabel("Item \(pair.offset + 1): \(pair.element.subtract ? "subtract" : "add"). Tap to switch.")
                     Button { selectedID = pair.element.id } label: {
                         Text(pair.element.text.isEmpty ? "0" : pair.element.text)
                             .monospacedDigit().frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing).padding(.horizontal, 10)
@@ -76,7 +104,7 @@ struct ItemConversionView: View {
                 totalColumn("Total · \(store.source)", value: total, code: store.source)
                 totalColumn("Converted · \(store.target)", value: converted, code: store.target)
             }.padding(.top, 4)
-            Text(total == nil ? "Check the selected amount." : rateMessage).font(.caption2).foregroundStyle(.secondary)
+            Text(total == nil ? "Check the selected amount." : (total! < 0 ? "Subtractions exceed the prices. Adjust an item to use the total." : rateMessage)).font(.caption2).foregroundStyle(.secondary)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 6) {
                 ForEach(["1","2","3","4","5","6","7","8","9",Locale.current.decimalSeparator ?? ".","0","⌫"], id: \.self) { key in
                     Button { enter(key) } label: { Text(key).font(.title3).frame(maxWidth: .infinity, minHeight: 44) }
@@ -87,7 +115,7 @@ struct ItemConversionView: View {
                 guard let total else { return }
                 store.edit(ItemAmounts.editable(total), side: .source)
                 dismiss()
-            }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity, minHeight: 44).disabled(total == nil || converted == nil)
+            }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity, minHeight: 44).disabled(total == nil || converted == nil || (total ?? 0) < 0)
         }.padding(.vertical, 8)
     }
 

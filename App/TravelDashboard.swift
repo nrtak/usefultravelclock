@@ -19,7 +19,7 @@ struct TravelDashboard: View {
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
-            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
+            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Conversions", systemImage: "banknote") }.tag(1)
             NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
             NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
             NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
@@ -29,7 +29,13 @@ struct TravelDashboard: View {
         .environmentObject(trip)
         .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) {
             TripCityPicker { city in
-                if picker == "home" { clock.homeMode = .manual; clock.homeCityID = city.id } else { destinationID = city.id }
+                if picker == "home" { clock.homeMode = .manual; clock.homeCityID = city.id }
+                else if let selection = picker, selection.hasPrefix("city:") {
+                    let previous = String(selection.dropFirst(5))
+                    if city.id != previous && !clock.replaceCity(previous, with: city.id) {
+                        trip.error = "That city is already in your world clocks. Choose another city."
+                    }
+                } else { destinationID = city.id }
                 picker = nil
             }
         }
@@ -86,7 +92,7 @@ struct TravelDashboard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(currency.detail)
                     TripRateStatus(store: currency)
-                    if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
+                    if let snapshot = currency.snapshot { TripRefreshStamp(success: currency.lastManualRefresh, fallback: "Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
                 }.font(.caption2).foregroundStyle(.secondary)
             }.tripPanel().id("home-currency")
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
@@ -133,9 +139,11 @@ struct TravelDashboard: View {
             ScrollView {
             VStack(spacing: 10) {
                 Text(shift == 0 ? "Live time" : "Preview — all times shifted").font(.headline)
+                Text("Hold a city to edit").font(.caption2).foregroundStyle(.secondary)
                 clocks(at: date, selectable: false)
                 ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
                     HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit() }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                        .modifier(TripCityLongPress(enabled: true) { picker = "city:" + city.id })
                 }
                 VStack { HStack { Text("Compare all cities"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -12...24, step: 0.5); Text(shift == 0 ? "Live time" : "Preview: \(shift.formatted()) hours from now").font(.caption) }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 TripArtwork(symbol: "globe")
@@ -153,7 +161,13 @@ struct TravelDashboard: View {
     private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool, compact: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(role).font(.caption).frame(maxWidth: .infinity)
-            Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.frame(maxWidth: .infinity).buttonStyle(.plain).disabled(!selectable)
+            if selectable {
+                Button { picker = role == "Home" ? "home" : "destination" } label: {
+                    HStack { Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75); Image(systemName: "pencil").font(.caption) }
+                }.frame(maxWidth: .infinity).buttonStyle(.plain)
+            } else {
+                Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75).frame(maxWidth: .infinity)
+            }
             Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
             if compact {
                 HStack(spacing: 6) {
@@ -166,12 +180,44 @@ struct TravelDashboard: View {
             } else {
                 if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
                 Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
-                Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 16, alignment: .topLeading)
+                Text(role == "Destination" ? difference(zone: zone, date: date) : "")
+                    .font(.caption2).multilineTextAlignment(.center).lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 16, alignment: .top)
             }
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
+            .modifier(TripCityLongPress(enabled: !selectable) { picker = role == "Home" ? "home" : "destination" })
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }
     private func difference(zone: String, date: Date) -> String { let n = ((TimeZone(identifier: zone)?.secondsFromGMT(for: date) ?? 0) - (TimeZone(identifier: clock.homeTimeZoneID)?.secondsFromGMT(for: date) ?? 0)) / 60; return n == 0 ? "Same time" : "\(abs(n)/60)h\(abs(n)%60 == 0 ? "" : " \(abs(n)%60)m") \(n > 0 ? "ahead" : "behind")" }
+}
+private struct TripCityLongPress: ViewModifier {
+    let enabled: Bool
+    let edit: () -> Void
+    @GestureState private var pressing = false
+    @State private var activation = 0
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+        content
+            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .scaleEffect(pressing ? 0.97 : 1)
+            .brightness(pressing ? -0.025 : 0)
+            .overlay(alignment: .topTrailing) {
+                if pressing {
+                    Image(systemName: "pencil.circle.fill").foregroundStyle(.blue)
+                        .padding(6).allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }
+            .animation(.easeOut(duration: 0.12), value: pressing)
+            .gesture(LongPressGesture(minimumDuration: 0.5, maximumDistance: 12)
+                .updating($pressing) { value, state, _ in state = value }
+                .onEnded { _ in activate() })
+            .sensoryFeedback(.impact(weight: .light), trigger: activation)
+            .accessibilityHint(enabled ? "Touch and hold to change city" : "")
+            .accessibilityActions { Button("Change city") { activate() } }
+        } else { content }
+    }
+    private func activate() { activation += 1; edit() }
 }
 struct TripCityPicker: View {
     @EnvironmentObject private var clock: UsefulTravelClockStore

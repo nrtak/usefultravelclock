@@ -1,11 +1,11 @@
 import Foundation
 
 enum ItemAmounts {
-    static func total(_ entries: [String], locale: Locale = .current) -> Decimal? {
+    static func total(_ entries: [String], subtracting: Set<Int> = [], locale: Locale = .current) -> Decimal? {
         var total: Decimal = 0
-        for entry in entries where !entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        for (index, entry) in entries.enumerated() where !entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             guard let amount = Amount.parse(entry, locale: locale) else { return nil }
-            total += amount
+            total += subtracting.contains(index) ? -amount : amount
         }
         return total
     }

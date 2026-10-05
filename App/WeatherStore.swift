@@ -39,6 +39,7 @@ struct CachedWeather: Codable {
     @Published private(set) var errors: [String: String] = [:]
     @Published private(set) var loading = Set<String>()
     @Published private(set) var attribution: WeatherAttribution?
+    @Published private(set) var lastManualRefresh: [String: Date] = [:]
     private let service = WeatherService.shared
     private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("TripNotes/Weather")
     init() {
@@ -71,6 +72,7 @@ struct CachedWeather: Codable {
     func refresh(_ place: WeatherLocation, force: Bool = false) async {
         guard !loading.contains(place.id) else { return }
         loading.insert(place.id); defer { loading.remove(place.id) }
+        if force { lastManualRefresh[place.id] = nil }
         if attribution == nil { attribution = try? await service.attribution }
         if !force, let saved = cache[place.id], saved.hourly != nil, saved.daily != nil, (0..<1800).contains(Date().timeIntervalSince(saved.fetchedAt)) { return }
         do {
@@ -87,6 +89,7 @@ struct CachedWeather: Codable {
             cache[place.id] = next; errors[place.id] = nil
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try JSONEncoder().encode(cache).write(to: directory.appendingPathComponent("forecasts.json"), options: [.atomic, .completeFileProtection])
+            if force { lastManualRefresh[place.id] = Date() }
         } catch { errors[place.id] = "Weather update failed. Check internet and WeatherKit access." }
     }
     private func persistLocations() throws {
