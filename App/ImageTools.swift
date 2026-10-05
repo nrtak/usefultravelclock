@@ -36,7 +36,7 @@ struct PriceImageView: View {
     @State private var captureID: UUID?
     @State private var capturingPhoto = false
     @State private var scanningPaused = false
-    @StateObject private var savedPrices = SavedConversions()
+    @ObservedObject var savedPrices: SavedConversions
     @State private var priceDraft: SavedConversion?
     @State private var referencePhoto: Data?
     @State private var noPriceFound = false

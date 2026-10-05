@@ -202,7 +202,7 @@ struct UnitReadingView: View {
                 error = "Couldn’t keep this photo. Tap Scan again to retry."; return
             }
             referencePhoto = data; error = ""; paused = true
-            if readings.isEmpty { Task { do { readings = UnitConversion.readings(try await ImageText.read(data).map(\.text).joined(separator: "\n")); if readings.isEmpty { error = "No measurement found. Try a value with a unit, such as 500 ml." } } catch { error = "Couldn’t read photo. Tap Scan again to retry." } } }
+            if readings.isEmpty { let generation = scanID; Task { do { let found = UnitConversion.readings(try await ImageText.read(data).map(\.text).joined(separator: "\n")); guard generation == scanID else { return }; readings = found; if readings.isEmpty { error = "No measurement found. Try a value with a unit, such as 500 ml." } } catch { error = "Couldn’t read photo. Tap Scan again to retry." } } }
         }).id(scanID).frame(height: max(200, min(340, geometry.size.height * 0.5))).clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(alignment: .bottom) {
                 Button { capturing = true; captureID = UUID() } label: {

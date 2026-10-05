@@ -91,7 +91,7 @@ struct CurrencyConverterView: View {
                 if side == .source { store.source = code } else { store.target = code }; picker = nil
             }) }
             .sheet(isPresented: $showsItems) { NavigationStack { ItemConversionView(store: store) } }
-            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
+            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store, savedPrices: saved).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
             .sheet(isPresented: $showsUnits) {
