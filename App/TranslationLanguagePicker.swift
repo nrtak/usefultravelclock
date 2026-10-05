@@ -53,7 +53,7 @@ struct TranslationLanguagePicker: View {
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search languages")
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() }
             .task {
                 let supported = await LanguageAvailability().supportedLanguages
                 languages = Array(Set(supported.map(\.minimalIdentifier))).sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }

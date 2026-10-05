@@ -59,7 +59,7 @@ struct TripSettingsView: View {
                     Text("© 2026 Irvine Dynamics").font(.caption)
                 }
             }.navigationTitle("Settings")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } }.tripToolbarBackground() }
             .onAppear {
                 if !BoxTheme.allCases.contains(where: { $0.colors == [home, destination, currency] }) { home = "EAF4ED"; destination = "EAF1FC"; currency = "F3F3F3" }
             }

@@ -29,8 +29,8 @@ struct PriceCorrectionView: View {
                 }
             }.navigationTitle("Correct price").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { if save(amount) { dismiss() } else { error = true } } }
+                ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
+                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { if save(amount) { dismiss() } else { error = true } } }.tripToolbarBackground()
             }.onAppear { focused = true }
         }
     }
