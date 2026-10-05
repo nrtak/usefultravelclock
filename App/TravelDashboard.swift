@@ -69,7 +69,9 @@ struct TravelDashboard: View {
                 HStack {
                     Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
                         .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                    VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        nextTrip(at: context.date)
+                    }
                     Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
                 }.padding()
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
@@ -80,6 +82,18 @@ struct TravelDashboard: View {
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
         return VStack(alignment: .leading) { Text(code).font(.caption); HStack(spacing: 4) { Text(Currency.named(code).symbol); TextField("Amount", text: Binding(get: { currency.fieldText(for: side, focused: false) }, set: { currency.edit($0.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: ""), side: side) })).keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit() } }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
+    }
+    private func nextTrip(at now: Date) -> some View {
+        let next = trip.records.filter { $0.start >= now }.min { $0.start < $1.start }
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("My Trip").font(.caption)
+            Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(1)
+            if let next {
+                Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.start.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Device time zone").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
     }
     private var world: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in

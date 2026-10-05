@@ -33,4 +33,23 @@ final class UnitConversionTests: XCTestCase {
         XCTAssertEqual(reopened.entries.first?.note, "Bag")
         XCTAssertEqual(reopened.entries.first?.image, Data([1,2,3]))
     }
+    @MainActor func testUndoDeletePreservesPhotoAndNewSaves() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("units.json")
+        let store = UnitConversionStore(url: url)
+        let first = SavedUnitConversion(source: "kg", target: "lb", sourceValue: 5, targetValue: 11, note: "Bag", image: Data([1,2,3]))
+        XCTAssertTrue(store.save(first))
+        store.remove(at: IndexSet(integer: 0))
+        XCTAssertTrue(store.canUndo)
+        XCTAssertTrue(store.entries.isEmpty)
+        let second = SavedUnitConversion(source: "mi", target: "km", sourceValue: 1, targetValue: 1.6, note: "Walk", image: nil)
+        XCTAssertTrue(store.save(second))
+        store.undoDelete()
+        XCTAssertFalse(store.canUndo)
+        XCTAssertEqual(Set(store.entries.map(\.id)), Set([first.id, second.id]))
+        XCTAssertEqual(UnitConversionStore(url: url).entries.first { $0.id == first.id }?.image, first.image)
+        store.undoDelete()
+        XCTAssertEqual(store.entries.count, 2)
+    }
 }

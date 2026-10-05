@@ -22,7 +22,22 @@ struct SavedUnitConversion: Codable, Identifiable {
         catch { loadFailed = true; self.error = "Couldn’t read saved conversions. Existing data was kept." }
     }
     func save(_ entry: SavedUnitConversion) -> Bool { persist([entry] + entries) }
-    func remove(at offsets: IndexSet) { var next = entries; next.remove(atOffsets: offsets); _ = persist(next) }
+    @Published private(set) var canUndo = false
+    private var removed: [(Int, SavedUnitConversion)] = []
+    func remove(at offsets: IndexSet) {
+        let valid = offsets.filter { entries.indices.contains($0) }
+        let deleted = valid.map { ($0, entries[$0]) }
+        guard !deleted.isEmpty else { return }
+        var next = entries; next.remove(atOffsets: IndexSet(valid))
+        if persist(next) { removed = deleted; canUndo = true }
+    }
+    func undoDelete() {
+        var next = entries
+        for (index, entry) in removed.sorted(by: { $0.0 < $1.0 }) where !next.contains(where: { $0.id == entry.id }) {
+            next.insert(entry, at: min(index, next.count))
+        }
+        if persist(next) { removed = []; canUndo = false }
+    }
     private func persist(_ next: [SavedUnitConversion]) -> Bool {
         guard !loadFailed else { return false }
         do {
@@ -34,9 +49,9 @@ struct SavedUnitConversion: Codable, Identifiable {
 }
 struct TripUnitsView: View {
     @StateObject private var saved = UnitConversionStore()
-    @State private var category: UnitCategory = .distance
-    @State private var source = "mi"
-    @State private var target = "km"
+    @AppStorage("trip-unit-category") private var category: UnitCategory = .distance
+    @AppStorage("trip-unit-source") private var source = "mi"
+    @AppStorage("trip-unit-target") private var target = "km"
     @State private var amount = "10"
     @State private var inputSource = true
     @State private var pickerSource: Bool?
@@ -84,7 +99,7 @@ struct TripUnitsView: View {
                     Button {
                         guard let from = value(sourceSide: true), let to = value(sourceSide: false) else { return }
                         if saved.save(SavedUnitConversion(source: source, target: target, sourceValue: from, targetValue: to, note: note, image: image)) { message = "Saved on this device" }
-                    } label: { Label("Save conversion", systemImage: "bookmark").font(.subheadline).frame(maxWidth: .infinity, minHeight: 36) }.buttonStyle(.borderedProminent).disabled(value(sourceSide: true) == nil || value(sourceSide: false) == nil)
+                    } label: { Label("Save conversion", systemImage: "bookmark").font(.subheadline).frame(maxWidth: .infinity, minHeight: 36) }.buttonStyle(TripButtonStyle(primary: true)).disabled(value(sourceSide: true) == nil || value(sourceSide: false) == nil)
                     Button("Saved (\(saved.entries.count))") { showSaved = true }.buttonStyle(.bordered)
                 }
                 if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
@@ -105,7 +120,12 @@ struct TripUnitsView: View {
                     }.padding().navigationTitle("Saved conversion")
                 } label: { VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } }
             }.onDelete { saved.remove(at: $0) }
-        }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }.navigationTitle("Saved units").toolbar { TripNavigationButton(title: "Done") { showSaved = false } } } }
+        }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }
+            .safeAreaInset(edge: .bottom) {
+                if saved.canUndo {
+                    HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.buttonStyle(TripButtonStyle()) }.padding().background(Color(.secondarySystemBackground))
+                }
+            }.navigationTitle("Saved units").toolbar { TripNavigationButton(title: "Done") { showSaved = false } } } }
         .onChange(of: photo) { _, item in
             Task {
                 do {
@@ -126,7 +146,7 @@ struct TripUnitsView: View {
         let unit = TravelUnit.named(sourceSide ? source : target)
         return VStack(spacing: 6) {
             Button { focusSource = nil; pickerSource = sourceSide; showPicker = true } label: {
-                HStack { Text(sourceSide ? "From" : "To").font(.caption).foregroundStyle(.secondary); Text(unit.name).font(.headline).lineLimit(1).minimumScaleFactor(0.6); Spacer(); Image(systemName: "magnifyingglass").frame(width: 36, height: 36) }
+                HStack { Text(sourceSide ? "From" : "To").font(.caption).foregroundStyle(.secondary); Text(unit.name).font(.headline).lineLimit(1).minimumScaleFactor(0.6); Spacer(); Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }.contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("Change \(sourceSide ? "source" : "target") unit")
             HStack { TextField("Amount", text: field(sourceSide)).keyboardType(category == .temperature ? .numbersAndPunctuation : .decimalPad).focused($focusSource, equals: sourceSide).font(.system(size: 32, weight: .semibold)).monospacedDigit(); Text(unit.symbol).foregroundStyle(.secondary) }
         }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))

@@ -138,7 +138,7 @@ struct CurrencyConverterView: View {
             Button { draft = store.savedDraft() } label: {
                 Label("Save conversion", systemImage: "bookmark")
                     .frame(maxWidth: .infinity, minHeight: 32)
-            }.buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 8))
+            }.buttonStyle(TripButtonStyle(primary: true))
                 .disabled(store.savedDraft() == nil || saved.loadError != nil)
             Button { showsSaved = true } label: {
                 Text("Saved (\(saved.items.count))").frame(minHeight: 32)

@@ -82,10 +82,13 @@ struct PriceImageView: View {
                             .padding(.bottom, 8)
                     }
             }
-            if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
+            if let data, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160)
+                Label("Photo captured", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+            }
             if live {
                 HStack {
-                    Text(pricesHeld ? "Prices held" : "Point at prices").font(.caption).foregroundStyle(.secondary)
+                    Text(capturingPhoto ? "Capturing photo…" : pricesHeld ? "Prices held" : "Scanning for prices…").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button { prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
@@ -166,8 +169,8 @@ struct TripTranslateView: View {
     @State private var input = ""
     @State private var output = ""
     @State private var note = ""
-    @State private var source = "ja"
-    @State private var target = "en"
+    @AppStorage("trip-translation-source") private var source = "ja"
+    @AppStorage("trip-translation-target") private var target = "en"
     @State private var config: TranslationSession.Configuration?
     @State private var message = ""
     @State private var saved = false

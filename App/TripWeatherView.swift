@@ -29,7 +29,7 @@ struct TripWeatherCard: View {
                 Spacer(minLength: 0)
                 if let city {
                     Button { Task { await weather.load(city: city, force: true) } } label: {
-                        Image(systemName: "arrow.clockwise").font(.caption).frame(width: 32, height: 32)
+                        Image(systemName: "arrow.clockwise").font(.caption).frame(width: 44, height: 44).contentShape(Rectangle())
                     }.accessibilityLabel("Refresh \(role) weather")
                 }
             }

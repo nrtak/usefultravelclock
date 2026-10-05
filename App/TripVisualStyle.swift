@@ -1,5 +1,19 @@
 import SwiftUI
 
+struct TripButtonStyle: ButtonStyle {
+    var primary = false
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .foregroundStyle(enabled ? (primary ? Color.white : Color.blue) : Color.secondary)
+            .background(enabled && primary ? Color.blue : Color(.systemBackground), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(enabled ? (primary ? Color.clear : Color.blue.opacity(0.45)) : Color.secondary.opacity(0.25)))
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
 struct TripSectionLabel: View {
     let title: String
     let symbol: String
@@ -59,10 +73,10 @@ struct TripActionButton: View {
     var body: some View {
         if primary {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "checkmark"); Text(title).fontWeight(.semibold) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(.borderedProminent).tint(.blue)
+                .buttonStyle(TripButtonStyle(primary: true))
         } else {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "xmark"); Text(title) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(.bordered).tint(.gray)
+                .buttonStyle(TripButtonStyle())
         }
     }
 }
@@ -77,6 +91,6 @@ struct TripNavigationButton: View {
                 Text(title)
             }.font(.subheadline.weight(.semibold)).fixedSize(horizontal: true, vertical: false)
                 .frame(minHeight: 32)
-        }.buttonStyle(.bordered).tint(.blue)
+        }.buttonStyle(TripButtonStyle())
     }
 }
