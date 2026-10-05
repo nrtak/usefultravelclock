@@ -41,43 +41,52 @@ struct TravelDashboard: View {
         }
         .task { await trip.unlock(); await currency.refresh() }
     }
+    @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
-        ScrollView {
-        VStack(spacing: 10) {
-            TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true) }
-            VStack(alignment: .leading, spacing: 10) {
-                TripSectionLabel(title: "Currency", symbol: "banknote")
-                HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(currency.detail)
-                        TripRateStatus(store: currency)
-                        if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
-                    }.font(.caption2).foregroundStyle(.secondary)
+        GeometryReader { geometry in
+            Group {
+                if typeSize.isAccessibilitySize {
+                    ScrollView { homeContent(compact: true) }
+                } else {
+                    ViewThatFits(in: .vertical) {
+                        homeContent(compact: false)
+                        homeContent(compact: true)
+                        ScrollView { homeContent(compact: true) }
+                    }
+                }
+            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+        }.navigationBarTitleDisplayMode(.inline)
+    }
+    private func homeContent(compact: Bool) -> some View {
+        VStack(spacing: compact ? 8 : 10) {
+            TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true, compact: compact) }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    TripSectionLabel(title: "Currency", symbol: "banknote")
                     Spacer(minLength: 4)
                     Button { tab = 1 } label: {
-                        Label("Full converter", systemImage: "banknote")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(minHeight: 44)
-                    }.buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.roundedRectangle(radius: 10))
+                        Label("Full converter", systemImage: "arrow.up.right")
+                            .font(.caption.weight(.semibold)).frame(minHeight: 44)
+                    }.buttonStyle(.bordered).tint(.blue)
                         .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
                 }
+                HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(currency.detail)
+                    TripRateStatus(store: currency)
+                    if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
+                }.font(.caption2).foregroundStyle(.secondary)
             }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
                 HStack {
                     Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
                         .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                    TimelineView(.periodic(from: .now, by: 60)) { context in
-                        nextTrip(at: context.date)
-                    }
+                    TimelineView(.periodic(from: .now, by: 60)) { context in nextTrip(at: context.date) }
                     Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                }.padding()
+                }.padding(compact ? 10 : 12)
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            Spacer(minLength: 0)
-        }.padding(12)
-        }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
+        }.padding(12).fixedSize(horizontal: false, vertical: true)
     }
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
@@ -111,20 +120,30 @@ struct TravelDashboard: View {
             }.scrollBounceBehavior(.basedOnSize)
         }.navigationBarTitleDisplayMode(.inline)
     }
-    private func clocks(at date: Date, selectable: Bool) -> some View {
+    private func clocks(at date: Date, selectable: Bool, compact: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, color: .green, selectable: selectable)
-            clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID ?? "UTC", date: date, color: .blue, selectable: selectable)
+            clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, color: .green, selectable: selectable, compact: compact)
+            clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID ?? "UTC", date: date, color: .blue, selectable: selectable, compact: compact)
         }
     }
-    private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool) -> some View {
+    private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool, compact: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(role).font(.caption).frame(maxWidth: .infinity)
             Button { picker = role == "Home" ? "home" : "destination" } label: { HStack { Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75); if selectable { Image(systemName: "pencil").font(.caption) } } }.frame(maxWidth: .infinity).buttonStyle(.plain).disabled(!selectable)
             Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
-            if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
-            Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
-            Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 16, alignment: .topLeading)
+            if compact {
+                HStack(spacing: 6) {
+                    if clock.showAnalog { TripAnalogClock(date: date, zone: zone) }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).lineLimit(1).minimumScaleFactor(0.75)
+                        if role == "Destination" { Text(difference(zone: zone, date: date)).font(.caption2).lineLimit(1) }
+                    }
+                }.frame(maxWidth: .infinity)
+            } else {
+                if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
+                Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
+                Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 16, alignment: .topLeading)
+            }
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }

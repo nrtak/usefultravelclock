@@ -35,8 +35,8 @@ struct TravelRecordsView: View {
                                     if !record.reference.isEmpty { Text(record.reference).font(.caption) }
                                     if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.caption).lineLimit(2) }
                                 }
-                            }.foregroundStyle(.primary).padding(.vertical, 4)
-                        }
+                            }.foregroundStyle(Color.primary).padding(.vertical, 4)
+                        }.buttonStyle(.plain)
                     }
                 }
             }
