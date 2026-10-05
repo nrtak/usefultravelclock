@@ -242,10 +242,16 @@ struct TripTranslateView: View {
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation) { liveTranslation = false }
+                        translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation && image == nil) { liveTranslation = false; image = nil }
                         translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { liveTranslation = true }
                         Spacer(minLength: 0)
-                        PhotosPicker(selection: $photo, matching: .images) { Image(systemName: "photo").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                        PhotosPicker(selection: $photo, matching: .images) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "photo")
+                                Text("Photo").font(.caption)
+                                if !liveTranslation && image != nil { Image(systemName: "checkmark.circle.fill").accessibilityHidden(true) }
+                            }.frame(minWidth: 72, minHeight: 48).contentShape(Rectangle())
+                        }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Choose photo to translate")
                     }
@@ -330,7 +336,7 @@ struct TripTranslateView: View {
             let requested = input
             do { let response = try await session.translate(requested); if requested == input { output = response.targetText; message = "" } } catch { message = error.localizedDescription }
         }
-        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
+        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
         .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { HStack { if let data = record.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFill().frame(width: 56, height: 56).clipShape(RoundedRectangle(cornerRadius: 8)) }; VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption).lineLimit(2) } } } }.navigationTitle("Saved translations").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { saved = false }  }.tripToolbarBackground() } } }
     }
     private func resetTranslationScan() {
