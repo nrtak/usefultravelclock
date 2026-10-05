@@ -55,7 +55,13 @@ struct TravelDashboard: View {
                         if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
-                    Button("Full converter") { tab = 1 }.font(.subheadline)
+                    Button { tab = 1 } label: {
+                        Label("Full converter", systemImage: "banknote")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: 44)
+                    }.buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.roundedRectangle(radius: 10))
+                        .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
                 }
             }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
