@@ -95,7 +95,7 @@ struct TravelDashboard: View {
     private func nextTrip(at now: Date) -> some View {
         let next = trip.records.filter { $0.start >= now }.min { $0.start < $1.start }
         return VStack(alignment: .leading, spacing: 3) {
-            Text("My Trip").font(.caption)
+            Text(next == nil ? "My Trip" : "My Trip · Next").font(.caption)
             Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(1)
             if let next {
                 Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.timeLabel(start: true))

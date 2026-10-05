@@ -42,6 +42,9 @@ struct TravelRecordsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if trip.unlocked { ConsularHelpCard() }
+        }
         .sheet(item: $draft) { record in RecordEditor(record: record) }
     }
 }
