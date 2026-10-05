@@ -1,5 +1,16 @@
 import SwiftUI
 
+extension ToolbarContent {
+    @ToolbarContentBuilder
+    func tripToolbarBackground() -> some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+    }
+}
+
 struct TripButtonStyle: ButtonStyle {
     var primary = false
     @Environment(\.isEnabled) private var enabled

@@ -125,7 +125,7 @@ struct TripUnitsView: View {
                 if saved.canUndo {
                     HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.buttonStyle(TripButtonStyle()) }.padding().background(Color(.secondarySystemBackground))
                 }
-            }.navigationTitle("Saved units").toolbar { TripNavigationButton(title: "Done") { showSaved = false } } } }
+            }.navigationTitle("Saved units").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showSaved = false }  }.tripToolbarBackground() } } }
         .onChange(of: photo) { _, item in
             Task {
                 do {
@@ -182,7 +182,7 @@ struct UnitReadingView: View {
         Text("Point at a value with a unit. Tap a recognized measurement to convert.").font(.caption).foregroundStyle(.secondary)
         if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
         List(UnitConversion.readings(text)) { reading in Button(reading.text) { select(reading) } }
-    }.padding(12).navigationTitle("Live unit scan").toolbar { TripNavigationButton(title: "Done") { dismiss() } } } }
+    }.padding(12).navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } } }
 }
 struct UnitPhotoReview: View {
     let readings: [UnitConversion.Reading]
@@ -194,5 +194,5 @@ struct UnitPhotoReview: View {
             if readings.isEmpty { Text("No unambiguous unit found. Return to the converter and enter the value with your chosen units.") }
         }
         Section("Recognized text — review for accuracy") { Text(text.isEmpty ? "No text found" : text).textSelection(.enabled) }
-    }.navigationTitle("Photo measurements").toolbar { TripNavigationButton(title: "Done") { dismiss() } } } }
+    }.navigationTitle("Photo measurements").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } } }
 }

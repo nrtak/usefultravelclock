@@ -65,7 +65,7 @@ struct CurrencyConverterView: View {
                 if side == .source { store.source = code } else { store.target = code }; picker = nil
             }) }
             .sheet(isPresented: $showsItems) { NavigationStack { ItemConversionView(store: store) } }
-            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { TripNavigationButton(title: "Done") { showsPhotoPrices = false } } } }
+            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
             .task { await store.refresh() }
@@ -260,7 +260,7 @@ struct CurrencyPicker: View {
                 if results.isEmpty { Text(query.isEmpty ? "Search for a country, currency, or code." : "No currency found. Try a country name, currency name or three-letter code.").foregroundStyle(.secondary) }
             }.searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Country, currency or code")
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } }.tripToolbarBackground() }
         }
     }
 }

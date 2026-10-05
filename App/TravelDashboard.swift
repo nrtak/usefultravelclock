@@ -19,9 +19,9 @@ struct TravelDashboard: View {
         TabView(selection: $tab) {
             NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
             CurrencyConverterView(store: currency).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
-            NavigationStack { world.navigationTitle("World Time").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
-            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
-            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { TripNavigationButton(title: "Back") { tab = 0 } } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
+            NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
+            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
+            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
         }
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .environmentObject(weather)
@@ -135,5 +135,5 @@ struct TripCityPicker: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     let select: (City) -> Void
-    var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city").toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } } } } }
+    var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city").toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() } } }
 }

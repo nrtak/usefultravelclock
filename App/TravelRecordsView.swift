@@ -53,7 +53,7 @@ struct RecordEditor: View {
         NavigationStack {
             RecordForm(record: record, onSave: { dismiss() })
                 .navigationTitle("Travel details").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { TripNavigationButton(title: "Back") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { TripNavigationButton(title: "Back") { dismiss() } }.tripToolbarBackground() }
         }
     }
 }
@@ -96,7 +96,7 @@ struct RecordForm: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 TripActionButton("Save", primary: true) { save() }.disabled(!hasDetails)
-            }
+            }.tripToolbarBackground()
         }
         .onChange(of: record.start) { _, start in if record.end < start { record.end = start } }
         .sheet(isPresented: Binding(get: { choosingStart != nil }, set: { if !$0 { choosingStart = nil } })) {

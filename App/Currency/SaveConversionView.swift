@@ -50,8 +50,8 @@ struct SaveConversionView: View {
             }
             .navigationTitle("Save conversion").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() }.disabled(loadingPhoto || saving || saved.loadError != nil) }
+                ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
+                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() }.disabled(loadingPhoto || saving || saved.loadError != nil) }.tripToolbarBackground()
             }
             .task(id: selectedPhoto) {
                 guard let selectedPhoto else { return }
@@ -129,7 +129,7 @@ struct SavedConversionsView: View {
                     }
                 }
             }.navigationTitle("Saved conversions")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } }.tripToolbarBackground() }
         }
     }
 }
