@@ -119,7 +119,7 @@ struct TripUnitsView: View {
                         if let data = entry.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFit().frame(maxHeight: 260) }
                         Spacer()
                     }.padding() }.navigationTitle("Saved conversion")
-                } label: { HStack { if let data = entry.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFill().frame(width: 56, height: 56).clipShape(RoundedRectangle(cornerRadius: 8)) }; VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } } }
+                } label: { HStack { if let data = entry.image { TripPhotoThumbnail(id: "unit-" + entry.id.uuidString, data: data) }; VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } } }
             }.onDelete { saved.remove(at: $0) }
         }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }
             .safeAreaInset(edge: .bottom) {
@@ -189,7 +189,7 @@ struct UnitReadingView: View {
     }
     var body: some View { NavigationStack { GeometryReader { geometry in
         ScrollView { VStack(spacing: 10) {
-        LiveTextCamera(onText: { text in
+        LiveTextCamera(recognitionEnabled: !paused && readings.isEmpty && !capturing, onText: { text in
             guard readings.isEmpty, !capturing, !paused else { return }
             let found = UnitConversion.readings(text)
             guard !found.isEmpty else { return }

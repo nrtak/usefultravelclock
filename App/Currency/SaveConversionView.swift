@@ -125,8 +125,8 @@ struct SavedConversionsView: View {
                             SavedConversionDetail(item: item, photoURL: saved.photoURL(for: item))
                         } label: {
                             HStack(spacing: 12) {
-                                if let url = saved.photoURL(for: item), let image = UIImage(contentsOfFile: url.path) {
-                                    Image(uiImage: image).resizable().scaledToFill().frame(width: 60, height: 60).clipShape(RoundedRectangle(cornerRadius: 10)).accessibilityHidden(true)
+                                if let url = saved.photoURL(for: item) {
+                                    TripPhotoThumbnail(id: "price-" + item.id.uuidString, url: url, size: 60)
                                 }
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(item.summary).font(.subheadline.weight(.semibold))
