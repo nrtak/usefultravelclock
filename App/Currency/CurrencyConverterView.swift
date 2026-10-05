@@ -14,6 +14,7 @@ struct CurrencyConverterView: View {
     @State private var showsSaved = false
     @State private var showsItems = false
     @State private var showsPhotoPrices = false
+    @State private var showsUnits = false
     @AppStorage("trip-currency-color") private var boxColor = "F3F3F3"
     @FocusState private var editingSide: AmountSide?
     private var editing: Bool { editingSide != nil }
@@ -38,8 +39,16 @@ struct CurrencyConverterView: View {
                             HStack(spacing: 10) {
                                 featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }.frame(height: min((geometry.size.width - 42) / 2, max(100, min(150, geometry.size.height - 440))))
+                            }.frame(height: min((geometry.size.width - 42) / 2, max(90, min(140, geometry.size.height - 494))))
                             saveButtons
+                            Button { showsUnits = true } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "ruler").foregroundStyle(.teal)
+                                    Text("Unit converter").font(.subheadline.weight(.medium)).foregroundStyle(Color.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.secondary)
+                                }.frame(minHeight: 44).contentShape(Rectangle())
+                            }.buttonStyle(.plain).accessibilityHint("Convert distance, temperature, volume and weight")
                             VStack(spacing: 0) {
                                 Text("Reference rates by Frankfurter · Bank and card rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -79,6 +88,15 @@ struct CurrencyConverterView: View {
             .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
+            .sheet(isPresented: $showsUnits) {
+                NavigationStack {
+                    TripUnitsView().toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            TripNavigationButton(title: "Back") { showsUnits = false }
+                        }.tripToolbarBackground()
+                    }
+                }
+            }
             .task { await store.refresh() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.refresh() } } }
         }
