@@ -279,7 +279,7 @@ struct TripTranslateView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(role).font(.caption).foregroundStyle(.secondary)
                 HStack(spacing: 6) {
-                    Text(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)
+                    Text(TranslationLanguageLabel.name(selection.wrappedValue))
                         .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.65)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "magnifyingglass").font(.body)
@@ -287,7 +287,7 @@ struct TripTranslateView: View {
             }.padding(10).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                 .background(Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain)
-        .accessibilityLabel("\(role) language: \(Locale.current.localizedString(forIdentifier: selection.wrappedValue) ?? selection.wrappedValue)")
+        .accessibilityLabel("\(role) language: \(TranslationLanguageLabel.name(selection.wrappedValue))")
         .accessibilityHint("Search supported languages")
     }
 
