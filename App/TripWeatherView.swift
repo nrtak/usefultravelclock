@@ -52,7 +52,7 @@ struct TripWeatherCard: View {
                 if let city {
                     Button { Task { await weather.load(city: city, force: true) } } label: {
                         Image(systemName: "arrow.clockwise").font(.caption).frame(width: 44, height: 44).contentShape(Rectangle())
-                    }.accessibilityLabel("Refresh \(role) weather")
+                    }.disabled(weather.loading.contains(city.id)).accessibilityLabel("Refresh \(role) weather")
                 }
             }
             if let city {
@@ -65,7 +65,7 @@ struct TripWeatherCard: View {
                     else if weather.errors[place.id] != nil { Text("Refresh failed · using saved weather").font(.caption2).foregroundStyle(.secondary) }
                     else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved weather · refresh needed").font(.caption2).foregroundStyle(.secondary) }
                 } else if weather.loading.contains(city.id) { ProgressView() }
-                else { Text("Weather unavailable").font(.caption) }
+                else { Text(connection.isOffline ? "Offline · no saved weather" : "Weather unavailable · tap refresh to retry").font(.caption).foregroundStyle(.secondary) }
             } else { Text("Select your home city above.").font(.caption) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

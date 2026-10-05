@@ -81,7 +81,7 @@ struct CurrencyConverterView: View {
                     }.tripToolbarBackground()
                 }
                 if editing {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItem(placement: .topBarLeading) {
                         TripNavigationButton(title: "Done") { editingSide = nil }
                     }.tripToolbarBackground()
                 }
@@ -97,7 +97,7 @@ struct CurrencyConverterView: View {
             .sheet(isPresented: $showsUnits) {
                 NavigationStack {
                     TripUnitsView().toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             TripNavigationButton(title: "Back") { showsUnits = false }
                         }.tripToolbarBackground()
                     }

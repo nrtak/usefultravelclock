@@ -58,6 +58,7 @@ struct TripUnitsView: View {
     @State private var showPicker = false
     @State private var showSaved = false
     @State private var showScanner = false
+    @State private var selectedInput = "Text"
     @State private var note = ""
     @State private var image: Data?
     @State private var photo: PhotosPickerItem?
@@ -81,9 +82,9 @@ struct TripUnitsView: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { focusSource = inputSource } label: { Label("Text", systemImage: "keyboard").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
-                    Button { focusSource = nil; showScanner = true } label: { Label("Live camera", systemImage: "camera.viewfinder").font(.caption).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.borderedProminent)
-                    PhotosPicker(selection: $photo, matching: .images) { Label("Photo", systemImage: "photo").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
+                    Button { selectedInput = "Text"; focusSource = inputSource } label: { Label(selectedInput == "Text" ? "✓ Text" : "Text", systemImage: "keyboard").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
+                    Button { selectedInput = "Camera"; focusSource = nil; showScanner = true } label: { Label(selectedInput == "Camera" ? "✓ Camera" : "Camera", systemImage: "camera.viewfinder").font(.caption).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.borderedProminent)
+                    PhotosPicker(selection: $photo, matching: .images) { Label(selectedInput == "Photo" ? "✓ Photo" : "Photo", systemImage: "photo").font(.caption).frame(maxWidth: .infinity, minHeight: 32) }.buttonStyle(.bordered)
                 }
                 VStack(spacing: 6) {
                     amountBox(true)
@@ -111,14 +112,14 @@ struct TripUnitsView: View {
         .sheet(isPresented: $showSaved) { NavigationStack { List {
             ForEach(saved.entries) { entry in
                 NavigationLink {
-                    VStack(alignment: .leading, spacing: 12) {
+                    ScrollView { VStack(alignment: .leading, spacing: 12) {
                         Text(summary(entry)).font(.title2)
                         Text(entry.date.formatted()).font(.caption).foregroundStyle(.secondary)
                         Text(entry.note).textSelection(.enabled)
                         if let data = entry.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFit().frame(maxHeight: 260) }
                         Spacer()
-                    }.padding().navigationTitle("Saved conversion")
-                } label: { VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } }
+                    }.padding() }.navigationTitle("Saved conversion")
+                } label: { HStack { if let data = entry.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFill().frame(width: 56, height: 56).clipShape(RoundedRectangle(cornerRadius: 8)) }; VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } } }
             }.onDelete { saved.remove(at: $0) }
         }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }
             .safeAreaInset(edge: .bottom) {
@@ -130,7 +131,7 @@ struct TripUnitsView: View {
             Task {
                 do {
                     guard let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) else { return }
-                    image = cleaned
+                    selectedInput = "Photo"; image = cleaned
                     let text = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n")
                     let readings = UnitConversion.readings(text)
                     pendingReadings = readings; recognizedText = text; showPhotoReview = true
@@ -178,14 +179,18 @@ struct UnitReadingView: View {
     @State private var referencePhoto: Data?
     @State private var captureID: UUID?
     @State private var capturing = false
+    @State private var paused = false
+    @State private var scanID = UUID()
+    @State private var noReadingFound = false
     @State private var error = ""
     @Environment(\.dismiss) private var dismiss
     private func scanAgain() {
-        readings = []; referencePhoto = nil; error = ""; captureID = nil
+        readings = []; referencePhoto = nil; error = ""; captureID = nil; paused = false; scanID = UUID()
     }
-    var body: some View { NavigationStack { VStack(spacing: 10) {
+    var body: some View { NavigationStack { GeometryReader { geometry in
+        ScrollView { VStack(spacing: 10) {
         LiveTextCamera(onText: { text in
-            guard readings.isEmpty, !capturing else { return }
+            guard readings.isEmpty, !capturing, !paused else { return }
             let found = UnitConversion.readings(text)
             guard !found.isEmpty else { return }
             readings = found; capturing = true; captureID = UUID()
@@ -196,26 +201,37 @@ struct UnitReadingView: View {
             guard let data = ConversionPhoto.jpeg(from: photo) else {
                 error = "Couldn’t keep this photo. Tap Scan again to retry."; return
             }
-            referencePhoto = data; error = ""
-        }).frame(height: 340).clipShape(RoundedRectangle(cornerRadius: 14))
+            referencePhoto = data; error = ""; paused = true
+            if readings.isEmpty { Task { do { readings = UnitConversion.readings(try await ImageText.read(data).map(\.text).joined(separator: "\n")); if readings.isEmpty { error = "No measurement found. Try a value with a unit, such as 500 ml." } } catch { error = "Couldn’t read photo. Tap Scan again to retry." } } }
+        }).id(scanID).frame(height: max(200, min(340, geometry.size.height * 0.5))).clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(alignment: .bottom) {
+                Button { capturing = true; captureID = UUID() } label: {
+                    Image(systemName: "camera.fill").foregroundStyle(.black).frame(width: 56, height: 56).background(.white, in: Circle())
+                }.buttonStyle(.plain).padding(8).disabled(capturing).accessibilityLabel("Capture measurement photo")
+            }
         HStack {
-            Text(readings.isEmpty ? "Point at a value with a unit." : referencePhoto == nil ? "Readings held" : "Readings held • Photo included")
+            Text(readings.isEmpty ? (paused ? "Paused" : noReadingFound ? "No measurement found · try 500 ml" : "Scanning for measurements…") : referencePhoto == nil ? "Readings held" : "Readings held • Photo included")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
+            Button(paused ? "Resume" : "Pause", systemImage: paused ? "play.fill" : "pause.fill") {
+                if paused { scanAgain() } else { paused = true }
+            }.font(.caption).frame(minHeight: 44).disabled(capturing)
             Button("Scan again", systemImage: "arrow.clockwise") { scanAgain() }
-                .font(.caption).disabled(capturing || readings.isEmpty)
+                .font(.caption).disabled(capturing)
         }
         Text("Tap a measurement to convert. Save conversion keeps its photo for later.")
             .font(.caption).foregroundStyle(.secondary)
         if capturing { ProgressView("Keeping reference photo…").font(.caption) }
         if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
-        List(readings) { reading in
+        ForEach(readings) { reading in
             Button(reading.text) {
                 guard let referencePhoto else { return }
                 select(reading, referencePhoto)
-            }.disabled(referencePhoto == nil)
+            }.buttonStyle(TripButtonStyle()).disabled(referencePhoto == nil)
         }
-    }.padding(12).navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } }
+    }.padding(12) }.scrollBounceBehavior(.basedOnSize)
+    }.task(id: scanID) { noReadingFound = false; do { try await Task.sleep(for: .seconds(6)) } catch { return }; if readings.isEmpty { noReadingFound = true } }
+    .navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } }
 }
 }
 struct UnitPhotoReview: View {

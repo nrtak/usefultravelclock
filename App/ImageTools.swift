@@ -36,6 +36,10 @@ struct PriceImageView: View {
     @State private var captureID: UUID?
     @State private var capturingPhoto = false
     @State private var scanningPaused = false
+    @StateObject private var savedPrices = SavedConversions()
+    @State private var priceDraft: SavedConversion?
+    @State private var referencePhoto: Data?
+    @State private var noPriceFound = false
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -58,7 +62,7 @@ struct PriceImageView: View {
                 priceModeButton("Live Camera", icon: "camera.viewfinder", selected: live) {
                     live = true; data = nil; prices = []; page = 0
                     pricesHeld = false; scanID = UUID(); error = ""
-                    captureID = nil; capturingPhoto = false
+                    captureID = nil; capturingPhoto = false; referencePhoto = nil; noPriceFound = false
                     scanningPaused = false
                 }
                 priceModeButton("Photo", icon: "photo", selected: !live) {
@@ -68,9 +72,11 @@ struct PriceImageView: View {
             .photosPicker(isPresented: $choosesPhoto, selection: $photo, matching: .images)
             if live {
                 LiveTextCamera(onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, captureID: captureID, onPhoto: { image in
+                    let manualCapture = capturingPhoto
                     capturingPhoto = false
                     guard let raw = ConversionPhoto.jpeg(from: image) else { error = "Couldn’t read that photo."; return }
-                    Task { await recognize(raw) }
+                    referencePhoto = raw
+                    if manualCapture { Task { await recognize(raw) } }
                 }).id(scanID).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(alignment: .bottom) {
                         Button { capturingPhoto = true; captureID = UUID() } label: {
@@ -97,7 +103,7 @@ struct PriceImageView: View {
                         if !scanningPaused { prices = []; page = 0; pricesHeld = false; captureID = nil; scanID = UUID() }
                     } label: { Label(scanningPaused ? "Resume" : "Pause", systemImage: scanningPaused ? "play.fill" : "pause.fill") }
                         .font(.caption).frame(minHeight: 44).disabled(capturingPhoto)
-                    Button { prices = []; page = 0; pricesHeld = false; scanningPaused = false; captureID = nil; capturingPhoto = false; scanID = UUID() } label: {
+                    Button { prices = []; page = 0; pricesHeld = false; scanningPaused = false; captureID = nil; capturingPhoto = false; referencePhoto = nil; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
                     }.disabled(!pricesHeld)
                 }
@@ -118,12 +124,28 @@ struct PriceImageView: View {
             }
             if !prices.isEmpty { Text("Tap a price to correct it.").font(.caption2).foregroundStyle(.secondary) }
             if prices.count > pageSize { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*pageSize >= prices.count) } }
+            if !prices.isEmpty {
+                ForEach(Array(prices.dropFirst(page * pageSize).prefix(pageSize))) { price in
+                    Button { preparePriceSave(price.value) } label: {
+                        Label("Save " + Currency.named(store.source).symbol + " " + Amount.format(price.value, currency: .named(store.source)), systemImage: "bookmark")
+                    }.buttonStyle(TripButtonStyle()).disabled(live && referencePhoto == nil)
+                }
+            }
+            if live && prices.isEmpty && noPriceFound && !scanningPaused {
+                Text("No prices found yet. Move closer to a currency symbol or choose Photo.").font(.caption).foregroundStyle(.secondary)
+            }
             TripRateStatus(store: store).font(.caption2).foregroundStyle(.secondary)
             if let checked = store.lastChecked { Text(checked).font(.caption2).foregroundStyle(.secondary) }
             Text(error).font(.caption).foregroundStyle(.red)
             Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $priceDraft) { draft in SaveConversionView(draft: draft, initialPhoto: referencePhoto ?? data, saved: savedPrices) }
+        .task(id: scanID) {
+            noPriceFound = false
+            do { try await Task.sleep(for: .seconds(6)) } catch { return }
+            if live && prices.isEmpty { noPriceFound = true }
+        }
         .onChange(of: pageSize) { _, _ in page = 0 }
         .onChange(of: includeUnmarked) { _, _ in
             prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID()
@@ -144,7 +166,8 @@ struct PriceImageView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .overlay(alignment: .topTrailing) { if selected { Image(systemName: "checkmark.circle.fill").font(.caption).padding(5).accessibilityHidden(true) } }
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
     private func captureLivePrices(_ text: String) {
         guard live && !pricesHeld && !scanningPaused && !busy else { return }
@@ -153,6 +176,7 @@ struct PriceImageView: View {
         prices = captured
         page = 0
         pricesHeld = true
+        referencePhoto = nil; captureID = UUID()
     }
     private func recognize(_ raw: Data) async {
         guard let sanitized = ConversionPhoto.jpeg(from: raw) else { error = "Couldn’t read that image."; return }
@@ -163,6 +187,15 @@ struct PriceImageView: View {
             page = 0
             if prices.isEmpty { error = "No marked prices found. Include a currency symbol, code or price label in the photo." }
         } catch { self.error = error.localizedDescription }
+    }
+    private func preparePriceSave(_ value: Decimal) {
+        guard let rate = store.source == store.target ? Decimal(1) : store.snapshot?.multiplier(from: store.source, to: store.target) else {
+            error = "Rate unavailable. Return to Conversions and refresh rates."; return
+        }
+        priceDraft = SavedConversion(id: UUID(), savedAt: Date(), source: store.source, target: store.target,
+            amount: value, multiplier: rate, convertedAmount: value * rate,
+            rateDates: store.source == store.target ? [] : store.snapshot?.dates(from: store.source, to: store.target) ?? [],
+            ratesCheckedAt: store.snapshot?.fetchedAt, note: "", photoFilename: nil)
     }
     private func convert(_ value: Decimal) -> String {
         guard let rate = store.source == store.target ? Decimal(1) : store.snapshot?.multiplier(from: store.source, to: store.target) else { return "Rate unavailable" }
@@ -183,6 +216,11 @@ struct TripTranslateView: View {
     @State private var saved = false
     @State private var liveTranslation = false
     @State private var liveText = ""
+    @State private var livePaused = false
+    @State private var liveCaptureID: UUID?
+    @State private var liveScanID = UUID()
+    @State private var keepingPhoto = false
+    @State private var noTextFound = false
     @State private var languageSide: TranslationLanguageSide?
     var body: some View {
         ScrollView {
@@ -212,7 +250,36 @@ struct TripTranslateView: View {
                             .accessibilityLabel("Choose photo to translate")
                     }
                     if liveTranslation {
-                        LiveTextCamera(onText: { if liveTranslation { liveText = $0 } }, onError: { message = $0 }).frame(height: 340).clipShape(RoundedRectangle(cornerRadius: 14))
+                        LiveTextCamera(onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, captureID: liveCaptureID, onPhoto: { photo in
+                            keepingPhoto = false
+                            guard let captured = ConversionPhoto.jpeg(from: photo) else { message = "Couldn’t keep photo. Tap Scan again to retry."; return }
+                            image = captured; livePaused = true; output = ""; message = "Reading photo…"
+                            let generation = liveScanID
+                            Task {
+                                do {
+                                    let recognized = try await ImageText.read(captured).map(\.text).joined(separator: "\n")
+                                    guard generation == liveScanID && liveTranslation else { return }
+                                    input = recognized
+                                    if input.isEmpty { message = "No text found. Move closer or try another photo."; return }
+                                    let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
+                                    if config == next { config?.invalidate() } else { config = next }
+                                } catch { message = "Couldn’t read photo. Tap Scan again to retry." }
+                            }
+                        }).id(liveScanID).frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(alignment: .bottom) {
+                                Button { keepingPhoto = true; liveCaptureID = UUID() } label: {
+                                    Image(systemName: "camera.fill").foregroundStyle(.black).frame(width: 56, height: 56).background(.white, in: Circle())
+                                }.buttonStyle(.plain).padding(8).disabled(keepingPhoto).accessibilityLabel("Capture translation photo")
+                            }
+                        HStack {
+                            Text(keepingPhoto ? "Keeping photo…" : livePaused ? "Paused · results held" : noTextFound && liveText.isEmpty ? "No text found · move closer" : "Scanning for text…").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button(livePaused ? "Resume" : "Pause", systemImage: livePaused ? "play.fill" : "pause.fill") {
+                                if livePaused { resetTranslationScan() }
+                                else { keepingPhoto = true; liveCaptureID = UUID(); livePaused = true }
+                            }.font(.caption).frame(minHeight: 44).disabled(keepingPhoto)
+                            Button("Scan again", systemImage: "arrow.clockwise") { resetTranslationScan() }.font(.caption).frame(minHeight: 44).disabled(keepingPhoto)
+                        }
                         Text("Translates as you point the camera at text.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
@@ -230,7 +297,7 @@ struct TripTranslateView: View {
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 }.tripPanel()
                 if !message.isEmpty { Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently) }
-                TripArtwork(symbol: "character.bubble")
+                if !liveTranslation { TripArtwork(symbol: "character.bubble") }
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {
@@ -239,8 +306,13 @@ struct TripTranslateView: View {
         .sheet(item: $languageSide) { side in
             TranslationLanguagePicker(selection: side == .source ? $source : $target, title: side == .source ? "From language" : "To language")
         }
+        .task(id: liveScanID) {
+            noTextFound = false
+            do { try await Task.sleep(for: .seconds(6)) } catch { return }
+            if liveTranslation && liveText.isEmpty { noTextFound = true }
+        }
         .task(id: liveText) {
-            guard liveTranslation else { return }
+            guard liveTranslation && !livePaused else { return }
             do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
             guard !Task.isCancelled else { return }
             input = liveText
@@ -249,8 +321,8 @@ struct TripTranslateView: View {
             if config == next { config?.invalidate() } else { config = next }
         }
         .onChange(of: liveTranslation) { _, active in
-            liveText = ""; message = ""
-            if active { image = nil }
+            liveText = ""; message = ""; livePaused = false
+            if active { resetTranslationScan() }
         }
         .onChange(of: source) { _, _ in config = nil; output = ""; liveText = "" }
         .onChange(of: target) { _, _ in config = nil; output = ""; liveText = "" }
@@ -259,7 +331,11 @@ struct TripTranslateView: View {
             do { let response = try await session.translate(requested); if requested == input { output = response.targetText; message = "" } } catch { message = error.localizedDescription }
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = "" } } catch { message = error.localizedDescription } } }
-        .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption) } } }.navigationTitle("Saved translations").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { saved = false }  }.tripToolbarBackground() } } }
+        .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { HStack { if let data = record.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFill().frame(width: 56, height: 56).clipShape(RoundedRectangle(cornerRadius: 8)) }; VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption).lineLimit(2) } } } }.navigationTitle("Saved translations").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { saved = false }  }.tripToolbarBackground() } } }
+    }
+    private func resetTranslationScan() {
+        livePaused = false; liveText = ""; image = nil; input = ""; output = ""; message = ""
+        liveCaptureID = nil; liveScanID = UUID(); config = nil
     }
     private func translationModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {

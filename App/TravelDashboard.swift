@@ -162,7 +162,7 @@ struct TravelDashboard: View {
             ScrollViewReader { proxy in
                 ScrollView { homeContent(compact: true) }
                     .scrollBounceBehavior(.basedOnSize)
-                    .scrollDisabled(homeEditingSide == nil && !typeSize.isAccessibilitySize)
+                    // Keep overflow reachable on small screens and with larger text.
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: homeEditingSide) { _, side in
                         if side != nil { withAnimation { proxy.scrollTo("home-currency", anchor: .top) } }
@@ -171,7 +171,7 @@ struct TravelDashboard: View {
         }.navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if homeEditingSide != nil {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         TripNavigationButton(title: "Done") { homeEditingSide = nil }
                     }.tripToolbarBackground()
                 }
@@ -266,7 +266,7 @@ struct TravelDashboard: View {
                     }
                     .accessibilityLabel("Compare city times")
                     .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now"); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.caption).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-                TripArtwork(symbol: "globe")
+                if !typeSize.isAccessibilitySize && !editingCities { TripArtwork(symbol: "globe") }
             Spacer(minLength: 0)
             }.padding(12)
             }.scrollBounceBehavior(.basedOnSize)
@@ -313,8 +313,8 @@ struct TravelDashboard: View {
                 }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
             }
             VStack(alignment: .leading) {
-                Text(city.name).font(.headline)
-                Text(city.country).font(.caption).foregroundStyle(.secondary)
+                Text(city.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                Text(city.country).font(.caption).lineLimit(1).foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {

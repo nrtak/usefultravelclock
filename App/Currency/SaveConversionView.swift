@@ -4,6 +4,7 @@ import AVFoundation
 
 struct SaveConversionView: View {
     let draft: SavedConversion
+    var initialPhoto: Data? = nil
     @ObservedObject var saved: SavedConversions
     @Environment(\.dismiss) private var dismiss
     @State private var note = ""
@@ -13,6 +14,7 @@ struct SaveConversionView: View {
     @State private var showsCamera = false
     @State private var error: String?
     @State private var saving = false
+    @State private var loadedInitialPhoto = false
 
     var body: some View {
         NavigationStack {
@@ -48,6 +50,7 @@ struct SaveConversionView: View {
                 }
                 Section { Text("Saved on this iPhone. Available offline after saving.").font(.caption).foregroundStyle(.secondary) }
             }
+            .onAppear { if !loadedInitialPhoto { photo = initialPhoto; loadedInitialPhoto = true } }
             .navigationTitle("Save conversion").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
