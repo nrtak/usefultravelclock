@@ -166,7 +166,9 @@ struct TravelDashboard: View {
             } else {
                 if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
                 Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
-                Text(role == "Destination" ? difference(zone: zone, date: date) : "").font(.caption2).lineLimit(2).frame(height: 16, alignment: .topLeading)
+                Text(role == "Destination" ? difference(zone: zone, date: date) : "")
+                    .font(.caption2).multilineTextAlignment(.center).lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 16, alignment: .top)
             }
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
     }
