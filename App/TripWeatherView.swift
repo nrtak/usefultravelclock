@@ -39,6 +39,7 @@ struct TripWeatherCard: View {
                 Spacer(minLength: 4)
             }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
+            Text("Forecasts are predictions. Retrieved and observed times use your device time zone; forecast rows use the city time zone.").font(.caption2).foregroundStyle(.secondary)
             HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
@@ -52,7 +53,7 @@ struct TripWeatherCard: View {
                 if let city {
                     Button { Task { await weather.load(city: city, force: true) } } label: {
                         Image(systemName: "arrow.clockwise").font(.caption).frame(width: 44, height: 44).contentShape(Rectangle())
-                    }.accessibilityLabel("Refresh \(role) weather")
+                    }.disabled(weather.loading.contains(city.id)).accessibilityLabel("Refresh \(role) weather")
                 }
             }
             if let city {
@@ -60,12 +61,13 @@ struct TripWeatherCard: View {
                 if let place, let result = weather.cache[place.id] {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
-                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2)
+                    Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
+                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Retrieved \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption2)
                     if connection.isOffline { Label("Offline · using saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
                     else if weather.errors[place.id] != nil { Text("Refresh failed · using saved weather").font(.caption2).foregroundStyle(.secondary) }
                     else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved weather · refresh needed").font(.caption2).foregroundStyle(.secondary) }
                 } else if weather.loading.contains(city.id) { ProgressView() }
-                else { Text("Weather unavailable").font(.caption) }
+                else { Text(connection.isOffline ? "Offline · no saved weather" : "Weather unavailable · tap refresh to retry").font(.caption).foregroundStyle(.secondary) }
             } else { Text("Select your home city above.").font(.caption) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -111,7 +113,7 @@ struct TripWeatherSearchView: View {
         ScrollView {
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
-                    TextField("Search any city", text: $query).textFieldStyle(.roundedBorder).onSubmit { search() }
+                    TextField(connection.isOffline ? "Search saved locations" : "Search any city", text: $query).textFieldStyle(.roundedBorder).onSubmit { search() }
                     Button { search() } label: { Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }
                         .buttonStyle(.bordered).disabled(query.trimmingCharacters(in: .whitespaces).isEmpty || busy).accessibilityLabel("Search weather locations")
                 }
@@ -163,12 +165,14 @@ struct TripWeatherSearchView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(result.temperatures(result.celsius)).font(.title2.weight(.semibold))
                         Text(result.condition).font(.caption)
+                    Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
+                        Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened))
+                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Retrieved " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         if connection.isOffline { Label("Offline · using saved forecast", systemImage: "wifi.slash") }
                         else if weather.errors[place.id] != nil { Text("Refresh failed · using saved forecast") }
                         else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved forecast · refresh needed") }
@@ -180,6 +184,7 @@ struct TripWeatherSearchView: View {
                 if period == .hourly { hourly(result) } else { weekly(result) }
             } else if weather.loading.contains(place.id) { ProgressView("Loading forecast…") }
             else { Text(connection.isOffline ? "Offline · no saved forecast for this city" : "Forecast unavailable. Try refresh.").font(.subheadline) }
+            Text("Forecasts are predictions. Retrieved and observed times use your device time zone; forecast rows use the city time zone.").font(.caption2).foregroundStyle(.secondary)
             HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
     }
@@ -252,7 +257,7 @@ struct TripWeatherSearchView: View {
         guard !requested.isEmpty else { return }
         selected = nil; busy = true; message = ""
         Task {
-            do { matches = try await weather.search(requested); if matches.isEmpty { message = "No locations found." } }
+            do { matches = try await weather.search(requested); if matches.isEmpty { message = connection.isOffline ? "Offline · no saved locations match. Search new cities while connected." : "No locations found." } }
             catch { message = "Location search needs an internet connection." }
             busy = false
         }

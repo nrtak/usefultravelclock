@@ -4,21 +4,31 @@ struct CurrencyInformationView: View {
     var body: some View {
         List {
             Section("Exchange rates") {
-                Text("Frankfurter provides daily reference rates. These are estimates; bank and card rates may differ. Rate dates and the last refresh appear beside the converter. Refresh requires internet; previously downloaded rates remain available offline.")
-                Link("Frankfurter and data sources", destination: URL(string: "https://frankfurter.dev/")!)
+                Text("Frankfurter supplies daily reference rates. Conversions are estimates; bank and card rates, fees and final charges may differ.")
+                Text("Rate dates and the last check appear with the converter. Refresh requires internet. Downloaded rates are kept for offline use; a dated bundled reference snapshot is available on first launch. The label identifies bundled rates. Values are estimates, not live market quotes.")
+                Link("Frankfurter & data sources", destination: URL(string: "https://frankfurter.dev/")!)
                 Link("Provider terms", destination: URL(string: "https://frankfurter.dev/license/")!)
             }
-            Section("Photos & live camera") {
-                Text("Text recognition runs on your device. Marked prices are read by default. Include unmarked numbers accepts standalone amounts using your selected From currency; review them for quantities or product IDs. Recognized prices stay visible until Scan again. Camera access is used for live scanning or taking a photo.")
+            Section("Camera & selected photos") {
+                Text("Text recognition runs on your device. Camera access is used for live scanning and capture. Choosing Photo provides the selected image for recognition; saving keeps a reference copy with your entry.")
+                Text("Marked prices are read by default. Include unmarked numbers uses the From currency for standalone amounts. Review prices, quantities and units before saving.")
             }
-            Section("Privacy") {
-                Text("Entered amounts, conversion notes and attached photos are not sent to the rate provider. Saved conversions stay on this device and may be included in device backups. Rate requests go over HTTPS; the provider and network infrastructure process those requests. The app adds no analytics.")
+            Section("Saved information") {
+                Text("Amounts, notes and attached photos are stored on this device and are not sent to the exchange-rate provider. They may be included in device backups. The app does not provide its own cloud sync.")
+                Text("Travel records are encrypted on the device. Saved translations and unit conversions are stored locally with iOS file protection; they do not use the travel-record encryption format.")
+                Text("Undo for saved-conversion deletion is available during the current app session. Reference photos are kept so they can be restored.")
             }
-            Section("Travel data & other services") {
-                Text("Travel records remain encrypted on this device. Optional app lock uses Face ID, Touch ID or device passcode; My Trip has no separate lock. Existing protected records may require one authorization to migrate. Translation notes, images and unit conversions stay locally. Weather requests go to Apple WeatherKit; city search uses Apple Maps. Apple’s translation framework may collect API usage metrics; translated content is not included.")
+            Section("Network services") {
+                Text("Exchange-rate requests use HTTPS. The rate provider and network infrastructure process those requests. Entered amounts, notes and photos are not included.")
+                Text("Weather uses Apple WeatherKit, and city search uses Apple Maps. Translation uses Apple's Translation framework; language resources may need downloading.")
+                Text("The app adds no analytics or advertising SDK.")
             }
-            Section("Currency search") {
-                Text("Search by currency name, country or code. Conversion availability depends on the provider; unavailable conversions are clearly indicated.")
+            Section("App lock") {
+                Text("Optional Lock app uses Face ID, Touch ID or the device passcode already configured on your iPhone. It locks when you leave the app. My Trip has no separate lock; widgets are not protected.")
+                Text("An older protected travel record may require device authentication once when first opened after an update.")
+            }
+            Section("Offline limits") {
+                Text("Saved entries and downloaded rates remain accessible offline. Fresh rates, fresh weather, weather location search and language downloads need a connection. Clocks, built-in city search, units, text recognition, saved entries and the Help video work offline. Translate needs the selected languages installed first. iCloud-only photos need downloading before use. Check the saved-data label and update time before relying on older information.")
             }
         }.navigationTitle("Rates & privacy").navigationBarTitleDisplayMode(.inline)
     }

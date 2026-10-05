@@ -47,6 +47,7 @@ struct CurrencyConverterView: View {
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
                             }.frame(height: min((geometry.size.width - 42) / 2, max(80, min(120, geometry.size.height - 520))))
                             saveButtons
+                            SavedConversionNotice(saved: saved) { showsSaved = true }
                             Button { showsUnits = true } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "ruler").foregroundStyle(.teal)
@@ -65,7 +66,6 @@ struct CurrencyConverterView: View {
                     .padding(.horizontal, 16).padding(.vertical, 8)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .scrollDisabled(!editing && !typeSize.isAccessibilitySize)
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: editing) { _, active in
                     if active { proxy.scrollTo("amounts", anchor: .top) }
@@ -76,12 +76,12 @@ struct CurrencyConverterView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onBack {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         TripNavigationButton(title: "Back") { editingSide = nil; onBack() }
                     }.tripToolbarBackground()
                 }
                 if editing {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItem(placement: .topBarLeading) {
                         TripNavigationButton(title: "Done") { editingSide = nil }
                     }.tripToolbarBackground()
                 }
@@ -91,13 +91,13 @@ struct CurrencyConverterView: View {
                 if side == .source { store.source = code } else { store.target = code }; picker = nil
             }) }
             .sheet(isPresented: $showsItems) { NavigationStack { ItemConversionView(store: store) } }
-            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
+            .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store, savedPrices: saved).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
             .sheet(isPresented: $showsUnits) {
                 NavigationStack {
                     TripUnitsView().toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             TripNavigationButton(title: "Back") { showsUnits = false }
                         }.tripToolbarBackground()
                     }

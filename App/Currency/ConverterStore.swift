@@ -11,6 +11,7 @@ final class ConverterStore: ObservableObject {
     @Published var amount: String { didSet { preferences.set(amount, forKey: "amount") } }
     @Published private(set) var inputSide: AmountSide { didSet { preferences.set(inputSide.rawValue, forKey: "inputSide") } }
     @Published private(set) var snapshot: RateSnapshot?
+    @Published private(set) var usingBundledRates = false
     @Published private(set) var isLoading = false
     @Published private(set) var updateFailed = false
     @Published private(set) var cacheWriteFailed = false
@@ -19,10 +20,12 @@ final class ConverterStore: ObservableObject {
     private let preferences: UserDefaults
     private let cacheURL: URL
     private let service: any RateService
+    private let isOffline: @MainActor () -> Bool
 
-    init(preferences: UserDefaults = .standard, cacheURL: URL? = nil, service: any RateService = FrankfurterService()) {
+    init(preferences: UserDefaults = .standard, cacheURL: URL? = nil, service: any RateService = FrankfurterService(), isOffline: @escaping @MainActor () -> Bool = { TripConnectionStore.shared.isOffline }) {
         self.preferences = preferences
         self.service = service
+        self.isOffline = isOffline
         self.cacheURL = cacheURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SimpleCurrency/rates-v1.json")
         let codes = Set(Currency.all.map(\.code))
@@ -37,6 +40,11 @@ final class ConverterStore: ObservableObject {
             .filter { codes.contains($0) && seen.insert($0).inserted }
         if let data = try? Data(contentsOf: self.cacheURL), let cache = try? JSONDecoder().decode(RateSnapshot.self, from: data) {
             snapshot = cache
+        } else if cacheURL == nil, let url = Bundle.main.url(forResource: "BundledRates", withExtension: "json"),
+                  let data = try? Data(contentsOf: url),
+                  let rows = try? JSONDecoder().decode([Rate].self, from: data), !rows.isEmpty {
+            snapshot = RateSnapshot(fetchedAt: Date(timeIntervalSince1970: 1791238680), rows: rows)
+            usingBundledRates = true
         }
     }
 
@@ -80,7 +88,7 @@ final class ConverterStore: ObservableObject {
         let stamp = dates.joined(separator: " / ")
         let oldest = dates.first.flatMap(RateSnapshot.validDate)
         let stale = oldest.map { Date().timeIntervalSince($0) > 4 * 86400 } ?? true
-        return "Rates as of \(stamp)" + (stale ? " · Older rates" : "")
+        return (usingBundledRates ? "Bundled reference rates as of " : "Reference rates as of ") + stamp + (stale ? " · Older rates" : "")
     }
 
     var lastChecked: String? {
@@ -90,7 +98,7 @@ final class ConverterStore: ObservableObject {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         let zone = TimeZone.current.abbreviation() ?? TimeZone.current.identifier
-        return "Last checked \(formatter.string(from: snapshot.fetchedAt)) \(zone)"
+        return (usingBundledRates ? "Included rate snapshot retrieved " : "Rates last retrieved ") + formatter.string(from: snapshot.fetchedAt) + " " + zone
     }
 
     func savedDraft() -> SavedConversion? {
@@ -116,6 +124,7 @@ final class ConverterStore: ObservableObject {
     func refresh(force: Bool = false) async {
         guard !isLoading else { return }
         if !force, let snapshot, (0..<(12 * 3600)).contains(Date().timeIntervalSince(snapshot.fetchedAt)), !updateFailed { return }
+        guard !isOffline() else { updateFailed = true; return }
         isLoading = true
         if force { lastManualRefresh = nil }
         defer { isLoading = false }
@@ -128,6 +137,7 @@ final class ConverterStore: ObservableObject {
             }
             let next = RateSnapshot(fetchedAt: fresh.fetchedAt, rows: combined.values.sorted { $0.quote < $1.quote })
             snapshot = next
+            usingBundledRates = false
             updateFailed = false
             if force { lastManualRefresh = Date() }
             do {

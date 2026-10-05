@@ -48,6 +48,7 @@ struct CachedWeather: Codable {
     }
     func load(city: City, force: Bool = false) async {
         guard !loading.contains(city.id) else { return }
+        if TripConnectionStore.shared.isOffline && locations[city.id] == nil { errors[city.id] = "Offline · no saved weather location. Choose and refresh this city before traveling."; return }
         loading.insert(city.id); defer { loading.remove(city.id) }
         do {
             let location: WeatherLocation
@@ -63,19 +64,26 @@ struct CachedWeather: Codable {
         } catch { errors[city.id] = "Couldn’t find this city. Try location search." }
     }
     func search(_ query: String) async throws -> [WeatherLocation] {
+        if TripConnectionStore.shared.isOffline {
+            return Self.savedLocations(matching: query, in: Array(locations.values))
+        }
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = .address
         let response = try await MKLocalSearch(request: request).start()
-        return response.mapItems.prefix(8).map { WeatherLocation(name: $0.name ?? query, latitude: $0.placemark.coordinate.latitude, longitude: $0.placemark.coordinate.longitude, timeZoneIdentifier: $0.placemark.timeZone?.identifier) }
+        let results = response.mapItems.prefix(8).map { WeatherLocation(name: $0.name ?? query, latitude: $0.placemark.coordinate.latitude, longitude: $0.placemark.coordinate.longitude, timeZoneIdentifier: $0.placemark.timeZone?.identifier) }
+        for place in results { locations[place.id] = place }
+        try persistLocations()
+        return results
     }
     func refresh(_ place: WeatherLocation, force: Bool = false) async {
         guard !loading.contains(place.id) else { return }
         loading.insert(place.id); defer { loading.remove(place.id) }
         if force { lastManualRefresh[place.id] = nil }
-        if attribution == nil { attribution = try? await service.attribution }
         if !force, let saved = cache[place.id], saved.hourly != nil, saved.daily != nil, (0..<1800).contains(Date().timeIntervalSince(saved.fetchedAt)) { return }
+        guard !TripConnectionStore.shared.isOffline else { errors[place.id] = "Offline · fresh weather needs internet."; return }
         do {
+            if attribution == nil { attribution = try? await service.attribution }
             let weather = try await service.weather(for: place.location)
             let current = weather.currentWeather
             let day = weather.dailyForecast.forecast.first
@@ -91,6 +99,13 @@ struct CachedWeather: Codable {
             try JSONEncoder().encode(cache).write(to: directory.appendingPathComponent("forecasts.json"), options: [.atomic, .completeFileProtection])
             if force { lastManualRefresh[place.id] = Date() }
         } catch { errors[place.id] = "Weather update failed. Check internet and WeatherKit access." }
+    }
+    static func savedLocations(matching query: String, in values: [WeatherLocation]) -> [WeatherLocation] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        var seen = Set<String>()
+        return values.filter {
+            (query.isEmpty || $0.name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil) && seen.insert($0.id).inserted
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     private func persistLocations() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
