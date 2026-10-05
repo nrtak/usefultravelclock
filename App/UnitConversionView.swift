@@ -197,7 +197,7 @@ struct UnitReadingView: View {
                 error = "Couldn’t keep this photo. Tap Scan again to retry."; return
             }
             referencePhoto = data; error = ""
-        }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+        }).frame(height: 340).clipShape(RoundedRectangle(cornerRadius: 14))
         HStack {
             Text(readings.isEmpty ? "Point at a value with a unit." : referencePhoto == nil ? "Readings held" : "Readings held • Photo included")
                 .font(.caption).foregroundStyle(.secondary)
