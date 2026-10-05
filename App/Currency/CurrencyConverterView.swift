@@ -170,7 +170,7 @@ struct CurrencyConverterView: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.detail)
-                if let checked = store.lastChecked { Text(checked) }
+                if let checked = store.lastChecked { TripRefreshStamp(success: store.lastManualRefresh, fallback: checked) }
                 TripRateStatus(store: store)
                 if store.cacheWriteFailed { Text("Rates loaded, but couldn’t save for offline use.") }
             }.font(.caption2).foregroundStyle(.secondary)

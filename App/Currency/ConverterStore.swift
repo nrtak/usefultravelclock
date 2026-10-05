@@ -14,6 +14,8 @@ final class ConverterStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var updateFailed = false
     @Published private(set) var cacheWriteFailed = false
+    @Published var multiplePriceItems = [ItemPrice()]
+    @Published private(set) var lastManualRefresh: Date?
     private let preferences: UserDefaults
     private let cacheURL: URL
     private let service: any RateService
@@ -115,6 +117,7 @@ final class ConverterStore: ObservableObject {
         guard !isLoading else { return }
         if !force, let snapshot, (0..<(12 * 3600)).contains(Date().timeIntervalSince(snapshot.fetchedAt)), !updateFailed { return }
         isLoading = true
+        if force { lastManualRefresh = nil }
         defer { isLoading = false }
         do {
             let fresh = try await service.fetch()
@@ -126,6 +129,7 @@ final class ConverterStore: ObservableObject {
             let next = RateSnapshot(fetchedAt: fresh.fetchedAt, rows: combined.values.sorted { $0.quote < $1.quote })
             snapshot = next
             updateFailed = false
+            if force { lastManualRefresh = Date() }
             do {
                 try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try JSONEncoder().encode(next).write(to: cacheURL, options: .atomic)

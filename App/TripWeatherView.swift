@@ -60,7 +60,7 @@ struct TripWeatherCard: View {
                 if let place, let result = weather.cache[place.id] {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
-                    Text("Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2).foregroundStyle(.secondary)
+                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2)
                     if connection.isOffline { Label("Offline · using saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
                     else if weather.errors[place.id] != nil { Text("Refresh failed · using saved weather").font(.caption2).foregroundStyle(.secondary) }
                     else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved weather · refresh needed").font(.caption2).foregroundStyle(.secondary) }
@@ -168,7 +168,7 @@ struct TripWeatherSearchView: View {
                 }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Updated " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
+                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         if connection.isOffline { Label("Offline · using saved forecast", systemImage: "wifi.slash") }
                         else if weather.errors[place.id] != nil { Text("Refresh failed · using saved forecast") }
                         else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved forecast · refresh needed") }

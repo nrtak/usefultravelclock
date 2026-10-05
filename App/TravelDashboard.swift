@@ -92,7 +92,7 @@ struct TravelDashboard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(currency.detail)
                     TripRateStatus(store: currency)
-                    if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
+                    if let snapshot = currency.snapshot { TripRefreshStamp(success: currency.lastManualRefresh, fallback: "Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
                 }.font(.caption2).foregroundStyle(.secondary)
             }.tripPanel().id("home-currency")
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)

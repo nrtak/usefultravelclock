@@ -9,7 +9,11 @@ struct ItemPrice: Identifiable {
 struct ItemConversionView: View {
     @ObservedObject var store: ConverterStore
     @Environment(\.dismiss) private var dismiss
-    @State private var items = [ItemPrice()]
+    private var items: [ItemPrice] {
+        get { store.multiplePriceItems }
+        nonmutating set { store.multiplePriceItems = newValue }
+    }
+    @State private var confirmClear = false
     @State private var page = 0
     @State private var selectedID: UUID?
     @State private var picker: CurrencySide?
@@ -37,7 +41,19 @@ struct ItemConversionView: View {
         .padding(.horizontal, 16)
         .navigationTitle("Add multiple prices")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Clear all") { confirmClear = true }.buttonStyle(TripButtonStyle())
+                    .disabled(items.count == 1 && items[0].text.isEmpty && !items[0].subtract)
+            }.tripToolbarBackground()
+        }
+        .confirmationDialog("Clear all entered prices?", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Clear all", role: .destructive) {
+                items = [ItemPrice()]; page = 0; selectedID = items.first?.id
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .sheet(item: $picker) { side in
             CurrencyPicker(store: store, title: "Search currency") { code in
                 if side == .source { store.source = code } else { store.target = code }
