@@ -6,6 +6,7 @@ struct CurrencyConverterView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .title2) private var featureIconSize = 36.0
     @ObservedObject var store: ConverterStore
+    var onBack: (() -> Void)? = nil
     @Environment(\.scenePhase) private var scenePhase
     @State private var picker: PickerSide?
     @StateObject private var saved = SavedConversions()
@@ -59,7 +60,17 @@ struct CurrencyConverterView: View {
             .navigationTitle("Currency")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Convert") { editingSide = nil } }
+                if let onBack {
+                    ToolbarItem(placement: .topBarLeading) {
+                        TripNavigationButton(title: "Back") { editingSide = nil; onBack() }
+                    }.tripToolbarBackground()
+                }
+                if editing {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        TripNavigationButton(title: "Done") { editingSide = nil }
+                    }.tripToolbarBackground()
+                }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { editingSide = nil } }
             }
             .sheet(item: $picker) { side in CurrencyPicker(store: store, title: side == .target ? "Search currency" : "Convert from", select: { code in
                 if side == .source { store.source = code } else { store.target = code }; picker = nil
