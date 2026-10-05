@@ -26,13 +26,15 @@ struct PriceImageView: View {
     @State private var prices: [RecognizedPrice] = []
     @State private var error = ""
     @State private var busy = false
-    @State private var camera = false
     @State private var live = true
     @State private var page = 0
     @State private var pricesHeld = false
     @State private var scanID = UUID()
     @State private var includeUnmarked = false
     @State private var editingPrice: RecognizedPrice?
+    @State private var choosesPhoto = false
+    @State private var captureID: UUID?
+    @State private var capturingPhoto = false
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -51,31 +53,41 @@ struct PriceImageView: View {
         VStack(spacing: 10) {
             CurrencyPairControl(store: store)
             Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
-            HStack(spacing: 16) {
+            HStack(spacing: 8) {
                 priceModeButton("Live Camera", icon: "camera.viewfinder", selected: live) {
-                    guard !live else { return }
                     live = true; data = nil; prices = []; page = 0
                     pricesHeld = false; scanID = UUID(); error = ""
+                    captureID = nil; capturingPhoto = false
                 }
                 priceModeButton("Photo", icon: "photo", selected: !live) {
-                    live = false; error = ""
+                    photo = nil; choosesPhoto = true
                 }
             }
-            if live { LiveTextCamera(onText: captureLivePrices, onError: { error = $0 }).id(scanID).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14)) }
-            if !live {
-                HStack(spacing: 20) {
-                    PhotosPicker(selection: $photo, matching: .images) { Label("Choose photo", systemImage: "photo.on.rectangle") }
-                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        Button { camera = true } label: { Label("Take photo", systemImage: "camera") }
+            .photosPicker(isPresented: $choosesPhoto, selection: $photo, matching: .images)
+            if live {
+                LiveTextCamera(onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, captureID: captureID, onPhoto: { image in
+                    capturingPhoto = false
+                    guard let raw = ConversionPhoto.jpeg(from: image) else { error = "Couldn’t read that photo."; return }
+                    Task { await recognize(raw) }
+                }).id(scanID).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(alignment: .bottom) {
+                        Button { capturingPhoto = true; captureID = UUID() } label: {
+                            ZStack {
+                                Circle().fill(.white).frame(width: 54, height: 54)
+                                Circle().stroke(.black.opacity(0.35), lineWidth: 2).frame(width: 44, height: 44)
+                                if capturingPhoto { ProgressView().tint(.black) }
+                                else { Image(systemName: "camera.fill").foregroundStyle(.black) }
+                            }.frame(width: 64, height: 64).contentShape(Circle())
+                        }.buttonStyle(.plain).disabled(capturingPhoto).accessibilityLabel("Take photo of prices")
+                            .padding(.bottom, 8)
                     }
-                }.buttonStyle(.bordered)
             }
             if let data, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160) }
             if live {
                 HStack {
                     Text(pricesHeld ? "Prices held" : "Point at prices").font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button { prices = []; page = 0; pricesHeld = false; scanID = UUID() } label: {
+                    Button { prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
                     }.disabled(!pricesHeld)
                 }
@@ -104,22 +116,22 @@ struct PriceImageView: View {
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
         .onChange(of: pageSize) { _, _ in page = 0 }
         .onChange(of: includeUnmarked) { _, _ in
-            prices = []; page = 0; pricesHeld = false; scanID = UUID()
+            prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID()
             if !live, let data { Task { await recognize(data) } }
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
-        .sheet(isPresented: $camera) { ConversionCamera { image in camera = false; if let image, let raw = ConversionPhoto.jpeg(from: image) { Task { await recognize(raw) } } } }
     }
     private func priceModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            VStack(spacing: 5) {
                 Image(systemName: icon).font(.title2)
-                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, minHeight: 58)
             .foregroundStyle(selected ? Color.white : Color.blue)
             .background(selected ? Color.blue : Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue, lineWidth: selected ? 0 : 1.5))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
