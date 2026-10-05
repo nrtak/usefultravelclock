@@ -15,9 +15,9 @@ struct TripWeatherCard: View {
                     }
                 }.buttonStyle(.plain).accessibilityLabel("More weather")
                 Spacer(minLength: 4)
-                WeatherCreditView()
             }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
+            HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
         .task(id: destination?.id) { if let destination { await weather.load(city: destination) } }
@@ -143,13 +143,13 @@ struct TripWeatherSearchView: View {
                         else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved forecast · refresh needed") }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
-                    WeatherCreditView()
                 }
                 Picker("Forecast period", selection: $period) { ForEach(WeatherPeriod.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
                 Text("Forecast times: " + (TimeZone(identifier: result.timeZoneIdentifier ?? "UTC")?.identifier.replacingOccurrences(of: "_", with: " ") ?? "UTC")).font(.caption2).foregroundStyle(.secondary)
                 if period == .hourly { hourly(result) } else { weekly(result) }
             } else if weather.loading.contains(place.id) { ProgressView("Loading forecast…") }
             else { Text(connection.isOffline ? "Offline · no saved forecast for this city" : "Forecast unavailable. Try refresh.").font(.subheadline) }
+            HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
     }
     private func hourly(_ result: CachedWeather) -> some View {
