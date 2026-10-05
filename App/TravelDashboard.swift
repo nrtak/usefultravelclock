@@ -236,7 +236,7 @@ struct TravelDashboard: View {
                     HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit() }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                         .modifier(TripCityLongPress(enabled: true) { picker = "city:" + city.id })
                 }
-                VStack { HStack { Text("Compare all cities"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5); Text(shift == 0 ? "Live time" : "Preview: \(shift.formatted()) hours from now").font(.caption) }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                VStack { HStack { Text("Compare city times"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.caption).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 TripArtwork(symbol: "globe")
             Spacer(minLength: 0)
             }.padding(12)
