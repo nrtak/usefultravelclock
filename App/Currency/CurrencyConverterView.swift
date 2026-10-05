@@ -66,7 +66,7 @@ struct CurrencyConverterView: View {
                 }
             }
             }
-            .navigationTitle("Currency")
+            .navigationTitle("Conversions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onBack {

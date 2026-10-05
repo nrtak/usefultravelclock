@@ -1,5 +1,27 @@
 import SwiftUI
 
+private struct TripWeatherSymbol: View {
+    let symbol: String
+    var size: CGFloat = 18
+    private var snow: Bool { symbol.contains("snow") || symbol.contains("sleet") || symbol.contains("hail") }
+    private var tint: Color {
+        if snow { return .white }
+        if symbol.contains("rain") || symbol.contains("drizzle") || symbol.contains("drop") { return .blue }
+        if symbol.contains("bolt") { return .orange }
+        if symbol.contains("sun") { return .yellow }
+        if symbol.contains("moon") || symbol.contains("star") { return .indigo }
+        return .gray
+    }
+    var body: some View {
+        Image(systemName: symbol)
+            .symbolRenderingMode(.palette).foregroundStyle(tint, tint.opacity(0.75), tint)
+            .font(.system(size: size))
+            .padding(snow ? 3 : 0)
+            .background { if snow { RoundedRectangle(cornerRadius: 5).fill(Color.blue.opacity(0.65)) } }
+            .accessibilityHidden(true)
+    }
+}
+
 struct TripWeatherCard: View {
     @EnvironmentObject private var weather: TripWeatherStore
     @ObservedObject private var connection = TripConnectionStore.shared
@@ -36,7 +58,7 @@ struct TripWeatherCard: View {
             if let city {
                 let place = weather.locations[city.id]
                 if let place, let result = weather.cache[place.id] {
-                    Label(result.temperatures(result.celsius), systemImage: result.symbol).symbolRenderingMode(.multicolor).font(.subheadline)
+                    HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
                     Text("Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2).foregroundStyle(.secondary)
                     if connection.isOffline { Label("Offline · using saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
@@ -137,7 +159,7 @@ struct TripWeatherSearchView: View {
             }
             if let result = weather.cache[place.id] {
                 HStack {
-                    Image(systemName: result.symbol).symbolRenderingMode(.multicolor).font(.system(size: 32))
+                    TripWeatherSymbol(symbol: result.symbol, size: 32)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(result.temperatures(result.celsius)).font(.title2.weight(.semibold))
                         Text(result.condition).font(.caption)
@@ -169,7 +191,7 @@ struct TripWeatherSearchView: View {
             ForEach(Array(hours.dropFirst(hourPage * pageSize).prefix(pageSize))) { hour in
                 HStack(spacing: 10) {
                     Text(stamp(hour.date, format: "EEE h a", result: result)).font(.subheadline).frame(width: 75, alignment: .leading)
-                    Image(systemName: hour.symbol).symbolRenderingMode(.multicolor).frame(width: 30)
+                    TripWeatherSymbol(symbol: hour.symbol).frame(width: 30)
                     Text(result.temperatures(hour.celsius)).font(.subheadline).monospacedDigit()
                     Spacer(minLength: 2)
                     Text("\(Int((hour.precipitationChance * 100).rounded()))%").font(.caption).foregroundStyle(.secondary)
@@ -204,7 +226,7 @@ struct TripWeatherSearchView: View {
                      "precipitation chance \(chance) percent"].joined(separator: ", ")
         return HStack(spacing: 8) {
                     Text(stamp(day.date, format: "EEE d", result: result)).font(.caption).frame(width: 55, alignment: .leading)
-                    Image(systemName: day.symbol).symbolRenderingMode(.multicolor).frame(width: 26)
+                    TripWeatherSymbol(symbol: day.symbol).frame(width: 26)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("H " + result.temperatures(day.high))
                         Text("L " + result.temperatures(day.low)).foregroundStyle(.secondary)
