@@ -5,6 +5,7 @@ import UIKit
 struct LiveTextCamera: UIViewControllerRepresentable {
     var onText: (String) -> Void
     var onError: (String) -> Void
+    var resetID: UUID? = nil
     var captureID: UUID? = nil
     var onPhoto: ((UIImage) -> Void)? = nil
     func makeCoordinator() -> Coordinator { Coordinator(onText: onText, onError: onError) }
@@ -19,15 +20,20 @@ struct LiveTextCamera: UIViewControllerRepresentable {
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
         context.coordinator.onText = onText
         context.coordinator.onError = onError
+        if resetID != context.coordinator.lastResetID {
+            context.coordinator.lastResetID = resetID
+            context.coordinator.resetRecognition()
+        }
         if let captureID, captureID != context.coordinator.lastCaptureID {
             context.coordinator.lastCaptureID = captureID
             let coordinator = context.coordinator
+            let generation = coordinator.lastResetID
             Task { @MainActor in
                 do {
                     let image = try await scanner.capturePhoto()
-                    if !coordinator.stopped { onPhoto?(image) }
+                    if !coordinator.stopped && generation == coordinator.lastResetID { onPhoto?(image) }
                 } catch {
-                    if !coordinator.stopped { onError("Couldn’t capture photo. Try again.") }
+                    if !coordinator.stopped && generation == coordinator.lastResetID { onError("Couldn’t capture photo. Try again.") }
                 }
             }
         }
@@ -37,6 +43,8 @@ struct LiveTextCamera: UIViewControllerRepresentable {
         var onText: (String) -> Void
         var onError: (String) -> Void
         private var previous = ""
+        var lastResetID: UUID?
+        func resetRecognition() { previous = "" }
         var lastCaptureID: UUID?
         var stopped = false
         init(onText: @escaping (String) -> Void, onError: @escaping (String) -> Void) { self.onText = onText; self.onError = onError }

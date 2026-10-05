@@ -196,14 +196,14 @@ struct UnitReadingView: View {
             readings = found; capturing = true; captureID = UUID()
         }, onError: {
             error = $0; capturing = false
-        }, captureID: captureID, onPhoto: { photo in
+        }, resetID: scanID, captureID: captureID, onPhoto: { photo in
             capturing = false
             guard let data = ConversionPhoto.jpeg(from: photo) else {
                 error = "Couldn’t keep this photo. Tap Scan again to retry."; return
             }
             referencePhoto = data; error = ""; paused = true
             if readings.isEmpty { let generation = scanID; Task { do { let found = UnitConversion.readings(try await ImageText.read(data).map(\.text).joined(separator: "\n")); guard generation == scanID else { return }; readings = found; if readings.isEmpty { error = "No measurement found. Try a value with a unit, such as 500 ml." } } catch { error = "Couldn’t read photo. Tap Scan again to retry." } } }
-        }).id(scanID).frame(height: max(200, min(340, geometry.size.height * 0.5))).clipShape(RoundedRectangle(cornerRadius: 14))
+        }).frame(height: max(200, min(340, geometry.size.height * 0.5))).clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(alignment: .bottom) {
                 Button { capturing = true; captureID = UUID() } label: {
                     Image(systemName: "camera.fill").foregroundStyle(.black).frame(width: 56, height: 56).background(.white, in: Circle())

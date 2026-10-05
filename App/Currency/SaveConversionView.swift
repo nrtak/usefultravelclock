@@ -23,8 +23,14 @@ struct SaveConversionView: View {
                     Text("Spotted something you might buy? Save its converted price with a photo and note, then revisit it later. Handy for travel finds and souvenirs.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
-                Section("Conversion") {
-                    Text(draft.summary).font(.headline).textSelection(.enabled)
+                Section("Preview") {
+                    if let photo, let image = UIImage(data: photo) {
+                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180)
+                            .accessibilityLabel("Photo that will be saved")
+                    }
+                    LabeledContent("Original", value: Amount.format(draft.amount, currency: .named(draft.source)) + " " + draft.source)
+                    LabeledContent("Converted", value: Amount.format(draft.convertedAmount, currency: .named(draft.target)) + " " + draft.target)
+                    if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text(note).font(.subheadline).textSelection(.enabled) }
                     Text("This amount and rate will stay as saved.").font(.caption).foregroundStyle(.secondary)
                     if !draft.rateDates.isEmpty {
                         Text("Rates dated \(draft.rateDates.joined(separator: " / "))").font(.caption).foregroundStyle(.secondary)
@@ -114,7 +120,7 @@ struct SavedConversionsView: View {
                 if let error = saved.loadError { ContentUnavailableView("Saved items unavailable", systemImage: "exclamationmark.triangle", description: Text(error)) }
                 else if saved.items.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark", description: Text("Save a conversion with a note or photo to remember something you found.")) }
                 else {
-                    List(saved.items) { item in
+                    List { ForEach(saved.items) { item in
                         NavigationLink {
                             SavedConversionDetail(item: item, photoURL: saved.photoURL(for: item))
                         } label: {
@@ -129,7 +135,17 @@ struct SavedConversionsView: View {
                                 }
                             }
                         }
+                    }.onDelete { saved.remove(at: $0) }
                     }
+                }
+            }.safeAreaInset(edge: .bottom) {
+                if saved.canUndo || saved.actionError != nil {
+                    VStack(alignment: .leading) {
+                        if let error = saved.actionError { Text(error).font(.caption).foregroundStyle(.red) }
+                        if saved.canUndo {
+                            HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.buttonStyle(TripButtonStyle()) }
+                        }
+                    }.padding().background(Color(.secondarySystemBackground))
                 }
             }.navigationTitle("Saved conversions")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } }.tripToolbarBackground() }

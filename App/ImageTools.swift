@@ -71,13 +71,13 @@ struct PriceImageView: View {
             }
             .photosPicker(isPresented: $choosesPhoto, selection: $photo, matching: .images)
             if live {
-                LiveTextCamera(onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, captureID: captureID, onPhoto: { image in
+                LiveTextCamera(onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, resetID: scanID, captureID: captureID, onPhoto: { image in
                     let manualCapture = capturingPhoto
                     capturingPhoto = false
                     guard let raw = ConversionPhoto.jpeg(from: image) else { error = "Couldn’t read that photo."; return }
                     referencePhoto = raw
                     if manualCapture { Task { await recognize(raw) } }
-                }).id(scanID).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14))
+                }).frame(height: cameraHeight).clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(alignment: .bottom) {
                         Button { capturingPhoto = true; captureID = UUID() } label: {
                             ZStack {
@@ -256,7 +256,7 @@ struct TripTranslateView: View {
                             .accessibilityLabel("Choose photo to translate")
                     }
                     if liveTranslation {
-                        LiveTextCamera(onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, captureID: liveCaptureID, onPhoto: { photo in
+                        LiveTextCamera(onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, resetID: liveScanID, captureID: liveCaptureID, onPhoto: { photo in
                             keepingPhoto = false
                             guard let captured = ConversionPhoto.jpeg(from: photo) else { message = "Couldn’t keep photo. Tap Scan again to retry."; return }
                             image = captured; livePaused = true; output = ""; message = "Reading photo…"
@@ -271,7 +271,7 @@ struct TripTranslateView: View {
                                     if config == next { config?.invalidate() } else { config = next }
                                 } catch { message = "Couldn’t read photo. Tap Scan again to retry." }
                             }
-                        }).id(liveScanID).frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 14))
+                        }).frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 14))
                             .overlay(alignment: .bottom) {
                                 Button { keepingPhoto = true; liveCaptureID = UUID() } label: {
                                     Image(systemName: "camera.fill").foregroundStyle(.black).frame(width: 56, height: 56).background(.white, in: Circle())
