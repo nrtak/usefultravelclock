@@ -107,7 +107,7 @@ struct TripUnitsView: View {
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationTitle("Unit Converter").navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPicker) { UnitSearchView(category: category, selected: pickerSource == true ? source : target) { unit in if pickerSource == true { source = unit.id } else { target = unit.id }; showPicker = false } }
-        .sheet(isPresented: $showScanner) { UnitReadingView { reading in apply(reading); showScanner = false } }
+        .sheet(isPresented: $showScanner) { UnitReadingView { reading, capturedPhoto in image = capturedPhoto; apply(reading); showScanner = false } }
         .sheet(isPresented: $showSaved) { NavigationStack { List {
             ForEach(saved.entries) { entry in
                 NavigationLink {
@@ -173,16 +173,50 @@ struct UnitSearchView: View {
     }.searchable(text: $query, prompt: "Search units").navigationTitle("Choose unit").toolbar { TripActionButton("Cancel", primary: false) { dismiss() } } } }
 }
 struct UnitReadingView: View {
-    let select: (UnitConversion.Reading) -> Void
-    @State private var text = ""
+    let select: (UnitConversion.Reading, Data) -> Void
+    @State private var readings: [UnitConversion.Reading] = []
+    @State private var referencePhoto: Data?
+    @State private var captureID: UUID?
+    @State private var capturing = false
     @State private var error = ""
     @Environment(\.dismiss) private var dismiss
+    private func scanAgain() {
+        readings = []; referencePhoto = nil; error = ""; captureID = nil
+    }
     var body: some View { NavigationStack { VStack(spacing: 10) {
-        LiveTextCamera(onText: { text = $0 }, onError: { error = $0 }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
-        Text("Point at a value with a unit. Tap a recognized measurement to convert.").font(.caption).foregroundStyle(.secondary)
+        LiveTextCamera(onText: { text in
+            guard readings.isEmpty, !capturing else { return }
+            let found = UnitConversion.readings(text)
+            guard !found.isEmpty else { return }
+            readings = found; capturing = true; captureID = UUID()
+        }, onError: {
+            error = $0; capturing = false
+        }, captureID: captureID, onPhoto: { photo in
+            capturing = false
+            guard let data = ConversionPhoto.jpeg(from: photo) else {
+                error = "Couldn’t keep this photo. Tap Scan again to retry."; return
+            }
+            referencePhoto = data; error = ""
+        }).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 14))
+        HStack {
+            Text(readings.isEmpty ? "Point at a value with a unit." : referencePhoto == nil ? "Readings held" : "Readings held • Photo included")
+                .font(.caption).foregroundStyle(.secondary)
+            Spacer()
+            Button("Scan again", systemImage: "arrow.clockwise") { scanAgain() }
+                .font(.caption).disabled(capturing || readings.isEmpty)
+        }
+        Text("Tap a measurement to convert. Save conversion keeps its photo for later.")
+            .font(.caption).foregroundStyle(.secondary)
+        if capturing { ProgressView("Keeping reference photo…").font(.caption) }
         if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
-        List(UnitConversion.readings(text)) { reading in Button(reading.text) { select(reading) } }
-    }.padding(12).navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } } }
+        List(readings) { reading in
+            Button(reading.text) {
+                guard let referencePhoto else { return }
+                select(reading, referencePhoto)
+            }.disabled(referencePhoto == nil)
+        }
+    }.padding(12).navigationTitle("Live unit scan").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } }
+}
 }
 struct UnitPhotoReview: View {
     let readings: [UnitConversion.Reading]
