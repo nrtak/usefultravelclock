@@ -1,5 +1,16 @@
 import SwiftUI
 
+struct TripSectionLabel: View {
+    let title: String
+    let symbol: String
+    var color: Color = .blue
+    var body: some View {
+        Label { Text(title) } icon: {
+            Image(systemName: symbol).foregroundStyle(color)
+        }.font(.headline)
+    }
+}
+
 extension View {
     func tripPanel() -> some View {
         padding(12).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -13,11 +24,11 @@ struct TripArtwork: View {
             Rectangle().frame(height: 1)
             ZStack {
                 Image(systemName: symbol).font(.system(size: 35, weight: .ultraLight)).rotationEffect(.degrees(-8))
-                Image(systemName: "airplane").font(.system(size: 17, weight: .ultraLight)).offset(x: -37, y: -15)
-                Image(systemName: "mappin").font(.system(size: 17, weight: .ultraLight)).offset(x: 38, y: 16)
+                Image(systemName: "airplane").font(.system(size: 17, weight: .ultraLight)).foregroundStyle(Color.orange.opacity(0.65)).offset(x: -37, y: -15)
+                Image(systemName: "mappin").font(.system(size: 17, weight: .ultraLight)).foregroundStyle(Color.teal.opacity(0.65)).offset(x: 38, y: 16)
             }.frame(width: 110, height: 60)
             Rectangle().frame(height: 1)
-        }.foregroundStyle(Color.blue.opacity(0.3)).accessibilityHidden(true)
+        }.foregroundStyle(Color.blue.opacity(0.45)).accessibilityHidden(true)
     }
 }
 struct TripAnalogClock: View {

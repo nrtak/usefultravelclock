@@ -46,7 +46,7 @@ struct TravelDashboard: View {
         VStack(spacing: 10) {
             TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true) }
             VStack(alignment: .leading, spacing: 10) {
-                Label("Currency", systemImage: "banknote").font(.headline)
+                TripSectionLabel(title: "Currency", symbol: "banknote")
                 HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -66,7 +66,12 @@ struct TravelDashboard: View {
             }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
-                HStack { VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }; Spacer(); Image(systemName: "chevron.right") }.padding()
+                HStack {
+                    Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
+                        .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                    VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }
+                    Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                }.padding()
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             Spacer(minLength: 0)
         }.padding(12)

@@ -179,7 +179,7 @@ struct TripTranslateView: View {
             VStack(spacing: 14) {
                 VStack(spacing: 10) {
                     HStack {
-                        Label("Languages", systemImage: "character.bubble").font(.headline)
+                        TripSectionLabel(title: "Languages", symbol: "character.bubble", color: .purple)
                         Spacer()
                         Button { saved = true } label: { Label("Saved", systemImage: "bookmark") }
                     }
@@ -215,7 +215,7 @@ struct TripTranslateView: View {
                     .buttonStyle(.borderedProminent).disabled(input.isEmpty || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Translation", systemImage: "character.bubble.fill").font(.headline)
+                    TripSectionLabel(title: "Translation", symbol: "character.bubble.fill", color: .purple)
                     TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder)
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 }.tripPanel()

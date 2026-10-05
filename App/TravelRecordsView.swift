@@ -27,7 +27,7 @@ struct TravelRecordsView: View {
                         Button { draft = record } label: {
                             HStack(spacing: 14) {
                                 Image(systemName: record.kind == "Hotel" ? "bed.double" : record.kind == "Flight" ? "airplane" : "tram")
-                                    .font(.title2).frame(width: 32)
+                                    .font(.title2).foregroundStyle(.orange).frame(width: 32)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
                                     Text(record.start.formatted(date: .abbreviated, time: .shortened)).font(.subheadline)
