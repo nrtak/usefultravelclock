@@ -12,6 +12,7 @@ struct TravelDashboard: View {
     @AppStorage("trip-currency-color") private var currencyColor = "F3F3F3"
     @AppStorage("trip-selected-tab") private var tab = 0
     @AppStorage("trip-tab-order") private var savedTabOrder = "0,1,2,3,4"
+    @AppStorage("trip-tab-reorder-hint-seen") private var tabHintSeen = false
     @State private var editingTabs = false
     @State private var tabEditFeedback = 0
     private let tabTitles = ["Home", "Conversions", "World Time", "My Trip", "Translate"]
@@ -64,6 +65,19 @@ struct TravelDashboard: View {
 
     private var bottomTabs: some View {
         VStack(spacing: 4) {
+            if !tabHintSeen && !editingTabs {
+                HStack {
+                    Text("Hold a tab to reorder").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { tabHintSeen = true } label: {
+                        Image(systemName: "xmark").frame(width: 44, height: 44)
+                    }.buttonStyle(.plain).accessibilityLabel("Dismiss tab hint")
+                }.padding(.horizontal, 16)
+                .task {
+                    do { try await Task.sleep(for: .seconds(8)) } catch { return }
+                    tabHintSeen = true
+                }
+            }
             if editingTabs {
                 HStack {
                     Text("Drag tabs to reorder").font(.caption).foregroundStyle(.secondary)
@@ -104,10 +118,11 @@ struct TravelDashboard: View {
             tabButton(id)
                 .onLongPressGesture(minimumDuration: 0.6) {
                     homeEditingSide = nil
+                    tabHintSeen = true
                     editingTabs = true
                     tabEditFeedback += 1
                 }
-                .accessibilityAction(named: "Reorder tabs") { editingTabs = true }
+                .accessibilityAction(named: "Reorder tabs") { tabHintSeen = true; editingTabs = true }
         }
     }
     private func tabButton(_ id: Int) -> some View {
@@ -233,10 +248,21 @@ struct TravelDashboard: View {
                 Text("Hold a city to edit").font(.caption2).foregroundStyle(.secondary)
                 clocks(at: date, selectable: false)
                 ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
-                    HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit() }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                    HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); VStack(alignment: .trailing, spacing: 3) {
+                        Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit()
+                        if let day = comparisonDay(date, zone: city.timeZoneID) {
+                            Text(day).font(.caption).foregroundStyle(.secondary)
+                        }
+                    } }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                         .modifier(TripCityLongPress(enabled: true) { picker = "city:" + city.id })
                 }
-                VStack { HStack { Text("Compare city times"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.caption).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                VStack { HStack { Text("Compare city times"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5)
+                    .overlay(alignment: .bottom) {
+                        Capsule().fill(Color.secondary.opacity(0.6)).frame(width: 2, height: 7)
+                            .offset(y: 4).allowsHitTesting(false).accessibilityHidden(true)
+                    }
+                    .accessibilityLabel("Compare city times")
+                    .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now"); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.caption).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 TripArtwork(symbol: "globe")
             Spacer(minLength: 0)
             }.padding(12)
@@ -270,13 +296,36 @@ struct TravelDashboard: View {
                 }.frame(maxWidth: .infinity)
             } else {
                 if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
-                Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).frame(maxWidth: .infinity)
+                Text(comparisonDate(date, zone: zone)).font(.caption).frame(maxWidth: .infinity)
                 Text(role == "Destination" ? difference(zone: zone, date: date) : "")
                     .font(.caption2).multilineTextAlignment(.center).lineLimit(2)
                     .frame(maxWidth: .infinity, minHeight: 16, alignment: .top)
             }
         }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
             .modifier(TripCityLongPress(enabled: !selectable) { picker = role == "Home" ? "home" : "destination" })
+    }
+
+    // Compare each city's civil date with Home's civil date at the chosen instant.
+    private func comparisonDay(_ date: Date, zone: String) -> String? {
+        var homeCalendar = Calendar(identifier: .gregorian)
+        homeCalendar.timeZone = TimeZone(identifier: clock.homeTimeZoneID) ?? .gmt
+        var cityCalendar = homeCalendar
+        cityCalendar.timeZone = TimeZone(identifier: zone) ?? .gmt
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        guard let homeDay = calendar.date(from: homeCalendar.dateComponents([.year, .month, .day], from: date)),
+              let cityDay = calendar.date(from: cityCalendar.dateComponents([.year, .month, .day], from: date)),
+              let days = calendar.dateComponents([.day], from: homeDay, to: cityDay).day else { return nil }
+        switch days {
+        case 0: return nil
+        case 1: return "Tomorrow"
+        case -1: return "Yesterday"
+        default: return "\(abs(days)) days \(days > 0 ? "ahead" : "behind")"
+        }
+    }
+    private func comparisonDate(_ date: Date, zone: String) -> String {
+        let dateText = TimeEngine.compactDate(date, timeZoneID: zone)
+        return comparisonDay(date, zone: zone).map { $0 + " · " + dateText } ?? dateText
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }
     private func difference(zone: String, date: Date) -> String { let n = ((TimeZone(identifier: zone)?.secondsFromGMT(for: date) ?? 0) - (TimeZone(identifier: clock.homeTimeZoneID)?.secondsFromGMT(for: date) ?? 0)) / 60; return n == 0 ? "Same time" : "\(abs(n)/60)h\(abs(n)%60 == 0 ? "" : " \(abs(n)%60)m") \(n > 0 ? "ahead" : "behind")" }
