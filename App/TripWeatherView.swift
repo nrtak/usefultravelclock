@@ -61,7 +61,7 @@ struct WeatherCreditView: View {
                         Text("Apple Weather").font(.caption2)
                     }
                     .frame(width: 62, height: 12)
-                    .alignmentGuide(.firstTextBaseline) { dimensions in dimensions[.bottom] - 2 }
+                    .alignmentGuide(.firstTextBaseline) { dimensions in dimensions[.bottom] }
                     Text("Sources").font(.caption2).lineLimit(1)
                 }
             }
