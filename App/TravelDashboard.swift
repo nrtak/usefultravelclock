@@ -11,6 +11,18 @@ struct TravelDashboard: View {
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
     @AppStorage("trip-currency-color") private var currencyColor = "F3F3F3"
     @AppStorage("trip-selected-tab") private var tab = 0
+    @AppStorage("trip-tab-order") private var savedTabOrder = "0,1,2,3,4"
+    @State private var editingTabs = false
+    @State private var tabEditFeedback = 0
+    private let tabTitles = ["Home", "Conversions", "World Time", "My Trip", "Translate"]
+    private let tabSymbols = ["house", "banknote", "clock", "suitcase", "character.bubble"]
+    private var tabOrder: [Int] {
+        var result: [Int] = []
+        for id in savedTabOrder.split(separator: ",").compactMap({ Int($0) }) where (0...4).contains(id) && !result.contains(id) {
+            result.append(id)
+        }
+        return result + (0...4).filter { !result.contains($0) }
+    }
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
@@ -18,12 +30,13 @@ struct TravelDashboard: View {
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
-            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Conversions", systemImage: "banknote") }.tag(1)
-            NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
-            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
-            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
+            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.toolbar(.hidden, for: .tabBar).tag(0)
+            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Conversions", systemImage: "banknote") }.toolbar(.hidden, for: .tabBar).tag(1)
+            NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.toolbar(.hidden, for: .tabBar).tag(2)
+            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.toolbar(.hidden, for: .tabBar).tag(3)
+            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.toolbar(.hidden, for: .tabBar).tag(4)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomTabs }
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .environmentObject(weather)
         .environmentObject(trip)
@@ -43,10 +56,88 @@ struct TravelDashboard: View {
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
         .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil }
         .onChange(of: phase) { _, value in
-            if value == .background { trip.lock(); shift = 0 }
+            if value == .background { trip.lock(); shift = 0; editingTabs = false }
             if value == .active { Task { await trip.unlock() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
+    }
+
+    private var bottomTabs: some View {
+        VStack(spacing: 4) {
+            if editingTabs {
+                HStack {
+                    Text("Drag tabs to reorder").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Done") { editingTabs = false }
+                        .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+                }.padding(.horizontal, 16)
+            }
+            HStack(spacing: 0) {
+                ForEach(tabOrder, id: \.self) { id in
+                    reorderableTab(id)
+                }
+            }.padding(.vertical, 8)
+        }
+        .background(.regularMaterial)
+        .sensoryFeedback(.impact(weight: .light), trigger: tabEditFeedback)
+    }
+    @ViewBuilder
+    private func reorderableTab(_ id: Int) -> some View {
+        if editingTabs {
+            tabButton(id)
+                .draggable(String(id))
+                .dropDestination(for: String.self) { items, _ in
+                    guard let value = items.first, let moved = Int(value),
+                          let from = tabOrder.firstIndex(of: moved),
+                          let to = tabOrder.firstIndex(of: id), from != to else { return false }
+                    var order = tabOrder
+                    order.remove(at: from)
+                    order.insert(moved, at: to)
+                    withAnimation { savedTabOrder = order.map(String.init).joined(separator: ",") }
+                    return true
+                }
+                .accessibilityActions {
+                    Button("Move left") { moveTab(id, by: -1) }
+                    Button("Move right") { moveTab(id, by: 1) }
+                }
+        } else {
+            tabButton(id)
+                .onLongPressGesture(minimumDuration: 0.6) {
+                    homeEditingSide = nil
+                    editingTabs = true
+                    tabEditFeedback += 1
+                }
+                .accessibilityAction(named: "Reorder tabs") { editingTabs = true }
+        }
+    }
+    private func tabButton(_ id: Int) -> some View {
+        Button {
+            if !editingTabs { tab = id }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: tabSymbols[id]).font(.system(size: 25, weight: .medium))
+                    .frame(height: 30)
+                    .rotationEffect(.degrees(editingTabs ? (id.isMultiple(of: 2) ? 2 : -2) : 0))
+                    .animation(editingTabs ? .easeInOut(duration: 0.15).repeatForever(autoreverses: true) : .default, value: editingTabs)
+                Text(tabTitles[id]).font(.caption2.weight(tab == id ? .semibold : .regular))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .foregroundStyle(tab == id ? Color.blue : Color.primary)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .padding(.horizontal, 2)
+            .background(tab == id ? Color.blue.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 14))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tabTitles[id])
+        .accessibilityAddTraits(tab == id ? .isSelected : [])
+        .accessibilityHint(editingTabs ? "Drag to change tab order" : "Touch and hold to reorder tabs")
+    }
+    private func moveTab(_ id: Int, by offset: Int) {
+        var order = tabOrder
+        guard let index = order.firstIndex(of: id), order.indices.contains(index + offset) else { return }
+        order.swapAt(index, index + offset)
+        savedTabOrder = order.map(String.init).joined(separator: ",")
     }
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
