@@ -57,9 +57,6 @@ struct TripSettingsView: View {
                     NavigationLink { TripAppInformationView() } label: {
                         HStack { Label("App information", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.caption) }
                     }
-                    Link(destination: URL(string: "https://github.com/nrtak/usefultravelclock/issues")!) {
-                        Label("Report an issue", systemImage: "bubble.left")
-                    }
                 }
             }.navigationTitle("Settings")
             .toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() } }.tripToolbarBackground() }
@@ -131,7 +128,6 @@ private struct TripCreditsView: View {
                 LabeledContent("Translation", value: "Apple Translation")
                 Text("Weather source links appear beside Apple Weather credits in the weather views.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("Source") { Link("Project repository", destination: URL(string: "https://github.com/nrtak/usefultravelclock")!) }
         }.navigationTitle("Credits").navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -147,8 +143,6 @@ private struct TripAppInformationView: View {
             }
             Section("Support") {
                 Text("Include this version and build number when reporting an issue.")
-                Link("Report an issue", destination: URL(string: "https://github.com/nrtak/usefultravelclock/issues")!)
-                Text("GitHub reports may be public. Avoid sharing personal travel details or private photos.").font(.caption).foregroundStyle(.secondary)
             }
         }.navigationTitle("App information").navigationBarTitleDisplayMode(.inline)
     }
