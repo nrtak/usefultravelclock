@@ -130,3 +130,14 @@ struct CachedWeatherDay: Codable, Identifiable {
     let condition: String
     let precipitationChance: Double
 }
+
+
+#if DEBUG
+extension TripWeatherStore {
+    func installTutorialWeather(for city: City, celsius: Double) {
+        let place = WeatherLocation(name: city.name, latitude: city.name == "Tokyo" ? 35.68 : 34.05, longitude: city.name == "Tokyo" ? 139.69 : -118.24, timeZoneIdentifier: city.timeZoneID)
+        locations[city.id] = place
+        cache[place.id] = CachedWeather(fetchedAt: Date(), observedAt: Date(), celsius: celsius, high: celsius + 3, low: celsius - 5, condition: "Clear", symbol: "sun.max.fill", hourly: [], daily: [], timeZoneIdentifier: city.timeZoneID)
+    }
+}
+#endif

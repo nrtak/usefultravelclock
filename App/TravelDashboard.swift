@@ -438,3 +438,16 @@ struct TripCityPicker: View {
     let select: (City) -> Void
     var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city").toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() } } }
 }
+
+#if DEBUG
+extension TravelDashboard {
+    init(tutorialCurrency currency: ConverterStore, trip: TripStore, weather: TripWeatherStore, shift: Double = 0, reordering: Bool = false) {
+        self.init(currency: currency)
+        _trip = StateObject(wrappedValue: trip)
+        _weather = StateObject(wrappedValue: weather)
+        _shift = State(initialValue: shift)
+        _editingCities = State(initialValue: reordering)
+        _editingTabs = State(initialValue: reordering)
+    }
+}
+#endif

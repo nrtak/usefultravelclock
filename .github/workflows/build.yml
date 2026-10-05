@@ -59,7 +59,29 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath build/Tests.xcresult \
+            -parallel-testing-enabled NO \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build/test.log
+      - name: Collect actual tutorial screens
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          devices = Path.home() / 'Library/Developer/CoreSimulator/Devices'
+          captures = list(devices.glob('*/data/Containers/Data/Application/*/Documents/TutorialCaptures'))
+          if not captures:
+              raise SystemExit('Actual tutorial captures were not found.')
+          source = max(captures, key=lambda p: p.stat().st_mtime)
+          destination = Path('build/TutorialCaptures')
+          shutil.copytree(source, destination, dirs_exist_ok=True)
+          print(f'Exported {len(list(destination.glob("*.png")))} actual app captures.')
+          PY
+      - name: Save actual tutorial screens
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trip-Info-Actual-Screens
+          path: build/TutorialCaptures
+          if-no-files-found: error
+          retention-days: 14
       - name: Package Simulator app
         run: |
           ditto -c -k --sequesterRsrc --keepParent \

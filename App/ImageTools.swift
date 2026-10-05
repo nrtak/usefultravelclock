@@ -432,3 +432,24 @@ struct SavedTranslationEditor: View {
     @State var record: TranslationRecord
     var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Spacer() }.padding().navigationTitle("Saved translation").toolbar { ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { if trip.saveTranslation(record) { dismiss() } } }.tripToolbarBackground() } }
 }
+
+
+#if DEBUG
+extension PriceImageView {
+    init(tutorialStore store: ConverterStore, saved: SavedConversions, photo: Data, held: Bool) {
+        self.init(store: store, savedPrices: saved)
+        _prices = State(initialValue: held ? [RecognizedPrice(value: 500), RecognizedPrice(value: 400), RecognizedPrice(value: 650)] : [])
+        _pricesHeld = State(initialValue: held)
+        _referencePhoto = State(initialValue: held ? photo : nil)
+    }
+}
+extension TripTranslateView {
+    init(tutorialPhoto: Data?, completed: Bool) {
+        self.init()
+        _image = State(initialValue: tutorialPhoto)
+        _input = State(initialValue: "出口\n切符売り場")
+        _output = State(initialValue: completed ? "Exit\nTicket office" : "")
+        _note = State(initialValue: completed ? "Station directions · example" : "")
+    }
+}
+#endif

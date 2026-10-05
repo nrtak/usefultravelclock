@@ -246,3 +246,16 @@ struct UnitPhotoReview: View {
         Section("Recognized text — review for accuracy") { Text(text.isEmpty ? "No text found" : text).textSelection(.enabled) }
     }.navigationTitle("Photo measurements").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { dismiss() }  }.tripToolbarBackground() } } }
 }
+
+
+#if DEBUG
+extension TripUnitsView {
+    init(tutorialPhoto: Data) {
+        self.init()
+        _amount = State(initialValue: "10")
+        _image = State(initialValue: tutorialPhoto)
+        _selectedInput = State(initialValue: "Photo")
+        _note = State(initialValue: "Suitcase before departure · example")
+    }
+}
+#endif
