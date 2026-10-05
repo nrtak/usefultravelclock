@@ -139,6 +139,7 @@ struct TravelDashboard: View {
             ScrollView {
             VStack(spacing: 10) {
                 Text(shift == 0 ? "Live time" : "Preview — all times shifted").font(.headline)
+                Text("Hold a city to edit").font(.caption2).foregroundStyle(.secondary)
                 clocks(at: date, selectable: false)
                 ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
                     HStack { VStack(alignment: .leading) { Text(city.name).font(.headline); Text(city.country).font(.caption).foregroundStyle(.secondary) }; Spacer(); Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit() }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
