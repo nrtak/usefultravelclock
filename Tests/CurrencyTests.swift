@@ -112,6 +112,28 @@ final class CurrencyTests: XCTestCase {
     }
 
     @MainActor
+    func testFocusedQuickConverterSupportsEditingComputedSideAndSwap() async throws {
+        let suite = "QuickConverterTests-\(UUID().uuidString)"
+        let preferences = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { preferences.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let store = ConverterStore(preferences: preferences, cacheURL: directory.appendingPathComponent("rates.json"), service: StubService(snapshot: snapshot))
+        await store.refresh(force: true)
+        store.source = "USD"; store.target = "JPY"
+        store.edit("100", side: .source)
+        let editable = store.fieldText(for: .target, focused: true)
+        XCTAssertEqual(Amount.parse(editable), 16_000)
+        store.edit(editable, side: .target)
+        XCTAssertEqual(store.value(for: "USD"), 100)
+        store.edit("32000", side: .target)
+        XCTAssertEqual(store.value(for: "USD"), 200)
+        store.swap()
+        XCTAssertEqual(store.source, "JPY")
+        XCTAssertEqual(store.inputSide, .source)
+        XCTAssertEqual(store.value(for: "USD"), 200)
+    }
+
+    @MainActor
     func testReverseInputWithMissingRatesAndCurrencyChanges() async throws {
         let suite = "SimpleCurrencyTests-\(UUID().uuidString)"
         let preferences = UserDefaults(suiteName: suite)!

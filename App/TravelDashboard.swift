@@ -14,11 +14,12 @@ struct TravelDashboard: View {
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
+    @FocusState private var homeEditingSide: AmountSide?
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape") } } }.tabItem { Label("Home", systemImage: "house") }.tag(0)
-            CurrencyConverterView(store: currency).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
+            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Currency", systemImage: "banknote") }.tag(1)
             NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.tag(2)
             NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(3)
             NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.tag(4)
@@ -34,7 +35,7 @@ struct TravelDashboard: View {
         }
         .sheet(isPresented: $settings) { TripSettingsView() }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
-        .onChange(of: tab) { _, _ in shift = 0 }
+        .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil }
         .onChange(of: phase) { _, value in
             if value == .background { trip.lock(); shift = 0 }
             if value == .active { Task { await trip.unlock() } }
@@ -44,18 +45,23 @@ struct TravelDashboard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
         GeometryReader { geometry in
-            Group {
-                if typeSize.isAccessibilitySize {
-                    ScrollView { homeContent(compact: true) }
-                } else {
-                    ViewThatFits(in: .vertical) {
-                        homeContent(compact: false)
-                        homeContent(compact: true)
-                        ScrollView { homeContent(compact: true) }
+            ScrollViewReader { proxy in
+                ScrollView { homeContent(compact: true) }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDisabled(homeEditingSide == nil && !typeSize.isAccessibilitySize)
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: homeEditingSide) { _, side in
+                        if side != nil { withAnimation { proxy.scrollTo("home-currency", anchor: .top) } }
                     }
-                }
             }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }.navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if homeEditingSide != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        TripNavigationButton(title: "Done") { homeEditingSide = nil }
+                    }.tripToolbarBackground()
+                }
+            }
     }
     private func homeContent(compact: Bool) -> some View {
         VStack(spacing: compact ? 8 : 10) {
@@ -64,19 +70,25 @@ struct TravelDashboard: View {
                 HStack {
                     TripSectionLabel(title: "Currency", symbol: "banknote")
                     Spacer(minLength: 4)
-                    Button { tab = 1 } label: {
+                    Button { homeEditingSide = nil; tab = 1 } label: {
                         Label("Full converter", systemImage: "arrow.up.right")
                             .font(.caption.weight(.semibold)).frame(minHeight: 44)
                     }.buttonStyle(.bordered).tint(.blue)
                         .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
                 }
-                HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
+                HStack {
+                    quick(.source)
+                    Button { homeEditingSide = nil; currency.swap() } label: {
+                        Image(systemName: "arrow.left.arrow.right").frame(width: 44, height: 44)
+                    }.buttonStyle(.plain).foregroundStyle(.blue).accessibilityLabel("Swap currencies")
+                    quick(.target)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(currency.detail)
                     TripRateStatus(store: currency)
                     if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
                 }.font(.caption2).foregroundStyle(.secondary)
-            }.tripPanel()
+            }.tripPanel().id("home-currency")
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
                 HStack {
@@ -90,7 +102,19 @@ struct TravelDashboard: View {
     }
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
-        return VStack(alignment: .leading) { Text(code).font(.caption); HStack(spacing: 4) { Text(Currency.named(code).symbol); TextField("Amount", text: Binding(get: { currency.fieldText(for: side, focused: false) }, set: { currency.edit($0.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: ""), side: side) })).keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit() } }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
+        return VStack(alignment: .leading) {
+            Text(code).font(.caption)
+            HStack(spacing: 4) {
+                Text(Currency.named(code).symbol)
+                TextField("Amount", text: Binding(
+                    get: { currency.fieldText(for: side, focused: homeEditingSide == side) },
+                    set: { currency.edit($0, side: side) }
+                ))
+                .focused($homeEditingSide, equals: side)
+                .keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit()
+                .accessibilityLabel("\(side == .source ? "From" : "To") amount in \(Currency.named(code).name)")
+            }
+        }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
     }
     private func nextTrip(at now: Date) -> some View {
         let next = trip.records.filter { $0.start >= now }.min { $0.start < $1.start }
