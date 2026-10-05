@@ -1,6 +1,15 @@
 import SwiftUI
 import Translation
 
+enum TranslationLanguageLabel {
+    static func name(_ code: String, locale: Locale = .current) -> String {
+        let normalized = code.replacingOccurrences(of: "_", with: "-").lowercased()
+        let name = locale.localizedString(forIdentifier: code) ?? code
+        // A language-only identifier does not specify a country or dialect.
+        return normalized == "en" || normalized == "en-latn" ? name + " (General)" : name
+    }
+}
+
 enum TranslationLanguageSide: String, Identifiable {
     case source, target
     var id: String { rawValue }
@@ -15,7 +24,7 @@ struct TranslationLanguagePicker: View {
     @State private var loading = true
 
     private func name(_ code: String, locale: Locale = .current) -> String {
-        locale.localizedString(forIdentifier: code) ?? code
+        TranslationLanguageLabel.name(code, locale: locale)
     }
     private var results: [String] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -49,7 +58,7 @@ struct TranslationLanguagePicker: View {
                     Text(languages.isEmpty ? "No translation languages are available on this device." : "No matching language. Try its name or language code.")
                         .foregroundStyle(.secondary)
                 }
-                if !loading { Text("Languages are provided by Apple. A language download may be needed before translation.").font(.caption).foregroundStyle(.secondary) }
+                if !loading { Text("English (General) has no country specified. Languages are provided by Apple; a download may be needed.").font(.caption).foregroundStyle(.secondary) }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search languages")
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
