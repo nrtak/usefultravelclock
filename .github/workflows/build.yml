@@ -63,9 +63,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build/test.log
       - name: Collect actual tutorial screens
         run: |
-          capture_data="$(xcrun simctl get_app_container "$SIMULATOR_ID" com.usefultravelclock.app data)"
-          mkdir -p build/TutorialCaptures
-          cp -R "$capture_data/Documents/TutorialCaptures/." build/TutorialCaptures/
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          devices = Path.home() / 'Library/Developer/CoreSimulator/Devices'
+          captures = list(devices.glob('*/data/Containers/Data/Application/*/Documents/TutorialCaptures'))
+          if not captures:
+              raise SystemExit('Actual tutorial captures were not found.')
+          source = max(captures, key=lambda p: p.stat().st_mtime)
+          destination = Path('build/TutorialCaptures')
+          shutil.copytree(source, destination, dirs_exist_ok=True)
+          print(f'Exported {len(list(destination.glob("*.png")))} actual app captures.')
+          PY
       - name: Save actual tutorial screens
         uses: actions/upload-artifact@v4
         with:
