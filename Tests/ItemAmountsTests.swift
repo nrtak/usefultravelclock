@@ -13,6 +13,13 @@ final class ItemAmountsTests: XCTestCase {
     func testDecimalPricesAvoidBinaryRounding() {
         XCTAssertEqual(ItemAmounts.total(["0.1", "0.2"], locale: us), Decimal(string: "0.3"))
     }
+    func testDiscountsAndMultipleSubtractions() {
+        XCTAssertEqual(ItemAmounts.total(["100", "50", "20", "5"], subtracting: [2, 3], locale: us), 125)
+        XCTAssertEqual(ItemAmounts.total(["0.30", "0.10"], subtracting: [1], locale: us), Decimal(string: "0.20"))
+        XCTAssertEqual(ItemAmounts.total(["10", "10"], subtracting: [1], locale: us), 0)
+        XCTAssertEqual(ItemAmounts.total(["10", "20"], subtracting: [1], locale: us), -10)
+        XCTAssertNil(ItemAmounts.total(["10", "invalid"], subtracting: [1], locale: us))
+    }
     func testInvalidItemsDoNotSilentlyDisappear() {
         XCTAssertNil(ItemAmounts.total(["120", "1,500"], locale: us))
         XCTAssertNil(ItemAmounts.total(["120", "-5"], locale: us))
