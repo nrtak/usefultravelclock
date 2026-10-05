@@ -194,7 +194,9 @@ private struct TripCityLongPress: ViewModifier {
     let edit: () -> Void
     @GestureState private var pressing = false
     @State private var activation = 0
+    @ViewBuilder
     func body(content: Content) -> some View {
+        if enabled {
         content
             .contentShape(RoundedRectangle(cornerRadius: 14))
             .scaleEffect(pressing ? 0.97 : 1)
@@ -208,12 +210,11 @@ private struct TripCityLongPress: ViewModifier {
             .animation(.easeOut(duration: 0.12), value: pressing)
             .gesture(LongPressGesture(minimumDuration: 0.5, maximumDistance: 12)
                 .updating($pressing) { value, state, _ in state = value }
-                .onEnded { _ in activate() }, including: enabled ? .all : .none)
+                .onEnded { _ in activate() })
             .sensoryFeedback(.impact(weight: .light), trigger: activation)
             .accessibilityHint(enabled ? "Touch and hold to change city" : "")
-            .accessibilityActions {
-                if enabled { Button("Change city") { activate() } }
-            }
+            .accessibilityActions { Button("Change city") { activate() } }
+        } else { content }
     }
     private func activate() { activation += 1; edit() }
 }
