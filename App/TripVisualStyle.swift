@@ -1,5 +1,30 @@
 import SwiftUI
 
+struct TripButtonStyle: ButtonStyle {
+    var primary = false
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .foregroundStyle(enabled ? (primary ? Color.white : Color.blue) : Color.secondary)
+            .background(enabled && primary ? Color.blue : Color(.systemBackground), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(enabled ? (primary ? Color.clear : Color.blue.opacity(0.45)) : Color.secondary.opacity(0.25)))
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct TripSectionLabel: View {
+    let title: String
+    let symbol: String
+    var color: Color = .blue
+    var body: some View {
+        Label { Text(title) } icon: {
+            Image(systemName: symbol).foregroundStyle(color)
+        }.font(.headline)
+    }
+}
+
 extension View {
     func tripPanel() -> some View {
         padding(12).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -13,11 +38,11 @@ struct TripArtwork: View {
             Rectangle().frame(height: 1)
             ZStack {
                 Image(systemName: symbol).font(.system(size: 35, weight: .ultraLight)).rotationEffect(.degrees(-8))
-                Image(systemName: "airplane").font(.system(size: 17, weight: .ultraLight)).offset(x: -37, y: -15)
-                Image(systemName: "mappin").font(.system(size: 17, weight: .ultraLight)).offset(x: 38, y: 16)
+                Image(systemName: "airplane").font(.system(size: 17, weight: .ultraLight)).foregroundStyle(Color.orange.opacity(0.65)).offset(x: -37, y: -15)
+                Image(systemName: "mappin").font(.system(size: 17, weight: .ultraLight)).foregroundStyle(Color.teal.opacity(0.65)).offset(x: 38, y: 16)
             }.frame(width: 110, height: 60)
             Rectangle().frame(height: 1)
-        }.foregroundStyle(Color.blue.opacity(0.3)).accessibilityHidden(true)
+        }.foregroundStyle(Color.blue.opacity(0.45)).accessibilityHidden(true)
     }
 }
 struct TripAnalogClock: View {
@@ -48,10 +73,10 @@ struct TripActionButton: View {
     var body: some View {
         if primary {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "checkmark"); Text(title).fontWeight(.semibold) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(.borderedProminent).tint(.blue)
+                .buttonStyle(TripButtonStyle(primary: true))
         } else {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "xmark"); Text(title) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(.bordered).tint(.gray)
+                .buttonStyle(TripButtonStyle())
         }
     }
 }
@@ -66,6 +91,6 @@ struct TripNavigationButton: View {
                 Text(title)
             }.font(.subheadline.weight(.semibold)).fixedSize(horizontal: true, vertical: false)
                 .frame(minHeight: 32)
-        }.buttonStyle(.bordered).tint(.blue)
+        }.buttonStyle(TripButtonStyle())
     }
 }

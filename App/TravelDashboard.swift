@@ -10,7 +10,7 @@ struct TravelDashboard: View {
     @AppStorage("trip-home-color") private var homeColor = "EAF4ED"
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
     @AppStorage("trip-currency-color") private var currencyColor = "F3F3F3"
-    @State private var tab = 0
+    @AppStorage("trip-selected-tab") private var tab = 0
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
@@ -46,7 +46,7 @@ struct TravelDashboard: View {
         VStack(spacing: 10) {
             TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true) }
             VStack(alignment: .leading, spacing: 10) {
-                Label("Currency", systemImage: "banknote").font(.headline)
+                TripSectionLabel(title: "Currency", symbol: "banknote")
                 HStack { quick(.source); Image(systemName: "arrow.left.arrow.right"); quick(.target) }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -55,12 +55,25 @@ struct TravelDashboard: View {
                         if let snapshot = currency.snapshot { Text("Checked " + snapshot.fetchedAt.formatted(date: .omitted, time: .shortened)) }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
-                    Button("Full converter") { tab = 1 }.font(.subheadline)
+                    Button { tab = 1 } label: {
+                        Label("Full converter", systemImage: "banknote")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: 44)
+                    }.buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.roundedRectangle(radius: 10))
+                        .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
                 }
             }.tripPanel()
             TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
             Button { tab = 3 } label: {
-                HStack { VStack(alignment: .leading) { Text("My Trip").font(.caption); Text(trip.records.filter { $0.start >= Date() }.sorted { $0.start < $1.start }.first?.name ?? "View travel details").font(.headline) }; Spacer(); Image(systemName: "chevron.right") }.padding()
+                HStack {
+                    Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
+                        .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        nextTrip(at: context.date)
+                    }
+                    Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                }.padding()
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             Spacer(minLength: 0)
         }.padding(12)
@@ -69,6 +82,17 @@ struct TravelDashboard: View {
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
         return VStack(alignment: .leading) { Text(code).font(.caption); HStack(spacing: 4) { Text(Currency.named(code).symbol); TextField("Amount", text: Binding(get: { currency.fieldText(for: side, focused: false) }, set: { currency.edit($0.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: ""), side: side) })).keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit() } }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
+    }
+    private func nextTrip(at now: Date) -> some View {
+        let next = trip.records.filter { $0.start >= now }.min { $0.start < $1.start }
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("My Trip").font(.caption)
+            Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(1)
+            if let next {
+                Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.timeLabel(start: true))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
     private var world: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in

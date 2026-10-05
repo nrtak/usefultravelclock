@@ -13,6 +13,23 @@ struct TravelRecord: Codable, Identifiable {
     var start = Date()
     var end = Date()
     var note = ""
+    var departureTimeZone: String? = nil
+    var arrivalTimeZone: String? = nil
+    var departureCity: String? = nil
+    var arrivalCity: String? = nil
+    func zone(start: Bool) -> TimeZone {
+        let identifier = start ? departureTimeZone : (arrivalTimeZone ?? (kind == "Hotel" ? departureTimeZone : nil))
+        return identifier.flatMap(TimeZone.init(identifier:)) ?? .current
+    }
+    func timeLabel(start: Bool) -> String {
+        let formatter = DateFormatter()
+        formatter.timeZone = zone(start: start)
+        formatter.dateStyle = .medium; formatter.timeStyle = .short
+        let date = start ? self.start : end
+        let identifier = start ? departureTimeZone : (arrivalTimeZone ?? (kind == "Hotel" ? departureTimeZone : nil))
+        let label = identifier == nil ? "device time" : (formatter.timeZone.abbreviation(for: date) ?? formatter.timeZone.identifier)
+        return formatter.string(from: date) + " · " + label
+    }
 }
 struct TranslationRecord: Codable, Identifiable {
     var id = UUID()

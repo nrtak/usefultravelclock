@@ -24,4 +24,23 @@ final class TravelRecordTests: XCTestCase {
         XCTAssertEqual(copy.note, record.note)
         XCTAssertEqual(copy.image, record.image)
     }
+    func testLegacyRecordLoadsWithoutTimeZones() throws {
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TravelRecord())) as? [String: Any])
+        for key in ["departureTimeZone", "arrivalTimeZone", "departureCity", "arrivalCity"] { object.removeValue(forKey: key) }
+        let record = try JSONDecoder().decode(TravelRecord.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(record.departureTimeZone)
+        XCTAssertEqual(record.zone(start: true), TimeZone.current)
+    }
+    func testIndependentLocalZonesAndHotelFallback() throws {
+        var record = TravelRecord(kind: "Flight")
+        record.departureTimeZone = "America/Los_Angeles"
+        record.arrivalTimeZone = "Asia/Tokyo"
+        let date = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-05T00:00:00Z"))
+        XCTAssertEqual(record.zone(start: true).secondsFromGMT(for: date), -7 * 3600)
+        XCTAssertEqual(record.zone(start: false).secondsFromGMT(for: date), 9 * 3600)
+        let copy = try JSONDecoder().decode(TravelRecord.self, from: JSONEncoder().encode(record))
+        XCTAssertEqual(copy.arrivalTimeZone, "Asia/Tokyo")
+        record.kind = "Hotel"; record.arrivalTimeZone = nil
+        XCTAssertEqual(record.zone(start: false), record.zone(start: true))
+    }
 }
