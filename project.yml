@@ -37,7 +37,6 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Trip Info and private hotel and travel details.
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Find nearby embassies or consulates. If location is unavailable, search near your destination.
     entitlements:
       path: UsefulTravelClock/UsefulTravelClock.entitlements
       properties:
