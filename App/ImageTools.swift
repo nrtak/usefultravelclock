@@ -35,6 +35,7 @@ struct PriceImageView: View {
     @State private var choosesPhoto = false
     @State private var captureID: UUID?
     @State private var capturingPhoto = false
+    @State private var scanningPaused = false
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -58,6 +59,7 @@ struct PriceImageView: View {
                     live = true; data = nil; prices = []; page = 0
                     pricesHeld = false; scanID = UUID(); error = ""
                     captureID = nil; capturingPhoto = false
+                    scanningPaused = false
                 }
                 priceModeButton("Photo", icon: "photo", selected: !live) {
                     photo = nil; choosesPhoto = true
@@ -88,9 +90,14 @@ struct PriceImageView: View {
             }
             if live {
                 HStack {
-                    Text(capturingPhoto ? "Capturing photo…" : pricesHeld ? "Prices held" : "Scanning for prices…").font(.caption).foregroundStyle(.secondary)
+                    Text(capturingPhoto ? "Capturing photo…" : scanningPaused ? "Paused" : pricesHeld ? "Prices held" : "Scanning for prices…").font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button { prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID() } label: {
+                    Button {
+                        scanningPaused.toggle()
+                        if !scanningPaused { prices = []; page = 0; pricesHeld = false; captureID = nil; scanID = UUID() }
+                    } label: { Label(scanningPaused ? "Resume" : "Pause", systemImage: scanningPaused ? "play.fill" : "pause.fill") }
+                        .font(.caption).frame(minHeight: 44).disabled(capturingPhoto)
+                    Button { prices = []; page = 0; pricesHeld = false; scanningPaused = false; captureID = nil; capturingPhoto = false; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
                     }.disabled(!pricesHeld)
                 }
@@ -140,7 +147,7 @@ struct PriceImageView: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
     private func captureLivePrices(_ text: String) {
-        guard !pricesHeld else { return }
+        guard live && !pricesHeld && !scanningPaused && !busy else { return }
         let captured = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
         guard !captured.isEmpty else { return }
         prices = captured

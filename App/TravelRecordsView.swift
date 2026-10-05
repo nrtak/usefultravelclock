@@ -30,7 +30,8 @@ struct TravelRecordsView: View {
                                     .font(.title2).foregroundStyle(.orange).frame(width: 32)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
-                                    Text(record.start.formatted(date: .abbreviated, time: .shortened)).font(.subheadline)
+                                    Text((record.kind == "Hotel" ? "Check-in · " : "Departure · ") + record.timeLabel(start: true)).font(.subheadline)
+                                    Text((record.kind == "Hotel" ? "Check-out · " : "Arrival · ") + record.timeLabel(start: false)).font(.caption).foregroundStyle(.secondary)
                                     if !record.reference.isEmpty { Text(record.reference).font(.caption) }
                                     if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.caption).lineLimit(2) }
                                 }
@@ -61,6 +62,7 @@ struct RecordForm: View {
     @EnvironmentObject private var trip: TripStore
     @State var record: TravelRecord
     var onSave: (() -> Void)? = nil
+    @State private var choosingStart: Bool?
     private var hasDetails: Bool {
         [record.name, record.reference, record.from, record.to, record.note].contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
@@ -77,8 +79,12 @@ struct RecordForm: View {
             }
             Section("Dates") {
                 DatePicker(record.kind == "Hotel" ? "Check-in" : "Departure", selection: $record.start)
+                    .environment(\.timeZone, record.zone(start: true))
+                timeZoneButton(start: true)
                 DatePicker(record.kind == "Hotel" ? "Check-out" : "Arrival / return", selection: $record.end, in: record.start...)
-                Text("Times use your device’s time zone.").font(.caption).foregroundStyle(.secondary)
+                    .environment(\.timeZone, record.zone(start: false))
+                timeZoneButton(start: false)
+                Text("Choose each location to enter its local time. Changing a time zone preserves the scheduled instant; review the displayed dates and times.").font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 TextField("Notes (optional)", text: $record.note, axis: .vertical).lineLimit(2...4)
@@ -93,6 +99,13 @@ struct RecordForm: View {
             }
         }
         .onChange(of: record.start) { _, start in if record.end < start { record.end = start } }
+        .sheet(isPresented: Binding(get: { choosingStart != nil }, set: { if !$0 { choosingStart = nil } })) {
+            TripCityPicker { city in
+                if choosingStart == true { record.departureTimeZone = city.timeZoneID; record.departureCity = city.name }
+                else { record.arrivalTimeZone = city.timeZoneID; record.arrivalCity = city.name }
+                choosingStart = nil
+            }
+        }
         .onChange(of: trip.unlocked) { _, unlocked in if !unlocked { onSave?() } }
     }
     private func save() {
@@ -100,6 +113,17 @@ struct RecordForm: View {
         trip.error = nil
         trip.save(record)
         if trip.error == nil { onSave?() }
+    }
+    private func timeZoneButton(start: Bool) -> some View {
+        let name = start ? record.departureCity : record.arrivalCity
+        return Button { choosingStart = start } label: {
+            HStack {
+                Text(record.kind == "Hotel" ? (start ? "Check-in time zone" : "Check-out time zone") : (start ? "Departure time zone" : "Arrival time zone")).foregroundStyle(.secondary)
+                Spacer()
+                Text(name ?? (record.kind == "Hotel" && !start ? record.departureCity : nil) ?? "Device time")
+                Image(systemName: "magnifyingglass")
+            }.font(.subheadline).frame(minHeight: 44)
+        }.buttonStyle(.plain)
     }
 
 }

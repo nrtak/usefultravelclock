@@ -39,8 +39,8 @@ struct TripWeatherCard: View {
                     Label(result.temperatures(result.celsius), systemImage: result.symbol).symbolRenderingMode(.multicolor).font(.subheadline)
                     Text(result.condition).font(.caption)
                     Text("Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2).foregroundStyle(.secondary)
-                    if connection.isOffline { Label("Offline · saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
-                    else if weather.errors[place.id] != nil { Text("Refresh failed · saved weather").font(.caption2).foregroundStyle(.secondary) }
+                    if connection.isOffline { Label("Offline · using saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
+                    else if weather.errors[place.id] != nil { Text("Refresh failed · using saved weather").font(.caption2).foregroundStyle(.secondary) }
                     else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved weather · refresh needed").font(.caption2).foregroundStyle(.secondary) }
                 } else if weather.loading.contains(city.id) { ProgressView() }
                 else { Text("Weather unavailable").font(.caption) }
@@ -138,8 +138,8 @@ struct TripWeatherSearchView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Updated " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
-                        if connection.isOffline { Label("Offline · saved forecast", systemImage: "wifi.slash") }
-                        else if weather.errors[place.id] != nil { Text("Refresh failed · saved forecast") }
+                        if connection.isOffline { Label("Offline · using saved forecast", systemImage: "wifi.slash") }
+                        else if weather.errors[place.id] != nil { Text("Refresh failed · using saved forecast") }
                         else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved forecast · refresh needed") }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)

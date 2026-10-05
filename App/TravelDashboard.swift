@@ -89,9 +89,8 @@ struct TravelDashboard: View {
             Text("My Trip").font(.caption)
             Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(1)
             if let next {
-                Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.start.formatted(date: .abbreviated, time: .shortened))
+                Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.timeLabel(start: true))
                     .font(.caption).foregroundStyle(.secondary)
-                Text("Device time zone").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
