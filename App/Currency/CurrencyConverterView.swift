@@ -76,7 +76,7 @@ struct CurrencyConverterView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onBack {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         TripNavigationButton(title: "Back") { editingSide = nil; onBack() }
                     }.tripToolbarBackground()
                 }
