@@ -16,12 +16,22 @@ struct TripRefreshStamp: View {
 @MainActor final class TripConnectionStore: ObservableObject {
     static let shared = TripConnectionStore()
     @Published private(set) var isOffline = false
+    #if DEBUG
+    private var tutorialOffline: Bool?
+    func setTutorialOffline(_ value: Bool?) { tutorialOffline = value; if let value { isOffline = value } }
+    #endif
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "trip.connection")
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let offline = path.status != .satisfied
-            Task { @MainActor [weak self] in self?.isOffline = offline }
+            Task { @MainActor [weak self] in
+                #if DEBUG
+                self?.isOffline = self?.tutorialOffline ?? offline
+                #else
+                self?.isOffline = offline
+                #endif
+            }
         }
         monitor.start(queue: queue)
     }
@@ -38,3 +48,4 @@ struct TripRateStatus: View {
         }
     }
 }
+

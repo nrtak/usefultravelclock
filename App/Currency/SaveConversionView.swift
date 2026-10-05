@@ -172,3 +172,18 @@ private struct SavedConversionDetail: View {
         }.navigationTitle("Saved conversion").navigationBarTitleDisplayMode(.inline)
     }
 }
+
+
+#if DEBUG
+extension SaveConversionView {
+    init(tutorialDraft draft: SavedConversion, photo: Data, saved: SavedConversions) {
+        self.init(draft: draft, initialPhoto: photo, saved: saved)
+        _note = State(initialValue: draft.note)
+    }
+}
+enum TutorialSavedViews {
+    static func detail(_ item: SavedConversion, photoURL: URL?) -> some View {
+        NavigationStack { SavedConversionDetail(item: item, photoURL: photoURL) }
+    }
+}
+#endif

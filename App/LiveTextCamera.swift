@@ -3,6 +3,9 @@ import VisionKit
 import UIKit
 
 struct LiveTextCamera: UIViewControllerRepresentable {
+    #if DEBUG
+    static var tutorialImage: UIImage?
+    #endif
     var recognitionEnabled = true
     var onText: (String) -> Void
     var onError: (String) -> Void
@@ -13,12 +16,24 @@ struct LiveTextCamera: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let scanner = DataScannerViewController(recognizedDataTypes: [.text()], qualityLevel: .balanced, recognizesMultipleItems: true, isHighFrameRateTrackingEnabled: false, isPinchToZoomEnabled: true, isGuidanceEnabled: true, isHighlightingEnabled: true)
         scanner.delegate = context.coordinator
+        #if DEBUG
+        if let image = Self.tutorialImage {
+            let preview = UIImageView(image: image)
+            preview.contentMode = .scaleAspectFill; preview.clipsToBounds = true
+            preview.frame = scanner.view.bounds; preview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            scanner.view.addSubview(preview)
+            return scanner
+        }
+        #endif
         if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
             do { try scanner.startScanning() } catch { DispatchQueue.main.async { onError(error.localizedDescription) } }
         } else { DispatchQueue.main.async { onError("Live camera unavailable. Enable camera access in Settings or choose a photo.") } }
         return scanner
     }
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
+        #if DEBUG
+        if Self.tutorialImage != nil { return }
+        #endif
         context.coordinator.recognitionEnabled = recognitionEnabled
         context.coordinator.onText = onText
         context.coordinator.onError = onError
@@ -76,3 +91,4 @@ struct LiveTextCamera: UIViewControllerRepresentable {
         func dataScanner(_ scanner: DataScannerViewController, becameUnavailableWithError error: DataScannerViewController.ScanningUnavailable) { onError("Live camera unavailable. Choose a photo instead.") }
     }
 }
+

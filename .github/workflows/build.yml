@@ -59,7 +59,20 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath build/Tests.xcresult \
+            -parallel-testing-enabled NO \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build/test.log
+      - name: Collect actual tutorial screens
+        run: |
+          capture_data="$(xcrun simctl get_app_container "$SIMULATOR_ID" com.usefultravelclock.app data)"
+          mkdir -p build/TutorialCaptures
+          cp -R "$capture_data/Documents/TutorialCaptures/." build/TutorialCaptures/
+      - name: Save actual tutorial screens
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trip-Info-Actual-Screens
+          path: build/TutorialCaptures
+          if-no-files-found: error
+          retention-days: 14
       - name: Package Simulator app
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
