@@ -22,6 +22,13 @@ final class OfflineTests: XCTestCase {
         XCTAssertEqual(store.snapshot?.fetchedAt, snapshot.fetchedAt)
         XCTAssertEqual(store.savedDraft()?.ratesCheckedAt, snapshot.fetchedAt)
     }
+    @MainActor
+    func testOfflineWeatherLocationSearchIgnoresCaseAccentsAndDuplicates() {
+        let place = WeatherLocation(name: "São Paulo", latitude: -23.55, longitude: -46.63)
+        let other = WeatherLocation(name: "Tokyo", latitude: 35.68, longitude: 139.76)
+        XCTAssertEqual(TripWeatherStore.savedLocations(matching: "  SAO  ", in: [place, place, other]).map(\.id), [place.id])
+        XCTAssertTrue(TripWeatherStore.savedLocations(matching: "London", in: [place, other]).isEmpty)
+    }
     func testOfflineHelpAndBundledRatesAreIncluded() throws {
         let video = try XCTUnwrap(Bundle.main.url(forResource: "Trip_Info_Quick_Tour", withExtension: "mp4"))
         XCTAssertGreaterThan(try Data(contentsOf: video).count, 1000)

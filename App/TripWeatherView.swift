@@ -113,7 +113,7 @@ struct TripWeatherSearchView: View {
         ScrollView {
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
-                    TextField("Search any city", text: $query).textFieldStyle(.roundedBorder).onSubmit { search() }
+                    TextField(connection.isOffline ? "Search saved locations" : "Search any city", text: $query).textFieldStyle(.roundedBorder).onSubmit { search() }
                     Button { search() } label: { Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }
                         .buttonStyle(.bordered).disabled(query.trimmingCharacters(in: .whitespaces).isEmpty || busy).accessibilityLabel("Search weather locations")
                 }
@@ -257,7 +257,7 @@ struct TripWeatherSearchView: View {
         guard !requested.isEmpty else { return }
         selected = nil; busy = true; message = ""
         Task {
-            do { matches = try await weather.search(requested); if matches.isEmpty { message = "No locations found." } }
+            do { matches = try await weather.search(requested); if matches.isEmpty { message = connection.isOffline ? "Offline · no saved locations match. Search new cities while connected." : "No locations found." } }
             catch { message = "Location search needs an internet connection." }
             busy = false
         }
