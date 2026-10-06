@@ -93,10 +93,6 @@ private enum TripAppInformation {
 private struct TripHelpView: View {
     var body: some View {
         List {
-            Section("Quick tour") {
-                NavigationLink { TripHelpVideoView() } label: { Label("How to use Trip Info", systemImage: "play.circle") }
-                Text("90 seconds · chapters · silent · works offline").font(.caption).foregroundStyle(.secondary)
-            }
             Section("Home") { Text("Choose your Home and Destination cities. Edit either currency amount to convert both ways. Tap the swap arrows to reverse currencies, or Full converter for more tools.") }
             Section("Conversions") { Text("Currency is the main tool. Add multiple prices supports addition and subtraction; Clear all asks before removing entries. Unit converter handles measurements such as distance, temperature and volume.") }
             Section("Camera & photos") {

@@ -29,9 +29,7 @@ final class OfflineTests: XCTestCase {
         XCTAssertEqual(TripWeatherStore.savedLocations(matching: "  SAO  ", in: [place, place, other]).map(\.id), [place.id])
         XCTAssertTrue(TripWeatherStore.savedLocations(matching: "London", in: [place, other]).isEmpty)
     }
-    func testOfflineHelpAndBundledRatesAreIncluded() throws {
-        let video = try XCTUnwrap(Bundle.main.url(forResource: "Trip_Info_Quick_Tour", withExtension: "mp4"))
-        XCTAssertGreaterThan(try Data(contentsOf: video).count, 1000)
+    func testBundledRatesAreIncluded() throws {
         let ratesURL = try XCTUnwrap(Bundle.main.url(forResource: "BundledRates", withExtension: "json"))
         let rows = try JSONDecoder().decode([Rate].self, from: Data(contentsOf: ratesURL))
         XCTAssertGreaterThan(rows.count, 150)
