@@ -42,10 +42,11 @@ struct TripRateStatus: View {
     @ObservedObject private var connection = TripConnectionStore.shared
     var body: some View {
         if connection.isOffline {
-            Label(store.snapshot == nil ? "Offline · no saved rates" : (store.usingBundledRates ? "Offline · using bundled reference rates" : "Offline · using saved reference rates"), systemImage: "wifi.slash")
+            Label(store.snapshot == nil ? "Offline · no saved rates" : (store.usingBundledRates ? "Offline · included rates" : "Offline · saved rates"), systemImage: "wifi.slash")
         } else if store.updateFailed {
-            Label(store.snapshot == nil ? "Rates unavailable · retry refresh" : (store.usingBundledRates ? "Refresh failed · using bundled reference rates" : "Refresh failed · using saved reference rates"), systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+            Label(store.snapshot == nil ? "Rates unavailable · retry refresh" : (store.usingBundledRates ? "Refresh failed · included rates" : "Refresh failed · saved rates"), systemImage: "exclamationmark.arrow.triangle.2.circlepath")
         }
     }
 }
+
 

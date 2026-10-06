@@ -200,7 +200,7 @@ struct TravelDashboard: View {
                     quick(.target)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(currency.detail)
+                    if !currency.amount.isEmpty { Text(currency.detail) }
                     TripRateStatus(store: currency)
                     if let checked = currency.lastChecked { TripRefreshStamp(success: currency.lastManualRefresh, fallback: checked) }
                 }.font(.caption2).foregroundStyle(.secondary)
@@ -451,3 +451,4 @@ extension TravelDashboard {
     }
 }
 #endif
+

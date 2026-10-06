@@ -79,8 +79,8 @@ final class ConverterStore: ObservableObject {
     }
 
     var detail: String {
-        guard Amount.parse(amount) != nil else { return "Enter a positive amount or zero, without grouping separators." }
-        if source == target { return "Same currency · No conversion needed" }
+        guard Amount.parse(amount) != nil else { return "Enter an amount." }
+        if source == target { return "Same currency" }
         guard let snapshot, snapshot.multiplier(from: source, to: target) != nil else {
             return isLoading ? "Getting exchange rates…" : "Rate unavailable. Connect and tap Refresh."
         }
@@ -88,17 +88,16 @@ final class ConverterStore: ObservableObject {
         let stamp = dates.joined(separator: " / ")
         let oldest = dates.first.flatMap(RateSnapshot.validDate)
         let stale = oldest.map { Date().timeIntervalSince($0) > 4 * 86400 } ?? true
-        return (usingBundledRates ? "Bundled reference rates as of " : "Reference rates as of ") + stamp + (stale ? " · Older rates" : "")
+        return (usingBundledRates ? "Included rates · " : "Rates · ") + stamp + (stale ? " · Older rates" : "")
     }
 
     var lastChecked: String? {
         guard let snapshot else { return nil }
         let formatter = DateFormatter()
         formatter.locale = .current
-        formatter.dateStyle = .medium
+        formatter.dateStyle = .none
         formatter.timeStyle = .short
-        let zone = TimeZone.current.abbreviation() ?? TimeZone.current.identifier
-        return (usingBundledRates ? "Included rate snapshot retrieved " : "Rates last retrieved ") + formatter.string(from: snapshot.fetchedAt) + " " + zone
+        return "Updated " + formatter.string(from: snapshot.fetchedAt)
     }
 
     func savedDraft() -> SavedConversion? {
@@ -148,3 +147,4 @@ final class ConverterStore: ObservableObject {
         } catch { updateFailed = true }
     }
 }
+
