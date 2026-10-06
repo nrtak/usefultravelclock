@@ -39,7 +39,6 @@ struct TripWeatherCard: View {
                 Spacer(minLength: 4)
             }
             HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
-            Text("Forecasts are predictions. Retrieved and observed times use your device time zone; forecast rows use the city time zone.").font(.caption2).foregroundStyle(.secondary)
             HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
@@ -61,13 +60,12 @@ struct TripWeatherCard: View {
                 if let place, let result = weather.cache[place.id] {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
-                    Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
-                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Retrieved \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption2)
-                    if connection.isOffline { Label("Offline · using saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
-                    else if weather.errors[place.id] != nil { Text("Refresh failed · using saved weather").font(.caption2).foregroundStyle(.secondary) }
-                    else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved weather · refresh needed").font(.caption2).foregroundStyle(.secondary) }
+                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2)
+                    if connection.isOffline { Label("Offline · saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
+                    else if weather.errors[place.id] != nil { Text("Refresh failed · saved weather").font(.caption2).foregroundStyle(.secondary) }
+                    else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved · tap refresh").font(.caption2).foregroundStyle(.secondary) }
                 } else if weather.loading.contains(city.id) { ProgressView() }
-                else { Text(connection.isOffline ? "Offline · no saved weather" : "Weather unavailable · tap refresh to retry").font(.caption).foregroundStyle(.secondary) }
+                else { Text(connection.isOffline ? "Offline · no saved weather" : "Unavailable · tap refresh").font(.caption).foregroundStyle(.secondary) }
             } else { Text("Select your home city above.").font(.caption) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -150,9 +148,9 @@ struct TripWeatherSearchView: View {
         }.buttonStyle(.bordered).tint(selected?.id == weather.locations[city.id]?.id ? .blue : .gray)
     }
     private func forecast(_ place: WeatherLocation) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(place.name).font(.title3.weight(.bold)).lineLimit(2)
+                Text(place.name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer()
                 Button { Task { await weather.refresh(place, force: true); message = weather.errors[place.id] ?? "" } } label: {
                     if weather.loading.contains(place.id) { ProgressView().frame(width: 44, height: 44) }
@@ -165,26 +163,23 @@ struct TripWeatherSearchView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(result.temperatures(result.celsius)).font(.title2.weight(.semibold))
                         Text(result.condition).font(.caption)
-                    Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Observed " + result.observedAt.formatted(date: .abbreviated, time: .shortened))
-                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Retrieved " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
-                        if connection.isOffline { Label("Offline · using saved forecast", systemImage: "wifi.slash") }
-                        else if weather.errors[place.id] != nil { Text("Refresh failed · using saved forecast") }
-                        else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved forecast · refresh needed") }
+                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated " + result.fetchedAt.formatted(date: .omitted, time: .shortened))
+                        if connection.isOffline { Label("Offline · saved forecast", systemImage: "wifi.slash") }
+                        else if weather.errors[place.id] != nil { Text("Refresh failed · saved forecast") }
+                        else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved · tap refresh") }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
                 }
                 Picker("Forecast period", selection: $period) { ForEach(WeatherPeriod.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-                Text("Forecast times: " + (TimeZone(identifier: result.timeZoneIdentifier ?? "UTC")?.identifier.replacingOccurrences(of: "_", with: " ") ?? "UTC")).font(.caption2).foregroundStyle(.secondary)
+                Text("Local time · " + (TimeZone(identifier: result.timeZoneIdentifier ?? "UTC")?.identifier.replacingOccurrences(of: "_", with: " ") ?? "UTC")).font(.caption2).foregroundStyle(.secondary)
                 if period == .hourly { hourly(result) } else { weekly(result) }
             } else if weather.loading.contains(place.id) { ProgressView("Loading forecast…") }
             else { Text(connection.isOffline ? "Offline · no saved forecast for this city" : "Forecast unavailable. Try refresh.").font(.subheadline) }
-            Text("Forecasts are predictions. Retrieved and observed times use your device time zone; forecast rows use the city time zone.").font(.caption2).foregroundStyle(.secondary)
             HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
     }
@@ -212,16 +207,16 @@ struct TripWeatherSearchView: View {
                     Spacer()
                     Button("Later") { hourPage += 1 }.disabled(hourPage + 1 >= pages)
                 }.font(.subheadline).frame(minHeight: 44)
-                Text("Hourly temperature · precipitation chance").font(.caption2).foregroundStyle(.secondary)
+                Text("Rain chance %").font(.caption2).foregroundStyle(.secondary)
             }
         }.onChange(of: pages) { _, _ in hourPage = min(hourPage, pages - 1) }
     }
     private func weekly(_ result: CachedWeather) -> some View {
         let days = result.upcomingDays()
-        return VStack(spacing: 4) {
+        return VStack(spacing: 2) {
             ForEach(days) { day in dailyRow(day, result: result) }
             if days.isEmpty { Text("No upcoming daily forecast saved. Refresh when connected.").font(.caption).foregroundStyle(.secondary) }
-            else { Text("Daily high / low · precipitation chance").font(.caption2).foregroundStyle(.secondary) }
+            else { Text("High / low · rain %").font(.caption2).foregroundStyle(.secondary) }
         }
     }
     private func dailyRow(_ day: CachedWeatherDay, result: CachedWeather) -> some View {
@@ -238,7 +233,7 @@ struct TripWeatherSearchView: View {
                     }.font(.caption).monospacedDigit()
                     Spacer(minLength: 2)
                     Text("\(Int((day.precipitationChance * 100).rounded()))%").font(.caption).foregroundStyle(.secondary)
-                }.frame(minHeight: 38).accessibilityElement(children: .combine)
+                }.frame(minHeight: 32).accessibilityElement(children: .combine)
                     .accessibilityLabel(label)
     }
     private func stamp(_ date: Date, format: String, result: CachedWeather) -> String {
@@ -263,3 +258,4 @@ struct TripWeatherSearchView: View {
         }
     }
 }
+
