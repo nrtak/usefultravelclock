@@ -24,20 +24,17 @@ struct CurrencyConverterView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-              ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 10) {
+                VStack(spacing: 8) {
                         VStack(spacing: 6) {
                             HStack {
                                 TripSectionLabel(title: "Currency", symbol: "banknote")
                                 Spacer()
+                                Button { editingSide = nil; store.swap() } label: {
+                                    Image(systemName: "arrow.up.arrow.down").font(.title3).frame(width: 44, height: 44)
+                                }.buttonStyle(.plain).accessibilityLabel("Swap currencies")
                             }
                             amountCard(source: true)
-                            Button { editingSide = nil; store.swap() } label: {
-                                Image(systemName: "arrow.up.arrow.down").font(.title3).frame(width: 44, height: 44)
-                            }.buttonStyle(.bordered).accessibilityLabel("Swap currencies")
                             amountCard(source: false)
-                            HStack { Spacer(); Button("Clear amount") { store.edit("", side: editingSide ?? store.inputSide) }.font(.caption) }
                             rateDetails
                         }.tripPanel().id("amounts")
 
@@ -45,7 +42,7 @@ struct CurrencyConverterView: View {
                             HStack(spacing: 10) {
                                 featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }.frame(height: min((geometry.size.width - 42) / 2, max(80, min(120, geometry.size.height - 520))))
+                            }.frame(height: geometry.size.height < 600 ? 64 : 80)
                             saveButtons
                             SavedConversionNotice(saved: saved) { showsSaved = true }
                             Button { showsUnits = true } label: {
@@ -57,20 +54,15 @@ struct CurrencyConverterView: View {
                                 }.frame(minHeight: 44).contentShape(Rectangle())
                             }.buttonStyle(.plain).accessibilityHint("Convert distance, temperature, volume and weight")
                             VStack(spacing: 0) {
-                                Text("Reference rates by Frankfurter · Bank and card rates may differ.")
+                                Text("Rates: Frankfurter · Bank rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
                             }
                         }
-                    }
-                    .padding(.horizontal, 16).padding(.vertical, 8)
+                    Spacer(minLength: 0)
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollDismissesKeyboard(.interactively)
-                .onChange(of: editing) { _, active in
-                    if active { proxy.scrollTo("amounts", anchor: .top) }
-                }
-            }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
             .navigationTitle("Conversions")
             .navigationBarTitleDisplayMode(.inline)
@@ -116,10 +108,9 @@ struct CurrencyConverterView: View {
 
     private func featureTile(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 10) {
-                Image(systemName: icon).font(.system(size: featureIconSize, weight: .regular)).foregroundStyle(.blue)
-                Text(title).font(.subheadline.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(0.75)
-                Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            VStack(spacing: 4) {
+                Image(systemName: icon).font(.system(size: 26, weight: .regular)).foregroundStyle(.blue)
+                Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
@@ -141,7 +132,7 @@ struct CurrencyConverterView: View {
                                            focused: editingSide == (source ? .source : .target)) },
                     set: { store.edit($0, side: source ? .source : .target) }
                 ))
-                .font(.system(size: editing ? 32 : 36, weight: source ? .medium : .semibold))
+                .font(.system(size: 28, weight: source ? .medium : .semibold))
                 .monospacedDigit().keyboardType(.decimalPad)
                 .focused($editingSide, equals: source ? .source : .target)
                 .accessibilityLabel("\(source ? "From" : "To") amount in \(Currency.named(code).name)")
@@ -157,8 +148,9 @@ struct CurrencyConverterView: View {
                 }
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
+        .padding(8)
         .foregroundStyle(Color.readable(on: boxColor))
         .background(Color(hex: boxColor),
                     in: RoundedRectangle(cornerRadius: 12))
@@ -175,6 +167,8 @@ struct CurrencyConverterView: View {
                 if store.cacheWriteFailed { Text("Couldn’t save rates.") }
             }.font(.caption2).foregroundStyle(.secondary)
             Spacer(minLength: 0)
+            Button("Clear") { store.edit("", side: editingSide ?? store.inputSide) }
+                .font(.caption).frame(minHeight: 44).accessibilityLabel("Clear amount")
             Button { Task { await store.refresh(force: true) } } label: {
                 Group {
                     if store.isLoading { ProgressView() }
@@ -315,4 +309,3 @@ struct CurrencyPicker: View {
         }
     }
 }
-
