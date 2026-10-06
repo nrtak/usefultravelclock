@@ -1,10 +1,7 @@
-//  Useful Travel Clock
 
 import SwiftUI
 
-/// Time converter: pick two cities, convert a specific wall-clock time,
-/// matching the web app's Converter tab.
-struct ConverterView: View {
+struct TimeConverterView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.colorScheme) private var scheme
 
@@ -173,7 +170,6 @@ struct ConverterView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: Logic
 
     private var dateBinding: Binding<Date> {
         Binding(
@@ -207,11 +203,10 @@ struct ConverterView: View {
     }
 }
 
-extension ConverterView.Field: Identifiable {
+extension TimeConverterView.Field: Identifiable {
     var id: Int { hashValue }
 }
 
-/// Searchable city picker sheet, used by both converter fields.
 struct CityPickerSheet: View {
     let initialID: String
     let onPick: (String) -> Void
@@ -244,7 +239,7 @@ struct CityPickerSheet: View {
             .safeAreaInset(edge: .top, spacing: 0) { CitySearchField(query: $query) }
             .navigationTitle("Select a city")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Cancel") { dismiss() } }
+            .toolbar { TripActionButton("Cancel", primary: false) { dismiss() } }
         }
         .presentationDetents([.medium, .large])
     }

@@ -1,4 +1,3 @@
-//  Useful Travel Clock
 
 import SwiftUI
 import Combine
@@ -19,12 +18,9 @@ enum CitySort: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-/// App-wide settings, persisted to the shared App Group so widgets read the
-/// same city list and home location. Mirrors the web app's localStorage keys.
 @MainActor
 final class UsefulTravelClockStore: ObservableObject {
 
-    /// App Group identifier — must match the one configured on both targets in Xcode.
     nonisolated static let appGroupID = "group.com.usefultravelclock.app"
 
     static let maxCities = 10
@@ -73,7 +69,6 @@ final class UsefulTravelClockStore: ObservableObject {
                   showWeekday: showWeekday, showDifference: showDifference)
     }
 
-    /// Compound actions (replacement, removal, or reordering) undo as one step.
     func edit(_ changes: () -> Void) {
         editDepth += 1
         changes()
@@ -167,7 +162,6 @@ final class UsefulTravelClockStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    // MARK: Derived
 
     var selectedCities: [City] {
         cityIDs.compactMap { id in allCities.first { $0.id == id } }
@@ -240,12 +234,10 @@ final class UsefulTravelClockStore: ObservableObject {
         homeMode == .automatic ? deviceTimeZoneID : (homeCity?.timeZoneID ?? "UTC")
     }
 
-    /// The instant shown, including the time scrubber offset.
     func displayDate(from now: Date) -> Date {
         now.addingTimeInterval(TimeInterval(scrubHours) * 3600)
     }
 
-    // MARK: City selection
 
     func toggleCity(_ id: String) {
         if cityIDs.contains(id) {
@@ -264,7 +256,6 @@ final class UsefulTravelClockStore: ObservableObject {
     }
 }
 
-/// Lightweight snapshot the widgets read — plain values only, no SwiftUI.
 struct WidgetSnapshot: Codable {
     var cityIDs: [String]
     var homeTimeZoneID: String
@@ -283,7 +274,6 @@ struct WidgetSnapshot: Codable {
 }
 
 extension UserDefaults {
-    /// The same App Group container the widget extension reads.
     static var usefultravelclockShared: UserDefaults {
         UserDefaults(suiteName: UsefulTravelClockStore.appGroupID) ?? .standard
     }

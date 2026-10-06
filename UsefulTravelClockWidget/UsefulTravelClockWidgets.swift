@@ -1,4 +1,3 @@
-//  Useful Travel Clock
 
 import WidgetKit
 import SwiftUI
@@ -12,7 +11,6 @@ struct UsefulTravelClockWidgetBundle: WidgetBundle {
     }
 }
 
-// MARK: - Shared entry model
 
 struct UsefulTravelClockEntry: TimelineEntry {
     let date: Date
@@ -28,9 +26,7 @@ extension UsefulTravelClockEntry {
     }
 }
 
-// MARK: - Timeline provider
 
-/// Reads the city list and home zone from the shared App Group.
 struct UsefulTravelClockProvider: TimelineProvider {
     func placeholder(in context: Context) -> UsefulTravelClockEntry {
         entry(for: Date(), fallbackIDs: defaultCityIDs)
@@ -51,7 +47,6 @@ struct UsefulTravelClockProvider: TimelineProvider {
             ? CitySearch.city(withID: shared.string(forKey: "usefultravelclock-home-city") ?? defaultCityIDs.first ?? "nyc", in: clockCityDatabase)?.timeZoneID ?? TimeZone.current.identifier
             : TimeZone.current.identifier
 
-        // One entry per minute for the next hour, then refresh.
         var entries: [UsefulTravelClockEntry] = []
         let start = Calendar.current.dateInterval(of: .minute, for: Date())!.start
         for minute in 0..<60 {
@@ -80,7 +75,6 @@ struct UsefulTravelClockProvider: TimelineProvider {
     }
 }
 
-// MARK: - Small widget (single city)
 
 @available(iOSApplicationExtension 17.0, *)
 struct UsefulTravelClockSmallWidget: Widget {
@@ -102,7 +96,6 @@ struct UsefulTravelClockMediumWidget: Widget {
     }
 }
 
-// MARK: - Lock screen widgets
 
 struct UsefulTravelClockLockScreenWidget: Widget {
     var body: some WidgetConfiguration {

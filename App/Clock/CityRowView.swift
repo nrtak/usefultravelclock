@@ -1,9 +1,7 @@
-//  Useful Travel Clock
 
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Mirrors the web app's clocks screen: city cards + a time scrubber.
 struct ClocksView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.colorScheme) private var scheme
@@ -186,7 +184,6 @@ private struct CityWiggle: ViewModifier {
     func performDrop(info: DropInfo) -> Bool { draggedID = nil; return true }
 }
 
-/// Readable city card with full location, difference, and date.
 struct CityRowView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     let city: City
@@ -265,8 +262,6 @@ struct CityRowView: View {
     }
 }
 
-/// Detailed analog clock matching the web app's SVG:
-/// circle, 12 ticks (major at 12/3/6/9), distinct hour & minute hands, center pin.
 struct AnalogClockView: View {
     let hourFloat: Double
     var accent: Color
@@ -277,12 +272,10 @@ struct AnalogClockView: View {
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             let radius = 20 * scale
 
-            // Face
             let face = Path(ellipseIn: CGRect(x: c.x - radius, y: c.y - radius, width: radius * 2, height: radius * 2))
             context.fill(face, with: .color(accent.opacity(0.1)))
             context.stroke(face, with: .color(accent.opacity(0.45)), lineWidth: scale)
 
-            // Ticks
             for index in 0..<12 {
                 let major = index % 3 == 0
                 let inner = (major ? 8.0 : 7.5) * scale
@@ -297,21 +290,18 @@ struct AnalogClockView: View {
                 )
             }
 
-            // Hour hand
             let hourAngle = (hourFloat.truncatingRemainder(dividingBy: 12)) * 30
             var hour = Path()
             hour.move(to: c)
             hour.addLine(to: point(center: c, angleDegrees: hourAngle, distance: 10.5 * scale))
             context.stroke(hour, with: .color(accent), style: StrokeStyle(lineWidth: 2.4 * scale, lineCap: .round))
 
-            // Minute hand
             let minuteAngle = (hourFloat.truncatingRemainder(dividingBy: 1)) * 360
             var minute = Path()
             minute.move(to: point(center: c, angleDegrees: minuteAngle + 180, distance: 2 * scale))
             minute.addLine(to: point(center: c, angleDegrees: minuteAngle, distance: 14.5 * scale))
             context.stroke(minute, with: .color(accent.opacity(0.9)), style: StrokeStyle(lineWidth: 1.4 * scale, lineCap: .round))
 
-            // Center pin
             context.fill(Path(ellipseIn: CGRect(x: c.x - 2 * scale, y: c.y - 2 * scale, width: 4 * scale, height: 4 * scale)), with: .color(accent))
         }
         .frame(width: 64, height: 64)

@@ -1,16 +1,10 @@
-//  Useful Travel Clock
 
 import Foundation
 
-/// Mirrors the web app's `src/lib/time.ts`.
 struct ZonedTime: Equatable {
-    /// "05:00"
     let hm: String
-    /// "pm" / "am"
     let period: String
-    /// "Friday, 18 September"
     let date: String
-    /// Local hour 0-23 (fractional) in that zone.
     let hourFloat: Double
     let hour24: Int
     let minute: Int
@@ -61,18 +55,15 @@ enum TimeEngine {
         )
     }
 
-    /// Offset in minutes of `timeZoneID` from GMT at `date` (DST-safe).
     static func zoneOffsetMinutes(_ date: Date, timeZoneID: String) -> Int {
         zone(timeZoneID).secondsFromGMT(for: date) / 60
     }
 
-    /// Offset in minutes of `timeZoneID` relative to the home zone at `date`.
     static func timeDifferenceMinutes(_ date: Date, timeZoneID: String, homeTimeZoneID: String) -> Int {
         zoneOffsetMinutes(date, timeZoneID: timeZoneID)
             - zoneOffsetMinutes(date, timeZoneID: homeTimeZoneID)
     }
 
-    /// "Home", "3 hours ahead", "1 hour 30 minutes behind" — spelled out, app style.
     static func formatDifference(_ minutes: Int) -> String {
         guard minutes != 0 else { return "Home" }
         let absolute = abs(minutes)
@@ -84,7 +75,6 @@ enum TimeEngine {
         return parts.joined(separator: " ") + (minutes > 0 ? " ahead" : " behind")
     }
 
-    /// Widget style: "+5 hrs", "-3 hrs", "+9 hrs 30 mins", "Home".
     static func formatDifferenceCompact(_ minutes: Int) -> String {
         guard minutes != 0 else { return "Home" }
         let absolute = abs(minutes)
@@ -106,7 +96,6 @@ enum TimeEngine {
         }
     }
 
-    /// Widget style date: "Fri, Sep 18".
     static func compactDate(_ date: Date, timeZoneID: String) -> String {
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
@@ -115,10 +104,7 @@ enum TimeEngine {
         return fmt.string(from: date)
     }
 
-    // MARK: - Converter input/output ("yyyy-MM-dd" + "HH:mm" in a zone)
 
-    /// Converts a wall-clock date/time in a zone into the matching instant.
-    /// Rejects nonexistent times and selects the requested occurrence of repeated times.
     static func fromZonedInput(day: String, time: String, timeZoneID: String,
                                repeatedTimePolicy: Calendar.RepeatedTimePolicy = .first) -> Date? {
         let dayParts = day.split(separator: "-").compactMap { Int($0) }
@@ -135,7 +121,6 @@ enum TimeEngine {
 
         guard let tz = TimeZone(identifier: timeZoneID) else { return nil }
         let offsets = Set([-36, -12, 0, 12, 36].map { tz.secondsFromGMT(for: target.addingTimeInterval(Double($0) * 3600)) })
-        // Verify wall-clock components: reject DST gaps and invalid dates.
         let candidates = offsets.map { target.addingTimeInterval(-Double($0)) }.filter {
             let actual = toZonedInput($0, timeZoneID: timeZoneID)
             return actual.day == day && actual.time == time
@@ -143,7 +128,6 @@ enum TimeEngine {
         return repeatedTimePolicy == .last ? candidates.max() : candidates.min()
     }
 
-    /// Current wall-clock in a zone as converter inputs.
     static func toZonedInput(_ date: Date, timeZoneID: String) -> (day: String, time: String) {
         let tz = zone(timeZoneID)
         var calendar = Calendar(identifier: .gregorian)
@@ -154,7 +138,6 @@ enum TimeEngine {
         return (day, time)
     }
 
-    /// "America · Los Angeles" style readable zone name.
     static func readableZone(_ id: String) -> String {
         id.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "/", with: " · ")
     }

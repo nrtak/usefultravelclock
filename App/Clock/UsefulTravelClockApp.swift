@@ -1,24 +1,6 @@
-//  Useful Travel Clock
-
 import SwiftUI
 
-@main
-struct UsefulTravelClockApp: App {
-    @StateObject private var store = UsefulTravelClockStore()
-
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-                .environmentObject(store)
-                .preferredColorScheme(store.preferredColorScheme)
-                .tint(.primary)
-        }
-    }
-}
-
-/// Clocks / Converter tabs + bottom toolbar with Add city and Settings,
-/// matching the web app's four-button bar.
-struct RootView: View {
+struct ClockRootView: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.colorScheme) private var scheme
     @State private var tab: Tab = .clocks
@@ -43,7 +25,7 @@ struct RootView: View {
             Group {
                 switch tab {
                 case .clocks: ClocksView()
-                case .converter: ConverterView()
+                case .converter: TimeConverterView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
