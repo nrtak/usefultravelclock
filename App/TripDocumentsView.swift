@@ -85,7 +85,7 @@ struct TripRecordDocuments: View {
         Section("Documents") {
             ForEach(trip.documents(for: recordID)) { document in
                 NavigationLink { TripDocumentDetail(documentID: document.id) } label: {
-                    TripDocumentRow(document: document, record: nil, available: trip.documentAvailable(document))
+                    TripDocumentRow(document: document, record: trip.records.first { $0.id == recordID }, available: trip.documentAvailable(document))
                 }
             }
             Button { adding = true } label: { Label("Add document", systemImage: "plus.circle") }

@@ -1,6 +1,7 @@
 import XCTest
 import SwiftUI
 import UIKit
+import CryptoKit
 @testable import UsefulTravelClock
 
 // Capture the production views with explicit example data. No substitute layouts.
@@ -94,6 +95,15 @@ final class TutorialCaptureTests: XCTestCase {
         try await screen("15-settings", TripSettingsView())
         try await screen("15-settings-help", TripSettingsView(), bottom: true)
         try await screen("16-offline", dashboard(tab: 0))
+        try trip.unlockForDocumentTests(key: SymmetricKey(size: .bits256))
+        let documentPayload = try TripDocumentPayload.validate(menu, filename: "Cafe receipt.jpg")
+        let document = try trip.importDocument(documentPayload, name: "Cafe receipt", kind: .receipt, traveler: "Alex", note: "Example document", recordID: flight.id)
+        try await screen("17-documents", NavigationStack { TripDocumentsView() })
+        try await screen("18-document-details", NavigationStack { TripDocumentDetail(documentID: document.id) })
+        let importURL = temporary.appendingPathComponent("Cafe receipt.jpg")
+        try menu.write(to: importURL)
+        try await screen("19-add-document", TripDocumentImport(recordID: flight.id, incomingURL: importURL))
+
     }
     @MainActor
     private func capture<V: View>(_ name: String, view: V, bottom: Bool) async throws {

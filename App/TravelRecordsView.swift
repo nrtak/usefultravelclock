@@ -9,7 +9,8 @@ struct TravelRecordsView: View {
     @State private var preview: TripPreviewFile?
     @State private var incoming: TripPreviewFile?
     private var nextDocument: TripDocument? {
-        let record = entries.first { $0.end >= Date() }
+        let now = Date()
+        let record = entries.first { $0.start >= now } ?? entries.first { $0.end >= now }
         return trip.documents.filter { $0.recordID == record?.id && record != nil }.sorted { ($0.kind == .boardingPass ? 0 : 1) < ($1.kind == .boardingPass ? 0 : 1) }.first
     }
     private var entries: [TravelRecord] { trip.records.sorted { $0.start < $1.start } }
