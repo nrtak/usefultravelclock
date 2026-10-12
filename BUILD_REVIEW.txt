@@ -30,13 +30,14 @@ Implemented in source
 
 Verification status
 1. iOS compilation, simulator tests, screenshot inspection and device testing
-   are pending. This Windows computer has no Xcode and GitHub authentication
-   is unavailable. No CI run or TestFlight upload was started.
+   are pending. This Windows computer has no Xcode. The implementation was
+   uploaded to GitHub using the signed-in browser session. No TestFlight
+   upload was requested or started by this chat.
 Local git diff checks passed. New regression and capture tests are written,
 but their existence is not a passing test result.
 
 Next verification step
-Push this branch to the repository after GitHub sign-in. The existing
+Review the GitHub build results for codex/travel-reliability. The existing
 Build and test iOS workflow runs on codex/** branches, builds app/widgets,
 runs all simulator tests, and exports actual tutorial screenshots.
 Review captures 20-offline-readiness, 21-home-large-text, 22-trip-large-text,
