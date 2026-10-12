@@ -1,0 +1,50 @@
+Trip Info: travel reliability and usability changes
+
+Branch: codex/travel-reliability
+Base: release/testflight-trip-notes, 1c54abc
+
+Implemented in source
+2. Encrypted trip draft recovery after backgrounding/relaunch; explicit discard.
+3. Pending unlock invalidation and key-insertion race handling.
+4. Explicit save outcomes, inline retry, preserved drafts on failure.
+5. Recoverable partial document/reference saves with retry or finish options.
+6. Weather freshness, dated fetch stamps, and cached forecast labels.
+7. Offline readiness for trips, readable documents, rates and weather.
+8. Backward-compatible optional reminder fields; existing encrypted data is
+   never assigned a new key when the device key is missing.
+9. Adaptive large-text layouts for clocks, weather, currency and tabs.
+10. Additional DST repeat policies, date-line, midnight and offset tests.
+11. Shared current/next-trip and document selection on Home and My Trip.
+12. Home shortcut to the relevant saved document.
+13. Larger multiline note editor and keyboard/scroll handling.
+14. Date warnings and validation instead of silently changing arrival dates.
+15. Separate network and cache-write status for weather and currency.
+16. Combined document/trip accessibility labels, clock labels, adaptive tabs.
+17. Encrypted import recovery, stale async-result invalidation, stable import
+    identifiers to prevent duplicate documents on retry.
+18. Trip search by name, route, traveler, reference, note and city.
+20. Optional local departure/check-in reminders, permission handling,
+    absolute UTC triggers, rescheduling/deletion and private notification text.
+
+19. Backup and restore intentionally excluded.
+
+Verification status
+1. iOS compilation, simulator tests, screenshot inspection and device testing
+   are pending. This Windows computer has no Xcode and GitHub authentication
+   is unavailable. No CI run or TestFlight upload was started.
+Local git diff checks passed. New regression and capture tests are written,
+but their existence is not a passing test result.
+
+Next verification step
+Push this branch to the repository after GitHub sign-in. The existing
+Build and test iOS workflow runs on codex/** branches, builds app/widgets,
+runs all simulator tests, and exports actual tutorial screenshots.
+Review captures 20-offline-readiness, 21-home-large-text, 22-trip-large-text,
+23-home-dark, plus existing clock/currency/document screens.
+Also test on a small iPhone with the largest text size, VoiceOver, airplane
+mode, rapid background/foreground transitions and notifications enabled,
+denied and affected by Focus. Test upgrading from build 1043 with real
+saved trips/documents before promoting to the release branch.
+
+No promise of full reliability or release readiness is made before those
+checks pass. Local drafts are recovery aids on this phone, not a backup.
