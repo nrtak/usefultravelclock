@@ -61,7 +61,7 @@ struct TravelRecordsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
         .sheet(item: $draft) { record in RecordEditor(record: record) }
-        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripOriginalPreview(url: file.url).ignoresSafeArea() }
+        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .sheet(item: $incoming, onDismiss: { inbox.clear() }) { file in TripDocumentImport(recordID: nil, incomingURL: file.url) }
         .onAppear { receiveDocument() }
         .onChange(of: inbox.url) { _, _ in receiveDocument() }

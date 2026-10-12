@@ -132,8 +132,8 @@ struct TripDocumentDetail: View {
                 .sheet(isPresented: $replacing) { TripDocumentImport(recordID: document.recordID, replacing: document) }
             } else { ContentUnavailableView("Document unavailable", systemImage: "doc") }
         }
-        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripOriginalPreview(url: file.url).ignoresSafeArea() }
-        .sheet(item: $share, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentShare(url: file.url) }
+        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
+        .sheet(item: $share, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentShare(url: file.url).modifier(TripDocumentPrivacyMask()) }
         .confirmationDialog("Delete this document?", isPresented: $removing, titleVisibility: .visible) {
             Button("Delete document", role: .destructive) {
                 do { try trip.removeDocuments([documentID]); dismiss() } catch { self.error = error.localizedDescription }
@@ -168,7 +168,7 @@ struct TripDocumentLabels: View {
                     do { try trip.updateDocument(document); dismiss() } catch { self.error = error.localizedDescription }
                 }.disabled(document.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !trip.unlocked) }
             }
-        }.onChange(of: trip.unlocked) { _, value in if !value { dismiss() } }
+        }.modifier(TripDocumentPrivacyMask()).onChange(of: trip.unlocked) { _, value in if !value { dismiss() } }
         .onAppear { if !trip.records.contains(where: { $0.id == document.recordID }) { document.recordID = nil } }
     }
 }
@@ -268,7 +268,7 @@ struct TripDocumentImport: View {
                 if let incomingURL { prepare(incomingURL) }
             }
             .onChange(of: trip.unlocked) { _, value in if !value { payload = nil; recognized = ""; dismiss() } }
-        }
+        }.modifier(TripDocumentPrivacyMask())
     }
     private func prepare(_ url: URL) {
         busy = true; error = nil
@@ -327,4 +327,28 @@ struct TripDocumentShare: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+struct TripDocumentPrivacyMask: ViewModifier {
+    @Environment(\.scenePhase) private var phase
+    func body(content: Content) -> some View {
+        content.overlay {
+            if phase != .active {
+                Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock.fill").font(.title2))
+            }
+        }
+    }
+}
+
+struct TripDocumentPreviewSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let url: URL
+    var body: some View {
+        NavigationStack {
+            TripOriginalPreview(url: url)
+                .navigationTitle(url.deletingPathExtension().lastPathComponent)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }.modifier(TripDocumentPrivacyMask())
+    }
 }
