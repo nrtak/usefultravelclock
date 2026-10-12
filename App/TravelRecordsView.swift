@@ -1,8 +1,18 @@
 import SwiftUI
+import UIKit
 
 struct TravelRecordsView: View {
     @EnvironmentObject private var trip: TripStore
+    @EnvironmentObject private var inbox: TripDocumentInbox
+    @Environment(\.scenePhase) private var phase
     @State private var draft: TravelRecord?
+    @State private var preview: TripPreviewFile?
+    @State private var incoming: TripPreviewFile?
+    private var nextDocument: TripDocument? {
+        let now = Date()
+        let record = entries.first { $0.start >= now } ?? entries.first { $0.end >= now }
+        return trip.documents.filter { $0.recordID == record?.id && record != nil }.sorted { ($0.kind == .boardingPass ? 0 : 1) < ($1.kind == .boardingPass ? 0 : 1) }.first
+    }
     private var entries: [TravelRecord] { trip.records.sorted { $0.start < $1.start } }
     var body: some View {
         Group {
@@ -18,6 +28,13 @@ struct TravelRecordsView: View {
                 RecordForm(record: TravelRecord())
             } else {
                 List {
+                    if let document = nextDocument {
+                        Section("Next trip document") {
+                            Button {
+                                do { preview = TripPreviewFile(url: try trip.previewURL(document)) } catch { trip.error = error.localizedDescription }
+                            } label: { TripDocumentRow(document: document, record: trip.records.first { $0.id == document.recordID }, available: trip.documentAvailable(document)) }
+                        }
+                    }
                     Section {
                         Button { draft = TravelRecord() } label: {
                             Label("Add", systemImage: "plus.circle.fill").frame(maxWidth: .infinity)
@@ -42,7 +59,19 @@ struct TravelRecordsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
         .sheet(item: $draft) { record in RecordEditor(record: record) }
+        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
+        .sheet(item: $incoming, onDismiss: { inbox.clear() }) { file in TripDocumentImport(recordID: nil, incomingURL: file.url) }
+        .onAppear { receiveDocument() }
+        .onChange(of: inbox.url) { _, _ in receiveDocument() }
+        .onChange(of: trip.unlocked) { _, value in if value { receiveDocument() } else { preview = nil; incoming = nil } }
+        .onChange(of: phase) { _, value in if value == .background { preview = nil; trip.clearDocumentPreviews() } }
+    }
+    private func receiveDocument() {
+        guard trip.unlocked, let url = inbox.url, incoming == nil else { return }
+        draft = nil
+        incoming = TripPreviewFile(url: url)
     }
 }
 
@@ -63,8 +92,10 @@ struct RecordForm: View {
     @State var record: TravelRecord
     var onSave: (() -> Void)? = nil
     @State private var choosingStart: Bool?
+    @State private var deleting = false
+    @State private var copied = false
     private var hasDetails: Bool {
-        [record.name, record.reference, record.from, record.to, record.note].contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        [record.name, record.reference, record.from, record.to, record.note, record.traveler ?? "", record.bookingReference ?? ""].contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
     var body: some View {
         Form {
@@ -77,6 +108,7 @@ struct RecordForm: View {
                 TextField(record.kind == "Hotel" ? "Hotel address (optional)" : "From (optional)", text: $record.from)
                 if record.kind != "Hotel" { TextField("To (optional)", text: $record.to) }
             }
+            bookingSection
             Section("Dates") {
                 DatePicker(record.kind == "Hotel" ? "Check-in" : "Departure", selection: $record.start)
                     .environment(\.timeZone, record.zone(start: true))
@@ -88,6 +120,12 @@ struct RecordForm: View {
             }
             Section {
                 TextField("Notes (optional)", text: $record.note, axis: .vertical).lineLimit(2...4)
+            }
+            if trip.records.contains(where: { $0.id == record.id }) {
+                TripRecordDocuments(recordID: record.id)
+                Section { Button("Delete travel entry", role: .destructive) { deleting = true } }
+            } else {
+                Section("Documents") { Text("Save these travel details, then add PDFs or images.").font(.caption).foregroundStyle(.secondary) }
             }
             Section {
                 if let error = trip.error { Text(error).font(.caption).foregroundStyle(.red) }
@@ -106,10 +144,34 @@ struct RecordForm: View {
                 choosingStart = nil
             }
         }
+        .confirmationDialog("Delete this travel entry?", isPresented: $deleting, titleVisibility: .visible) {
+            Button("Delete travel entry", role: .destructive) { do { try trip.removeRecord(record.id); onSave?() } catch { trip.error = error.localizedDescription } }
+        } message: { Text("Attached documents stay in Documents. You can reassign or delete them there.") }
         .onChange(of: trip.unlocked) { _, unlocked in if !unlocked { onSave?() } }
+    }
+    private var bookingSection: some View {
+            Section("Booking & traveler") {
+                TextField("Traveler (optional)", text: Binding(get: { record.traveler ?? "" }, set: { record.traveler = $0 })).textContentType(.name)
+                if record.kind == "Flight" {
+                    TextField("Booking reference (optional)", text: Binding(get: { record.bookingReference ?? "" }, set: { record.bookingReference = $0 })).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                }
+                let reference = record.kind == "Flight" ? (record.bookingReference ?? "") : record.reference
+                if !reference.isEmpty {
+                    Button { UIPasteboard.general.string = reference; copied = true } label: { Label(copied ? "Reference copied" : "Copy booking reference", systemImage: copied ? "checkmark" : "doc.on.doc") }
+                }
+                TextField("Booking website (https://…)", text: Binding(get: { record.bookingWebsite ?? "" }, set: { record.bookingWebsite = $0 })).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                if record.kind == "Flight" {
+                    Menu("Choose airline website") {
+                        ForEach(TripBookingLink.airlines) { airline in Button(airline.name) { record.bookingWebsite = airline.url } }
+                    }
+                }
+                if let url = TripBookingLink.url(record.bookingWebsite) { Link(destination: url) { Label("Open booking website", systemImage: "arrow.up.right.square") } }
+                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Trip Info does not sign in or sync bookings.").font(.caption).foregroundStyle(.secondary)
+            }
     }
     private func save() {
         if record.end < record.start { record.end = record.start }
+        if let website = record.bookingWebsite, !website.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, TripBookingLink.url(website) == nil { trip.error = "Enter a valid https:// booking website."; return }
         trip.error = nil
         trip.save(record)
         if trip.error == nil { onSave?() }
@@ -127,3 +189,4 @@ struct RecordForm: View {
     }
 
 }
+
