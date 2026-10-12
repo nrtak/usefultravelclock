@@ -1,9 +1,6 @@
-//  Useful Travel Clock
 
 import SwiftUI
 
-/// Add-city sheet: popular cities up front, typeable search (city, country,
-/// region, time zone or airport code), max 10 selected — mirrors the web app.
 struct AddCitySheet: View {
     @EnvironmentObject private var store: UsefulTravelClockStore
     @Environment(\.dismiss) private var dismiss
@@ -66,7 +63,6 @@ struct AddCitySheet: View {
     }
 }
 
-/// An explicit top search field stays visible on every supported iOS version.
 struct CitySearchField: View {
     @Binding var query: String
     @Environment(\.colorScheme) private var scheme

@@ -1,6 +1,4 @@
-//  Useful Travel Clock
 
-// Auto-generated from the web app's city database. Do not edit by hand.
 
 struct City: Identifiable, Hashable, Codable {
     let id: String
@@ -12,14 +10,12 @@ struct City: Identifiable, Hashable, Codable {
     var aliases: [String]?
     var cityState: Bool?
 
-    /// "New York City, NY, USA" — country omitted for city-states.
     var label: String {
         [name, region, cityState == true ? nil : country]
             .compactMap { $0 }
             .joined(separator: ", ")
     }
 
-    /// "New York City, NY" — used on widgets where space is tight.
     var shortLabel: String {
         var parts = [name]
         if let region { parts.append(region) }
@@ -27,7 +23,6 @@ struct City: Identifiable, Hashable, Codable {
         return parts.joined(separator: ", ")
     }
 
-    /// "UK" style abbreviation for widget labels.
     private var shortCountry: String {
         switch country {
         case "United Kingdom": return "UK"
@@ -38,7 +33,6 @@ struct City: Identifiable, Hashable, Codable {
 }
 
 extension City {
-    /// "America/Los Angeles" + airport codes, e.g. "America/Los Angeles · LAX BUR LGB".
     var subtitle: String {
         let zone = timeZoneID.replacingOccurrences(of: "_", with: " ")
         if let codes, !codes.isEmpty {

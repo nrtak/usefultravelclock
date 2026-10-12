@@ -1,12 +1,8 @@
-//  Useful Travel Clock
 
 import SwiftUI
 import WidgetKit
 
-// Phase backgrounds extend toward the widget edge while content retains the
-// system's safe margins for rounded corners and readable city names.
 
-// MARK: - Small widget
 
 struct SmallWidgetView: View {
     let entry: UsefulTravelClockEntry
@@ -64,7 +60,6 @@ struct SmallWidgetView: View {
     }
 }
 
-// MARK: - Medium widget (3 × 2 grid)
 
 struct MediumWidgetView: View {
     let entry: UsefulTravelClockEntry
@@ -177,8 +172,6 @@ private struct WidgetPhaseBackground: View {
                                 let tint = night
                                     ? Color(red: 0.82, green: 0.88, blue: 0.97)
                                     : Color(red: 1, green: 0.96, blue: 0.80)
-                                // Fade into the shared surface on every edge, so adjacent
-                                // day/night regions blend without rectangular seams.
                                 Rectangle()
                                     .fill(LinearGradient(colors: [.clear, tint, tint, .clear],
                                                          startPoint: .leading, endPoint: .trailing))
@@ -191,7 +184,6 @@ private struct WidgetPhaseBackground: View {
                     }
                 }
             }
-            // The system clips this background to the widget's rounded outline.
         }
     }
 }
@@ -208,7 +200,6 @@ private func widgetPeriod(_ time: ZonedTime) -> String {
     UserDefaults.usefultravelclockShared.bool(forKey: "use24") ? "" : " " + time.period.uppercased()
 }
 
-// MARK: - Lock screen widgets
 
 struct LockScreenWidgetView: View {
     @Environment(\.widgetFamily) private var family
@@ -277,7 +268,6 @@ struct LockScreenWidgetView: View {
     }
 }
 
-// MARK: - Analog clock for widgets
 
 struct WidgetAnalogClock: View {
     let hourFloat: Double
@@ -326,7 +316,6 @@ struct WidgetAnalogClock: View {
     }
 }
 
-// MARK: - iOS 17+ container background compatibility
 
 extension View {
     @ViewBuilder

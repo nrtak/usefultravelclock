@@ -1,9 +1,6 @@
-//  Useful Travel Clock
 
 import Foundation
 
-/// Mirrors `searchCities` in the web app: city names rank first,
-/// airport codes are a convenience extra.
 enum CitySearch {
 
     private static let usStates: [String: String] = [
