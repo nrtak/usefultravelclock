@@ -95,6 +95,14 @@ private struct TripHelpView: View {
         List {
             Section("Home") { Text("Choose your Home and Destination cities. Edit either currency amount to convert both ways. Tap the swap arrows to reverse currencies, or Full converter for more tools.") }
             Section("Conversions") { Text("Currency is the main tool. Add multiple prices supports addition and subtraction; Clear all asks before removing entries. Unit converter handles measurements such as distance, temperature and volume.") }
+            Section("Drafts & travel reminders") {
+                Text("Unfinished travel edits are encrypted on this iPhone. Resume them from Unfinished edits in My Trip, or swipe a draft to discard it. Back closes the editor and keeps your draft.")
+                Text("Set an optional departure or check-in reminder in each travel entry, then Save. Enable notifications when asked. Reminders use the booking’s actual time; changing your phone’s time zone does not change the scheduled instant. Focus and notification settings can affect delivery.")
+            }
+            Section("Preparing for offline travel") {
+                Text("Open Check offline readiness on Home before leaving. It checks saved trip details, readable document copies, your selected currency pair and saved weather. Refresh weather and exchange rates while connected. Cached information may be outdated.")
+                Text("Document import drafts can be resumed from Documents. If a document saves but its booking reference fails, retry the reference from the import screen; the saved document is kept.")
+            }
             Section("Camera & photos") {
                 Text("The checkmark shows the selected input. Point the camera at a clear price or measurement, or choose Photo. Use the shutter to keep a reference image. Pause holds recognition; Resume or Scan again starts a new reading.")
                 Text("Review detected values and units before saving. For prices, Include unmarked numbers also reads values without a currency label, so quantities and product IDs can be mistaken for prices.")

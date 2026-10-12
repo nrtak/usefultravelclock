@@ -41,6 +41,9 @@ struct TripRateStatus: View {
     @ObservedObject var store: ConverterStore
     @ObservedObject private var connection = TripConnectionStore.shared
     var body: some View {
+        if store.cacheWriteFailed {
+            Label("Rates updated for this session · could not save for offline use", systemImage: "exclamationmark.triangle")
+        }
         if connection.isOffline {
             Label(store.snapshot == nil ? "Offline · no saved rates" : (store.usingBundledRates ? "Offline · included rates" : "Offline · saved rates"), systemImage: "wifi.slash")
         } else if store.updateFailed {

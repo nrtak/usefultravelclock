@@ -30,7 +30,7 @@ struct TripDocument: Codable, Identifiable, Equatable {
     }
 }
 
-struct TripDocumentPayload: Sendable {
+struct TripDocumentPayload: Sendable, Codable {
     let data: Data
     let filename: String
     let fileExtension: String
@@ -75,6 +75,20 @@ struct TripDocumentPayload: Sendable {
         try handler.perform([request])
         return String((request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n").prefix(12000))
     }
+}
+
+struct TripImportDraft: Codable, Equatable {
+    var storageID = UUID()
+    var recordID: UUID?
+    var replacingID: UUID?
+    var savedDocumentID: UUID?
+    var name = ""
+    var kind = TripDocumentKind.other
+    var traveler = ""
+    var note = ""
+    var bookingReference = ""
+    var recognized: String? = nil
+    var recognitionDone: Bool? = nil
 }
 
 enum TripDocumentError: LocalizedError {

@@ -8,12 +8,12 @@ struct TravelRecordsView: View {
     @State private var draft: TravelRecord?
     @State private var preview: TripPreviewFile?
     @State private var incoming: TripPreviewFile?
+    @State private var query = ""
+    @State private var discard: TravelRecord?
     private var nextDocument: TripDocument? {
-        let now = Date()
-        let record = entries.first { $0.start >= now } ?? entries.first { $0.end >= now }
-        return trip.documents.filter { $0.recordID == record?.id && record != nil }.sorted { ($0.kind == .boardingPass ? 0 : 1) < ($1.kind == .boardingPass ? 0 : 1) }.first
+        trip.summaryDocument(at: Date())
     }
-    private var entries: [TravelRecord] { trip.records.sorted { $0.start < $1.start } }
+    private var entries: [TravelRecord] { trip.records.filter { $0.matches(query) }.sorted { $0.start < $1.start } }
     var body: some View {
         Group {
             if !trip.unlocked {
@@ -24,10 +24,17 @@ struct TravelRecordsView: View {
                         Button("Retry") { Task { await trip.unlock() } }.buttonStyle(.borderedProminent)
                     }
                 }
-            } else if entries.isEmpty {
-                RecordForm(record: TravelRecord())
             } else {
                 List {
+                    if !trip.drafts.isEmpty {
+                        Section("Unfinished edits") {
+                            ForEach(trip.drafts) { saved in
+                                Button { draft = saved } label: { Label("Resume " + (saved.name.isEmpty ? saved.kind : saved.name), systemImage: "square.and.pencil") }
+                                    .swipeActions { Button("Discard", role: .destructive) { discard = saved } }
+                            }
+                            Text("Drafts are encrypted on this iPhone. Swipe a draft to discard it.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     if let document = nextDocument {
                         Section("Next trip document") {
                             Button {
@@ -40,11 +47,14 @@ struct TravelRecordsView: View {
                             Label("Add", systemImage: "plus.circle.fill").frame(maxWidth: .infinity)
                         }
                     }
+                    if entries.isEmpty {
+                        ContentUnavailableView(query.isEmpty ? "No travel entries" : "No matching trips", systemImage: "suitcase", description: Text(query.isEmpty ? "Add a hotel, flight or transport booking." : "Search by name, route, traveler, booking reference or note."))
+                    }
                     ForEach(entries) { record in
-                        Button { draft = record } label: {
+                        Button { draft = trip.drafts.first { $0.id == record.id } ?? record } label: {
                             HStack(spacing: 14) {
-                                Image(systemName: record.kind == "Hotel" ? "bed.double" : record.kind == "Flight" ? "airplane" : "tram")
-                                    .font(.title2).foregroundStyle(.orange).frame(width: 32)
+                                    Image(systemName: record.kind == "Hotel" ? "bed.double" : record.kind == "Flight" ? "airplane" : "tram")
+                                    .font(.title2).foregroundStyle(.orange).frame(width: 32).accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
                                     Text((record.kind == "Hotel" ? "Check-in · " : "Departure · ") + record.timeLabel(start: true)).font(.subheadline)
@@ -53,12 +63,16 @@ struct TravelRecordsView: View {
                                     if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.caption).lineLimit(2) }
                                 }
                             }.foregroundStyle(Color.primary).padding(.vertical, 4)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityElement(children: .combine).accessibilityHint("Edit travel details and view attached documents")
                     }
                 }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, prompt: "Name, route, traveler, reference or note")
+        .confirmationDialog("Discard these unfinished edits?", isPresented: Binding(get: { discard != nil }, set: { if !$0 { discard = nil } }), titleVisibility: .visible) {
+            Button("Discard draft", role: .destructive) { if let discard { _ = trip.discardDraft(discard.id) }; discard = nil }
+        } message: { Text("Saved trip details remain available.") }
         .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
         .sheet(item: $draft) { record in RecordEditor(record: record) }
         .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
@@ -94,6 +108,9 @@ struct RecordForm: View {
     @State private var choosingStart: Bool?
     @State private var deleting = false
     @State private var copied = false
+    @State private var saving = false
+    @State private var draftStatus = ""
+    @Environment(\.scenePhase) private var phase
     private var hasDetails: Bool {
         [record.name, record.reference, record.from, record.to, record.note, record.traveler ?? "", record.bookingReference ?? ""].contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
@@ -113,13 +130,24 @@ struct RecordForm: View {
                 DatePicker(record.kind == "Hotel" ? "Check-in" : "Departure", selection: $record.start)
                     .environment(\.timeZone, record.zone(start: true))
                 timeZoneButton(start: true)
-                DatePicker(record.kind == "Hotel" ? "Check-out" : "Arrival / return", selection: $record.end, in: record.start...)
+                DatePicker(record.kind == "Hotel" ? "Check-out" : "Arrival / return", selection: $record.end)
                     .environment(\.timeZone, record.zone(start: false))
                 timeZoneButton(start: false)
                 Text("Choose each location to enter its local time. Changing a time zone preserves the scheduled instant; review the displayed dates and times.").font(.caption).foregroundStyle(.secondary)
+                if let warning = record.dateWarning { Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.subheadline) }
             }
-            Section {
-                TextField("Notes (optional)", text: $record.note, axis: .vertical).lineLimit(2...4)
+            Section("Notes") {
+                TextEditor(text: $record.note).frame(minHeight: 180).accessibilityLabel("Travel notes")
+                if !draftStatus.isEmpty { Text(draftStatus).font(.caption).foregroundStyle(.secondary) }
+            }
+            Section("Reminder") {
+                Picker(record.kind == "Hotel" ? "Before check-in" : "Before departure", selection: Binding(get: { record.reminderMinutes ?? 0 }, set: { record.reminderMinutes = $0 == 0 ? nil : $0 })) {
+                    Text("Off").tag(0)
+                    Text("15 minutes").tag(15); Text("30 minutes").tag(30); Text("1 hour").tag(60); Text("2 hours").tag(120); Text("1 day").tag(1440)
+                }
+                Text("Scheduled for the booking’s actual time, even if your phone changes time zones. Notification text keeps booking details private.").font(.caption).foregroundStyle(.secondary)
+                if let fire = TripReminderStore.fireDate(for: record), fire <= Date() { Text("This reminder time has passed. Choose a shorter lead time or update the departure/check-in date.").font(.caption).foregroundStyle(.orange) }
+                TripReminderStatus(store: trip.reminders)
             }
             if trip.records.contains(where: { $0.id == record.id }) {
                 TripRecordDocuments(recordID: record.id)
@@ -128,15 +156,23 @@ struct RecordForm: View {
                 Section("Documents") { Text("Save these travel details, then add PDFs or images.").font(.caption).foregroundStyle(.secondary) }
             }
             Section {
-                if let error = trip.error { Text(error).font(.caption).foregroundStyle(.red) }
+                if let error = trip.error {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                    Button("Retry save") { save() }.disabled(saving || !trip.unlocked || !hasDetails || record.dateWarning != nil)
+                }
             }
         }
+        .disabled(saving)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                TripActionButton("Save", primary: true) { save() }.disabled(!hasDetails)
+                TripActionButton(saving ? "Saving…" : "Save", primary: true) { save() }.disabled(!hasDetails || saving || !trip.unlocked || record.dateWarning != nil)
             }.tripToolbarBackground()
         }
-        .onChange(of: record.start) { _, start in if record.end < start { record.end = start } }
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: record) { _, value in
+            draftStatus = trip.saveDraft(value) ? "Draft saved on this iPhone" : "Draft could not be saved. Keep this editor open and retry."
+        }
+        .onChange(of: phase) { _, value in if value == .inactive && hasDetails { _ = trip.saveDraft(record) } }
         .sheet(isPresented: Binding(get: { choosingStart != nil }, set: { if !$0 { choosingStart = nil } })) {
             TripCityPicker { city in
                 if choosingStart == true { record.departureTimeZone = city.timeZoneID; record.departureCity = city.name }
@@ -170,11 +206,17 @@ struct RecordForm: View {
             }
     }
     private func save() {
-        if record.end < record.start { record.end = record.start }
+        guard !saving, trip.unlocked else { return }
+        guard record.dateWarning == nil else { trip.error = record.dateWarning; return }
         if let website = record.bookingWebsite, !website.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, TripBookingLink.url(website) == nil { trip.error = "Enter a valid https:// booking website."; return }
         trip.error = nil
-        trip.save(record)
-        if trip.error == nil { onSave?() }
+        saving = true
+        let value = record
+        Task {
+            defer { saving = false }
+            if value.reminderMinutes != nil { _ = await trip.reminders.requestAccess() }
+            if trip.save(value) { onSave?() }
+        }
     }
     private func timeZoneButton(start: Bool) -> some View {
         let name = start ? record.departureCity : record.arrivalCity
@@ -188,5 +230,10 @@ struct RecordForm: View {
         }.buttonStyle(.plain)
     }
 
+}
+
+struct TripReminderStatus: View {
+    @ObservedObject var store: TripReminderStore
+    var body: some View { if let message = store.message { Text(message).font(.caption).foregroundStyle(.orange) } }
 }
 

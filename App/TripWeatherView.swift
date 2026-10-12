@@ -23,6 +23,7 @@ private struct TripWeatherSymbol: View {
 }
 
 struct TripWeatherCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject private var weather: TripWeatherStore
     @ObservedObject private var connection = TripConnectionStore.shared
     let home: City?
@@ -38,7 +39,7 @@ struct TripWeatherCard: View {
                 }.buttonStyle(.plain).accessibilityLabel("More weather")
                 Spacer(minLength: 4)
             }
-            HStack(alignment: .top, spacing: 12) { column("Home", city: home); column("Destination", city: destination) }
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) { column("Home", city: home); column("Destination", city: destination) }
             HStack { Spacer(); WeatherCreditView() }.padding(.top, 2)
         }.tripPanel()
         .task(id: home?.id) { if let home { await weather.load(city: home) } }
@@ -60,10 +61,10 @@ struct TripWeatherCard: View {
                 if let place, let result = weather.cache[place.id] {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
-                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated \(result.fetchedAt.formatted(date: .omitted, time: .shortened))").font(.caption2)
-                    if connection.isOffline { Label("Offline · saved weather", systemImage: "wifi.slash").font(.caption2).foregroundStyle(.secondary) }
-                    else if weather.errors[place.id] != nil { Text("Refresh failed · saved weather").font(.caption2).foregroundStyle(.secondary) }
-                    else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved · tap refresh").font(.caption2).foregroundStyle(.secondary) }
+                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption2)
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.caption2).foregroundStyle(.secondary)
+                    }
                 } else if weather.loading.contains(city.id) { ProgressView() }
                 else { Text(connection.isOffline ? "Offline · no saved weather" : "Unavailable · tap refresh").font(.caption).foregroundStyle(.secondary) }
             } else { Text("Select your home city above.").font(.caption) }
@@ -96,6 +97,7 @@ private enum WeatherPeriod: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 struct TripWeatherSearchView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject private var weather: TripWeatherStore
     @ObservedObject private var connection = TripConnectionStore.shared
     var home: City? = nil
@@ -168,10 +170,8 @@ struct TripWeatherSearchView: View {
                 }
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Updated " + result.fetchedAt.formatted(date: .omitted, time: .shortened))
-                        if connection.isOffline { Label("Offline · saved forecast", systemImage: "wifi.slash") }
-                        else if weather.errors[place.id] != nil { Text("Refresh failed · saved forecast") }
-                        else if Date().timeIntervalSince(result.fetchedAt) >= 1800 { Text("Saved · tap refresh") }
+                        TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
+                        TimelineView(.periodic(from: .now, by: 60)) { context in Text(weather.status(for: place, now: context.date, offline: connection.isOffline)) }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
                 }
@@ -189,8 +189,8 @@ struct TripWeatherSearchView: View {
         let pages = max(1, (hours.count + pageSize - 1) / pageSize)
         return VStack(spacing: 6) {
             ForEach(Array(hours.dropFirst(hourPage * pageSize).prefix(pageSize))) { hour in
-                HStack(spacing: 10) {
-                    Text(stamp(hour.date, format: "EEE h a", result: result)).font(.subheadline).frame(width: 75, alignment: .leading)
+                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 10))) {
+                    Text(stamp(hour.date, format: "EEE h a", result: result)).font(.subheadline).frame(minWidth: 75, alignment: .leading)
                     TripWeatherSymbol(symbol: hour.symbol).frame(width: 30)
                     Text(result.temperatures(hour.celsius)).font(.subheadline).monospacedDigit()
                     Spacer(minLength: 2)
@@ -224,8 +224,8 @@ struct TripWeatherSearchView: View {
         let label = [stamp(day.date, format: "EEEE MMMM d", result: result), day.condition,
                      "high " + result.temperatures(day.high), "low " + result.temperatures(day.low),
                      "precipitation chance \(chance) percent"].joined(separator: ", ")
-        return HStack(spacing: 8) {
-                    Text(stamp(day.date, format: "EEE d", result: result)).font(.caption).frame(width: 55, alignment: .leading)
+        return (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 8))) {
+                    Text(stamp(day.date, format: "EEE d", result: result)).font(.caption).frame(minWidth: 55, alignment: .leading)
                     TripWeatherSymbol(symbol: day.symbol).frame(width: 26)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("H " + result.temperatures(day.high))

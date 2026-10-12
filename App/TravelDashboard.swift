@@ -31,6 +31,7 @@ struct TravelDashboard: View {
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
+    @State private var homeDocument: TripPreviewFile?
     @FocusState private var homeEditingSide: AmountSide?
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
@@ -58,12 +59,13 @@ struct TravelDashboard: View {
             }
         }
         .sheet(isPresented: $settings) { TripSettingsView() }
+        .sheet(item: $homeDocument, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
         .onChange(of: documentInbox.url) { _, value in if value != nil { tab = 3 } }
         .onAppear { if documentInbox.url != nil { tab = 3 } }
         .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil; editingCities = false }
         .onChange(of: phase) { _, value in
-            if value == .background { trip.lock(); shift = 0; editingTabs = false; editingCities = false }
+            if value == .background { homeDocument = nil; trip.lock(); shift = 0; editingTabs = false; editingCities = false }
             if value == .active { Task { await trip.unlock() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
@@ -92,14 +94,16 @@ struct TravelDashboard: View {
                         .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
                 }.padding(.horizontal, 16)
             }
-            HStack(spacing: 0) {
-                ForEach(tabOrder, id: \.self) { id in
-                    reorderableTab(id)
-                }
-            }.padding(.vertical, 8)
+            ViewThatFits(in: .horizontal) {
+                tabItems
+                ScrollView(.horizontal) { tabItems }.scrollIndicators(.hidden)
+            }
         }
         .background(.regularMaterial)
         .sensoryFeedback(.impact(weight: .light), trigger: tabEditFeedback)
+    }
+    private var tabItems: some View {
+        HStack(spacing: 0) { ForEach(tabOrder, id: \.self) { id in reorderableTab(id) } }.padding(.vertical, 8)
     }
     @ViewBuilder
     private func reorderableTab(_ id: Int) -> some View {
@@ -144,7 +148,7 @@ struct TravelDashboard: View {
                     .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
             }
             .foregroundStyle(tab == id ? Color.blue : Color.primary)
-            .frame(maxWidth: .infinity, minHeight: 48)
+            .frame(minWidth: typeSize.isAccessibilitySize ? 100 : 65, maxWidth: .infinity, minHeight: 48)
             .padding(.horizontal, 2)
             .background(tab == id ? Color.blue.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 14))
             .contentShape(Rectangle())
@@ -165,7 +169,7 @@ struct TravelDashboard: View {
     private var home: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
-                ScrollView { homeContent(compact: true) }
+                ScrollView { homeContent(compact: !typeSize.isAccessibilitySize) }
                     .scrollBounceBehavior(.basedOnSize)
                     // Keep overflow reachable on small screens and with larger text.
                     .scrollDismissesKeyboard(.interactively)
@@ -195,7 +199,7 @@ struct TravelDashboard: View {
                     }.buttonStyle(.bordered).tint(.blue)
                         .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
                 }
-                HStack {
+                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
                     quick(.source)
                     Button { homeEditingSide = nil; currency.swap() } label: {
                         Image(systemName: "arrow.left.arrow.right").frame(width: 44, height: 44)
@@ -217,7 +221,23 @@ struct TravelDashboard: View {
                     Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
                 }.padding(compact ? 10 : 12)
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                if let document = trip.summaryDocument(at: context.date) {
+                    Button {
+                        do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }
+                        catch { trip.error = error.localizedDescription }
+                    } label: { Label("Open " + document.name, systemImage: "doc.viewfinder").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }.buttonStyle(.bordered)
+                }
+            }
+            NavigationLink {
+                TripReadinessView(currency: currency, cities: readinessCities)
+            } label: { Label("Check offline readiness", systemImage: "checklist").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
+            TripReminderStatus(store: trip.reminders)
         }.padding(12).fixedSize(horizontal: false, vertical: true)
+    }
+    private var readinessCities: [City] {
+        var seen = Set<String>()
+        return [clock.homeMode == .manual ? clock.homeCity : nil, destination].compactMap { $0 }.filter { seen.insert($0.id).inserted }
     }
     private func quick(_ side: AmountSide) -> some View {
         let code = side == .source ? currency.source : currency.target
@@ -236,13 +256,17 @@ struct TravelDashboard: View {
         }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
     }
     private func nextTrip(at now: Date) -> some View {
-        let next = trip.records.filter { $0.start >= now }.min { $0.start < $1.start }
+        let next = TripSummary.record(in: trip.records, at: now)
+        let active = next.map { $0.start <= now && $0.end > now } ?? false
         return VStack(alignment: .leading, spacing: 3) {
-            Text(next == nil ? "My Trip" : "My Trip · Next").font(.caption)
-            Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(1)
+            Text(next == nil ? "My Trip" : (active ? "My Trip · In progress" : "My Trip · Next")).font(.caption)
+            Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(2)
             if let next {
-                Text((next.kind == "Hotel" ? "Check-in · " : "Departure · ") + next.timeLabel(start: true))
+                Text((active ? (next.kind == "Hotel" ? "Check-out · " : "Arrival · ") : (next.kind == "Hotel" ? "Check-in · " : "Departure · ")) + next.timeLabel(start: !active))
                     .font(.caption).foregroundStyle(.secondary)
+                if !next.from.isEmpty {
+                    Text(next.from + (next.to.isEmpty ? "" : " → " + next.to)).font(.caption).lineLimit(2)
+                }
             }
         }
     }
@@ -310,7 +334,7 @@ struct TravelDashboard: View {
         }
     }
     private func comparisonCityRow(_ city: City, at date: Date) -> some View {
-        HStack {
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
             if editingCities {
                 Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
                 Button { picker = "city:" + city.id } label: {
@@ -318,7 +342,7 @@ struct TravelDashboard: View {
                 }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
             }
             VStack(alignment: .leading) {
-                Text(city.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                Text(city.name).font(.headline).lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
                 Text(city.country).font(.caption).lineLimit(1).foregroundStyle(.secondary)
             }
             Spacer()
@@ -345,7 +369,7 @@ struct TravelDashboard: View {
         clock.edit { clock.cityIDs = order; clock.sortOrder = .custom }
     }
     private func clocks(at date: Date, selectable: Bool, compact: Bool = false) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .top, spacing: 10))) {
             clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, color: .green, selectable: selectable, compact: compact)
             clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID ?? "UTC", date: date, color: .blue, selectable: selectable, compact: compact)
         }
@@ -360,7 +384,8 @@ struct TravelDashboard: View {
             } else {
                 Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75).frame(maxWidth: .infinity)
             }
-            Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
+            Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7).lineLimit(1)
+                .accessibilityLabel(role + " time " + time(date, zone: zone))
             if compact {
                 HStack(spacing: 6) {
                     if clock.showAnalog { TripAnalogClock(date: date, zone: zone) }
