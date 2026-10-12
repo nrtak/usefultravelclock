@@ -108,24 +108,7 @@ struct RecordForm: View {
                 TextField(record.kind == "Hotel" ? "Hotel address (optional)" : "From (optional)", text: $record.from)
                 if record.kind != "Hotel" { TextField("To (optional)", text: $record.to) }
             }
-            Section("Booking & traveler") {
-                TextField("Traveler (optional)", text: Binding(get: { record.traveler ?? "" }, set: { record.traveler = $0 })).textContentType(.name)
-                if record.kind == "Flight" {
-                    TextField("Booking reference (optional)", text: Binding(get: { record.bookingReference ?? "" }, set: { record.bookingReference = $0 })).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                }
-                let reference = record.kind == "Flight" ? (record.bookingReference ?? "") : record.reference
-                if !reference.isEmpty {
-                    Button { UIPasteboard.general.string = reference; copied = true } label: { Label(copied ? "Reference copied" : "Copy booking reference", systemImage: copied ? "checkmark" : "doc.on.doc") }
-                }
-                TextField("Booking website (https://…)", text: Binding(get: { record.bookingWebsite ?? "" }, set: { record.bookingWebsite = $0 })).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                if record.kind == "Flight" {
-                    Menu("Choose airline website") {
-                        ForEach(TripBookingLink.airlines, id: \.name) { airline in Button(airline.name) { record.bookingWebsite = airline.url } }
-                    }
-                }
-                if let url = TripBookingLink.url(record.bookingWebsite) { Link(destination: url) { Label("Open booking website", systemImage: "arrow.up.right.square") } }
-                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Trip Info does not sign in or sync bookings.").font(.caption).foregroundStyle(.secondary)
-            }
+            bookingSection
             Section("Dates") {
                 DatePicker(record.kind == "Hotel" ? "Check-in" : "Departure", selection: $record.start)
                     .environment(\.timeZone, record.zone(start: true))
@@ -165,6 +148,26 @@ struct RecordForm: View {
             Button("Delete travel entry", role: .destructive) { do { try trip.removeRecord(record.id); onSave?() } catch { trip.error = error.localizedDescription } }
         } message: { Text("Attached documents stay in Documents. You can reassign or delete them there.") }
         .onChange(of: trip.unlocked) { _, unlocked in if !unlocked { onSave?() } }
+    }
+    private var bookingSection: some View {
+            Section("Booking & traveler") {
+                TextField("Traveler (optional)", text: Binding(get: { record.traveler ?? "" }, set: { record.traveler = $0 })).textContentType(.name)
+                if record.kind == "Flight" {
+                    TextField("Booking reference (optional)", text: Binding(get: { record.bookingReference ?? "" }, set: { record.bookingReference = $0 })).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                }
+                let reference = record.kind == "Flight" ? (record.bookingReference ?? "") : record.reference
+                if !reference.isEmpty {
+                    Button { UIPasteboard.general.string = reference; copied = true } label: { Label(copied ? "Reference copied" : "Copy booking reference", systemImage: copied ? "checkmark" : "doc.on.doc") }
+                }
+                TextField("Booking website (https://…)", text: Binding(get: { record.bookingWebsite ?? "" }, set: { record.bookingWebsite = $0 })).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                if record.kind == "Flight" {
+                    Menu("Choose airline website") {
+                        ForEach(TripBookingLink.airlines) { airline in Button(airline.name) { record.bookingWebsite = airline.url } }
+                    }
+                }
+                if let url = TripBookingLink.url(record.bookingWebsite) { Link(destination: url) { Label("Open booking website", systemImage: "arrow.up.right.square") } }
+                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Trip Info does not sign in or sync bookings.").font(.caption).foregroundStyle(.secondary)
+            }
     }
     private func save() {
         if record.end < record.start { record.end = record.start }

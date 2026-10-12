@@ -65,9 +65,9 @@ struct TripDocumentPayload: Sendable {
             if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return String(text.prefix(12000)) }
             // Scanned PDFs still support on-device recognition from the first page.
             guard let page = pdf.page(at: 0), let cg = page.thumbnail(of: CGSize(width: 1600, height: 2000), for: .mediaBox).cgImage else { return "" }
-            return try Self.recognize(VNImageRequestHandler(cgImage: cg))
+            return try Self.recognize(VNImageRequestHandler(cgImage: cg, options: [:]))
         }
-        return try Self.recognize(VNImageRequestHandler(data: data))
+        return try Self.recognize(VNImageRequestHandler(data: data, options: [:]))
     }
     private static func recognize(_ handler: VNImageRequestHandler) throws -> String {
         let request = VNRecognizeTextRequest()
@@ -140,12 +140,18 @@ struct TripDocumentVault {
     func clear() { accessURL?.stopAccessingSecurityScopedResource(); accessURL = nil; url = nil }
 }
 
+struct TripAirlineLink: Identifiable {
+    let name: String
+    let url: String
+    var id: String { name }
+}
+
 enum TripBookingLink {
     // Opens in the browser. No credentials or booking references are transmitted automatically.
-    static let airlines: [(name: String, url: String)] = [
-        ("ANA", "https://www.ana.co.jp/en/us/plan-book/how-to-manage-your-booking/"),
-        ("Japan Airlines", "https://www.jal.co.jp/en-us/my-booking.html"),
-        ("Delta", "https://www.delta.com/my-trips/search")
+    static let airlines: [TripAirlineLink] = [
+        .init(name: "ANA", url: "https://www.ana.co.jp/en/us/plan-book/how-to-manage-your-booking/"),
+        .init(name: "Japan Airlines", url: "https://www.jal.co.jp/en-us/my-booking.html"),
+        .init(name: "Delta", url: "https://www.delta.com/my-trips/search")
     ]
     static func url(_ text: String?) -> URL? {
         guard let text, let parts = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
