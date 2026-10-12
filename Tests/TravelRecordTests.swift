@@ -3,6 +3,57 @@ import CryptoKit
 @testable import UsefulTravelClock
 
 final class TravelRecordTests: XCTestCase {
+    func testSummaryPrefersOngoingJourneyAndSkipsCompletedRecords() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let past = TravelRecord(start: now.addingTimeInterval(-200), end: now.addingTimeInterval(-100))
+        let active = TravelRecord(start: now.addingTimeInterval(-50), end: now.addingTimeInterval(50))
+        let future = TravelRecord(start: now.addingTimeInterval(100), end: now.addingTimeInterval(200))
+        XCTAssertEqual(TripSummary.record(in: [future, past, active], at: now)?.id, active.id)
+        XCTAssertEqual(TripSummary.record(in: [past, future], at: now)?.id, future.id)
+        XCTAssertNil(TripSummary.record(in: [past], at: now))
+        XCTAssertNil(TripSummary.record(in: [], at: now))
+        XCTAssertEqual(TripSummary.record(in: [active, future], at: active.end)?.id, future.id)
+    }
+
+    @MainActor
+    func testLockedSaveFailsWithoutCreatingTravelFile() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = TripStore(directory: folder)
+        XCTAssertFalse(store.save(TravelRecord(note: "Keep my draft")))
+        XCTAssertNotNil(store.error)
+        XCTAssertTrue(store.records.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("travel.sealed").path))
+    }
+
+    @MainActor
+    func testSaveFailurePreservesLastPersistedRecordAndSuccessfulRetryClearsError() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = TripStore(directory: folder)
+        let key = SymmetricKey(size: .bits256)
+        try store.unlockForDocumentTests(key: key)
+        var record = TravelRecord(note: "Original note")
+        XCTAssertTrue(store.save(record))
+        let file = folder.appendingPathComponent("travel.sealed")
+        let original = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        record.note = "Long updated note\n" + String(repeating: "Travel details ", count: 500)
+        XCTAssertFalse(store.save(record))
+        XCTAssertEqual(store.records.first?.note, "Original note")
+        XCTAssertNotNil(store.error)
+        try FileManager.default.removeItem(at: file)
+        try original.write(to: file)
+        XCTAssertTrue(store.save(record))
+        XCTAssertNil(store.error)
+        let clear = try AES.GCM.open(AES.GCM.SealedBox(combined: Data(contentsOf: file)), using: key)
+        let loaded = try JSONDecoder().decode([TravelRecord].self, from: clear)
+        XCTAssertEqual(loaded.first?.note, record.note)
+        store.lock()
+        XCTAssertFalse(store.save(record))
+    }
+
     func testTravelRecordEncryptionRoundTripAndWrongKey() throws {
         let record = TravelRecord(kind: "Hotel", name: "Private Hotel", reference: "CONF-123", from: "123 Private Street")
         let key = SymmetricKey(size: .bits256)

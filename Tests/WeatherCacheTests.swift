@@ -2,6 +2,29 @@ import XCTest
 @testable import UsefulTravelClock
 
 final class WeatherCacheTests: XCTestCase {
+    @MainActor
+    func testForecastFreshnessAndDiskFailureAreSeparateFromNetworkFailure() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data([1]).write(to: directory)
+        let store = TripWeatherStore(directory: directory)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let place = WeatherLocation(name: "Tokyo", latitude: 35.68, longitude: 139.69, timeZoneIdentifier: "Asia/Tokyo")
+        let forecast = CachedWeather(fetchedAt: now, observedAt: now, celsius: 20, high: 25, low: 15, condition: "Clear", symbol: "sun.max")
+        store.storeForecast(forecast, for: place, manuallyRefreshed: true)
+        XCTAssertNotNil(store.cache[place.id])
+        XCTAssertNil(store.errors[place.id])
+        XCTAssertTrue(store.cacheWriteFailures.contains(place.id))
+        XCTAssertTrue(store.status(for: place, now: now, offline: false).contains("could not save"))
+        try FileManager.default.removeItem(at: directory)
+        store.storeForecast(forecast, for: place, manuallyRefreshed: true)
+        XCTAssertTrue(store.cacheWriteFailures.isEmpty)
+        XCTAssertEqual(store.status(for: place, now: now, offline: false), "Recently updated forecast")
+        XCTAssertEqual(store.status(for: place, now: now.addingTimeInterval(1800), offline: false), "Cached forecast · refresh for current weather")
+        XCTAssertEqual(store.status(for: place, now: now, offline: true), "Offline · cached forecast")
+        let reopened = TripWeatherStore(directory: directory)
+        XCTAssertEqual(reopened.cache[place.id]?.fetchedAt, now)
+    }
     func testBothTemperatureUnitsAndBelowFreezing() {
         let item = CachedWeather(fetchedAt: Date(), observedAt: Date(), celsius: 0, high: nil, low: nil, condition: "Clear", symbol: "sun.max")
         XCTAssertEqual(item.temperatures(0), "32°F / 0°C")

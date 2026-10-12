@@ -103,6 +103,10 @@ final class TutorialCaptureTests: XCTestCase {
         let importURL = temporary.appendingPathComponent("Cafe receipt.jpg")
         try menu.write(to: importURL)
         try await screen("19-add-document", TripDocumentImport(recordID: flight.id, incomingURL: importURL))
+        try await screen("20-offline-readiness", NavigationStack { TripReadinessView(currency: converter, cities: [la, tokyo]) })
+        try await screen("21-home-large-text", dashboard(tab: 0).environment(\.dynamicTypeSize, .accessibility3))
+        try await screen("22-trip-large-text", RecordEditor(record: flight).environment(\.dynamicTypeSize, .accessibility3))
+        try await screen("23-home-dark", dashboard(tab: 0).environment(\.colorScheme, .dark))
 
     }
     @MainActor
