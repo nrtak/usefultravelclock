@@ -97,6 +97,7 @@ final class ConverterStore: ObservableObject {
         formatter.locale = .current
         formatter.dateStyle = .none
         formatter.timeStyle = .short
+        formatter.dateStyle = .abbreviated
         return "Updated " + formatter.string(from: snapshot.fetchedAt)
     }
 

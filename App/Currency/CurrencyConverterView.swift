@@ -24,6 +24,7 @@ struct CurrencyConverterView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
+                ScrollView {
                 VStack(spacing: 8) {
                         VStack(spacing: 6) {
                             HStack {
@@ -39,10 +40,10 @@ struct CurrencyConverterView: View {
                         }.tripPanel().id("amounts")
 
                         if !editing {
-                            HStack(spacing: 10) {
+                            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
                                 featureTile("Add multiple prices", detail: "Convert their total.", icon: "list.bullet.rectangle") { showsItems = true }
                                 featureTile("Live camera / photo", detail: "Read and convert prices.", icon: "camera.viewfinder") { showsPhotoPrices = true }
-                            }.frame(height: geometry.size.height < 600 ? 64 : 80)
+                            }.frame(minHeight: geometry.size.height < 600 ? 64 : 80)
                             saveButtons
                             SavedConversionNotice(saved: saved) { showsSaved = true }
                             Button { showsUnits = true } label: {
@@ -62,7 +63,8 @@ struct CurrencyConverterView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
+                }.scrollDismissesKeyboard(.interactively).scrollBounceBehavior(.basedOnSize)
             }
             .navigationTitle("Conversions")
             .navigationBarTitleDisplayMode(.inline)
@@ -110,7 +112,7 @@ struct CurrencyConverterView: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 26, weight: .regular)).foregroundStyle(.blue)
-                Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                Text(title).font(.caption.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.75)
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
@@ -132,7 +134,7 @@ struct CurrencyConverterView: View {
                                            focused: editingSide == (source ? .source : .target)) },
                     set: { store.edit($0, side: source ? .source : .target) }
                 ))
-                .font(.system(size: 28, weight: source ? .medium : .semibold))
+                .font(.title.weight(source ? .medium : .semibold))
                 .monospacedDigit().keyboardType(.decimalPad)
                 .focused($editingSide, equals: source ? .source : .target)
                 .accessibilityLabel("\(source ? "From" : "To") amount in \(Currency.named(code).name)")
