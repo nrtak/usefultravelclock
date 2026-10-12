@@ -105,7 +105,7 @@ private struct TripHelpView: View {
                 Text("Hold Home or Destination to change its city. Hold an additional city to edit or reorder the list, then tap Done.")
             }
             Section("Translate") { Text("Choose source and target languages, then enter text or use Camera or Photo. English (General) has no country specified. Tap Prepare for offline use to download the selected language pair while connected. Save a translation with a reference image and note.") }
-            Section("My Trip") { Text("Add hotel and transport details. Set departure and arrival locations to display their local times. Entries without a selected location use device time.") }
+            Section("My Trip") { Text("Add hotel and transport details. Set departure and arrival locations to display their local times. Entries without a selected location use device time. Save an entry, then add PDFs or images in Documents. Label each document by traveler and type. The next trip document opens from My Trip. Open Documents to search, rename, replace, share or remove copies from completed trips. Documents stay on this iPhone and work offline. Use Lock app to protect access. For airline bookings, copy your reference and open the saved booking website; the app does not sign in or sync bookings.") }
             Section("Weather & offline use") { Text("Tap Weather for hourly and daily forecasts. Refresh updates the selected city when connected. Clocks, built-in city search, unit conversion, camera text recognition, saved entries and this guide work offline. Currency uses downloaded or bundled dated reference rates. Weather uses saved forecasts. Fresh rates, fresh weather, weather location search and language downloads need internet. Photos stored only in iCloud may also need downloading before your trip.") }
             Section("Tab order & app lock") { Text("Hold a bottom tab, drag to reorder, and tap Done. The app remembers your tab order and last-used tab. Enable Lock app in Settings to use Face ID, Touch ID or your iPhone passcode. Widgets are not protected by the app lock.") }
             Section("Troubleshooting") {
@@ -147,3 +147,4 @@ private struct TripAppInformationView: View {
         }.navigationTitle("App information").navigationBarTitleDisplayMode(.inline)
     }
 }
+

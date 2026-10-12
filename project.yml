@@ -41,6 +41,15 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Trip Info and private hotel and travel details.
+    info:
+      path: UsefulTravelClock/Info.plist
+      properties:
+        CFBundleDocumentTypes:
+        - CFBundleTypeName: Travel documents
+          CFBundleTypeRole: Viewer
+          LSHandlerRank: Alternate
+          LSItemContentTypes: [com.adobe.pdf, public.image]
+        LSSupportsOpeningDocumentsInPlace: true
     entitlements:
       path: UsefulTravelClock/UsefulTravelClock.entitlements
       properties:
@@ -99,3 +108,4 @@ schemes:
       config: Debug
     archive:
       config: Release
+

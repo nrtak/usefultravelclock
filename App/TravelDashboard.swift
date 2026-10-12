@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TravelDashboard: View {
     @ObservedObject var currency: ConverterStore
+    @EnvironmentObject private var documentInbox: TripDocumentInbox
     @EnvironmentObject private var clock: UsefulTravelClockStore
     @StateObject private var trip = TripStore()
     @StateObject private var weather = TripWeatherStore()
@@ -58,6 +59,8 @@ struct TravelDashboard: View {
         }
         .sheet(isPresented: $settings) { TripSettingsView() }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
+        .onChange(of: documentInbox.url) { _, value in if value != nil { tab = 3 } }
+        .onAppear { if documentInbox.url != nil { tab = 3 } }
         .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil; editingCities = false }
         .onChange(of: phase) { _, value in
             if value == .background { trip.lock(); shift = 0; editingTabs = false; editingCities = false }
@@ -451,4 +454,5 @@ extension TravelDashboard {
     }
 }
 #endif
+
 

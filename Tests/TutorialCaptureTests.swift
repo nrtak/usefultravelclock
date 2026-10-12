@@ -58,7 +58,7 @@ final class TutorialCaptureTests: XCTestCase {
         TripConnectionStore.shared.setTutorialOffline(true)
         let lock = TripAppLock(defaults: preferences)
         func screen<V: View>(_ name: String, _ view: V, bottom: Bool = false) async throws {
-            try await capture(name, view: view.environmentObject(clock).environmentObject(trip).environmentObject(weather).environmentObject(lock).environment(\.scenePhase, .active).preferredColorScheme(.light), bottom: bottom)
+            try await capture(name, view: view.environmentObject(clock).environmentObject(trip).environmentObject(weather).environmentObject(lock).environmentObject(TripDocumentInbox()).environment(\.scenePhase, .active).preferredColorScheme(.light), bottom: bottom)
         }
         func dashboard(tab: Int, shift: Double = 0, reorder: Bool = false) -> TravelDashboard {
             standard.set(tab, forKey: "trip-selected-tab")
@@ -124,3 +124,4 @@ final class TutorialCaptureTests: XCTestCase {
         XCTAssertGreaterThan(png.count, 10000, "Capture should contain the rendered app screen")
     }
 }
+
