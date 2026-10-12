@@ -156,7 +156,7 @@ enum TripSummary {
         guard unlocked, let key else { return false }
         var next = drafts.filter { $0.id != record.id }; next.insert(record, at: 0)
         do { try persistDrafts(next, using: key); drafts = next; return true }
-        catch { error = "Draft could not be saved. Keep the editor open and retry: " + error.localizedDescription; return false }
+        catch { self.error = "Draft could not be saved. Keep the editor open and retry: " + error.localizedDescription; return false }
     }
     @discardableResult
     func discardDraft(_ id: UUID) -> Bool {
@@ -164,7 +164,7 @@ enum TripSummary {
         let next = drafts.filter { $0.id != id }
         guard next.count != drafts.count else { return true }
         do { try persistDrafts(next, using: key); drafts = next; return true }
-        catch { error = "Could not clear the saved draft: " + error.localizedDescription; return false }
+        catch { self.error = "Could not clear the saved draft: " + error.localizedDescription; return false }
     }
     private func persistDrafts(_ values: [TravelRecord], using key: SymmetricKey) throws {
         guard let bytes = try AES.GCM.seal(JSONEncoder().encode(values), using: key).combined else { throw TripDocumentError.invalidFile }
