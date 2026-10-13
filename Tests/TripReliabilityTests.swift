@@ -8,6 +8,7 @@ import UserNotifications
     var allowed = true
     var fail = false
     func requestAccess() async throws -> Bool { allowed }
+    func authorizationStatus() async -> UNAuthorizationStatus { allowed ? .authorized : .denied }
     func pending() async -> [UNNotificationRequest] { Array(values.values) }
     func add(_ request: UNNotificationRequest) async throws {
         if fail { throw CocoaError(.fileWriteUnknown) }
@@ -28,8 +29,10 @@ import UserNotifications
         // Model the record schema from before reminder settings were introduced.
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(record)) as? [String: Any])
         object.removeValue(forKey: "reminderMinutes")
+        object.removeValue(forKey: "draftSavedAt")
         let old = try JSONDecoder().decode(TravelRecord.self, from: JSONSerialization.data(withJSONObject: object))
         XCTAssertNil(old.reminderMinutes)
+        XCTAssertNil(old.draftSavedAt)
         XCTAssertTrue(original.save(old))
         record.note = "Unfinished private note\n" + String(repeating: "More travel detail ", count: 1000)
         XCTAssertTrue(original.saveDraft(record))
@@ -38,7 +41,10 @@ import UserNotifications
         original.lock(); XCTAssertTrue(original.drafts.isEmpty)
         let reopened = store(directory); try reopened.unlockForDocumentTests(key: key)
         XCTAssertEqual(reopened.records.first?.note, "Original note")
-        XCTAssertEqual(reopened.drafts.first, record)
+        var recovered = try XCTUnwrap(reopened.drafts.first)
+        XCTAssertNotNil(recovered.draftSavedAt)
+        recovered.draftSavedAt = nil
+        XCTAssertEqual(recovered, record)
         XCTAssertTrue(reopened.save(record))
         XCTAssertTrue(reopened.drafts.isEmpty)
         let final = store(directory); try final.unlockForDocumentTests(key: key)
@@ -202,6 +208,125 @@ import UserNotifications
         XCTAssertNotNil(value.message)
         await value.synchronize(records: [], now: now)
         XCTAssertEqual(Set(client.values.keys), ["other"])
+    }
+
+    func testFailedReminderReplacementRemovesObsoleteTimeButUnchangedRequestSurvives() async {
+        let client = MemoryTripNotifications(); let reminders = TripReminderStore(client: client)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var record = TravelRecord(start: now.addingTimeInterval(7200), end: now.addingTimeInterval(10800), reminderMinutes: 60)
+        await reminders.synchronize(records: [record], now: now)
+        XCTAssertEqual(client.values.count, 1)
+        client.fail = true
+        await reminders.synchronize(records: [record], now: now)
+        XCTAssertEqual(client.values.count, 1, "Unchanged reminders should not be unnecessarily replaced")
+        record.start = record.start.addingTimeInterval(3600)
+        await reminders.synchronize(records: [record], now: now)
+        XCTAssertTrue(client.values.isEmpty, "The obsolete time must not survive a failed replacement")
+        XCTAssertNotNil(reminders.message)
+    }
+
+    func testCorruptDraftIsPreservedWhileSavedTripsRemainUsable() async throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let key = SymmetricKey(size: .bits256)
+        let original = store(directory); try original.unlockForDocumentTests(key: key)
+        XCTAssertTrue(original.save(TravelRecord(name: "Existing trip")))
+        let file = directory.appendingPathComponent("drafts.sealed")
+        let damaged = Data([1, 2, 3]); try damaged.write(to: file)
+        let material = key.withUnsafeBytes { Data($0) }
+        let reopened = TripStore(directory: directory, keyLoader: { _ in material }, reminders: TripReminderStore(client: MemoryTripNotifications()))
+        await reopened.unlock()
+        XCTAssertTrue(reopened.unlocked)
+        XCTAssertEqual(reopened.records.first?.name, "Existing trip")
+        XCTAssertFalse(reopened.saveDraft(TravelRecord(name: "Unfinished edit")))
+        XCTAssertEqual(try Data(contentsOf: file), damaged)
+        XCTAssertTrue(reopened.save(TravelRecord(name: "New saved trip")))
+        XCTAssertEqual(try Data(contentsOf: file), damaged)
+    }
+
+    func testUnreadableTranslationsAreNotOverwritten() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("translations.json")
+        let damaged = Data("unreadable translations".utf8); try damaged.write(to: file)
+        let value = store(directory)
+        XCTAssertFalse(value.saveTranslation(TranslationRecord(text: "New translation", note: "", image: nil)))
+        XCTAssertEqual(try Data(contentsOf: file), damaged)
+        XCTAssertNotNil(value.error)
+    }
+
+    func testImportMetadataWithoutPayloadCannotReplaceExistingDraft() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let value = store(directory); try value.unlockForDocumentTests(key: SymmetricKey(size: .bits256))
+        let bytes = try XCTUnwrap(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="))
+        let payload = try TripDocumentPayload.validate(bytes, filename: "ticket.png")
+        let original = TripImportDraft(name: "Original draft")
+        try value.saveImportDraft(original, payload: payload)
+        XCTAssertThrowsError(try value.saveImportDraft(TripImportDraft(name: "Missing file")))
+        XCTAssertEqual(value.importDraft, original)
+        XCTAssertEqual(try value.importDraftPayload().data, bytes)
+    }
+
+    func testRateReadinessDoesNotDependOnAmountField() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let cache = directory.appendingPathComponent("rates.json")
+        let snapshot = RateSnapshot(fetchedAt: Date(), rows: [Rate(date: "2026-10-12", base: "USD", quote: "EUR", rate: 0.9)])
+        try JSONEncoder().encode(snapshot).write(to: cache)
+        let suite = UUID().uuidString; let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let currency = ConverterStore(preferences: defaults, cacheURL: cache, isOffline: { true })
+        currency.amount = "not a number"
+        XCTAssertEqual(currency.detail, "Enter an amount.")
+        XCTAssertTrue(currency.rateDetail.contains("2026-10-12"))
+        XCTAssertNotNil(currency.snapshot?.multiplier(from: currency.source, to: currency.target))
+    }
+
+    func testStoragePressureShowsRecoveryInstructions() {
+        XCTAssertTrue(TripSaveError.message(CocoaError(.fileWriteOutOfSpace)).contains("free storage"))
+        let nested = NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileWriteUnknown.rawValue, userInfo: [NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: 28)])
+        XCTAssertTrue(TripSaveError.message(nested).contains("retry"))
+    }
+
+    func testTripTimingBoundariesAndOldRateWarning() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var record = TravelRecord(start: now, end: now.addingTimeInterval(100))
+        XCTAssertEqual(record.timingLabel(at: now), "Happening now")
+        XCTAssertEqual(record.timingLabel(at: now.addingTimeInterval(-1)), "Upcoming")
+        XCTAssertEqual(record.timingLabel(at: record.end), "Completed")
+        record.end = now
+        XCTAssertEqual(record.timingLabel(at: now), "Completed")
+        let rate = RateSnapshot(fetchedAt: now, rows: [Rate(date: "2026-10-01", base: "USD", quote: "EUR", rate: 0.9)])
+        let date = try XCTUnwrap(RateSnapshot.validDate("2026-10-01"))
+        XCTAssertFalse(rate.needsRefresh(from: "USD", to: "EUR", now: date.addingTimeInterval(6 * 86400)))
+        XCTAssertTrue(rate.needsRefresh(from: "USD", to: "EUR", now: date.addingTimeInterval(7 * 86400)))
+        XCTAssertFalse(rate.needsRefresh(from: "USD", to: "USD", now: now))
+    }
+
+    func testReminderStatusTracksSettingsChangesWithoutRequestingPermission() async {
+        let client = MemoryTripNotifications(); let reminders = TripReminderStore(client: client)
+        let record = TravelRecord(start: Date().addingTimeInterval(7200), reminderMinutes: 60)
+        client.allowed = false
+        await reminders.synchronize(records: [record])
+        XCTAssertTrue(reminders.message?.contains("Notifications are off") == true)
+        client.allowed = true
+        await reminders.synchronize(records: [record])
+        XCTAssertNil(reminders.message)
+        client.allowed = false
+        await reminders.synchronize(records: [record])
+        XCTAssertNotNil(reminders.message)
+    }
+
+    func testBackgroundImportDraftPreparationPreservesEncryptedPayload() async throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let value = store(directory); try value.unlockForDocumentTests(key: SymmetricKey(size: .bits256))
+        let bytes = try XCTUnwrap(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="))
+        let payload = try TripDocumentPayload.validate(bytes, filename: "ticket.png")
+        let draft = TripImportDraft(name: "Prepared ticket")
+        try await value.prepareImportDraft(draft, payload: payload)
+        XCTAssertEqual(value.importDraft, draft)
+        XCTAssertEqual(try value.importDraftPayload().data, bytes)
+        let encrypted = try Data(contentsOf: directory.appendingPathComponent("ImportDraft/" + draft.storageID.uuidString + ".sealed"))
+        XCTAssertNotEqual(encrypted, bytes)
     }
 
     func testDeniedReminderPermissionStillAllowsTripSaveAndKeepsStatusVisible() async throws {

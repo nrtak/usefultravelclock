@@ -21,7 +21,8 @@ final class WeatherCacheTests: XCTestCase {
         XCTAssertTrue(store.cacheWriteFailures.isEmpty)
         XCTAssertEqual(store.status(for: place, now: now, offline: false), "Recently updated forecast")
         XCTAssertEqual(store.status(for: place, now: now.addingTimeInterval(1800), offline: false), "Cached forecast · refresh for current weather")
-        XCTAssertEqual(store.status(for: place, now: now, offline: true), "Offline · cached forecast")
+        XCTAssertEqual(store.status(for: place, now: now, offline: true), "Offline · recently saved forecast")
+        XCTAssertEqual(store.status(for: place, now: now.addingTimeInterval(1800), offline: true), "Offline · older forecast; refresh when connected")
         let reopened = TripWeatherStore(directory: directory)
         XCTAssertEqual(reopened.cache[place.id]?.fetchedAt, now)
     }
