@@ -74,6 +74,7 @@ enum TripSummary {
     private var key: SymmetricKey?
     private var unlockGeneration = UUID()
     private var reminderGeneration = UUID()
+    private var importGeneration = UUID()
     private var draftWritesBlocked = false
     private var translationWritesBlocked = false
     private let directory: URL
@@ -190,6 +191,7 @@ enum TripSummary {
     }
     func saveImportDraft(_ draft: TripImportDraft, payload: TripDocumentPayload? = nil) throws {
         guard unlocked, let key else { throw TripDocumentError.locked }
+        importGeneration = UUID()
         try FileManager.default.createDirectory(at: importDirectory, withIntermediateDirectories: true)
         if let payload {
             guard let bytes = try AES.GCM.seal(JSONEncoder().encode(payload), using: key).combined else { throw TripDocumentError.invalidFile }
@@ -205,6 +207,7 @@ enum TripSummary {
     func prepareImportDraft(_ draft: TripImportDraft, payload: TripDocumentPayload) async throws {
         guard unlocked, let key else { throw TripDocumentError.locked }
         let revision = unlockGeneration
+        let importRevision = UUID(); importGeneration = importRevision
         let directory = importDirectory
         try await Task.detached {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -212,6 +215,7 @@ enum TripSummary {
             try bytes.write(to: directory.appendingPathComponent(draft.storageID.uuidString + ".sealed"), options: [.atomic, .completeFileProtection])
         }.value
         guard unlocked, unlockGeneration == revision else { throw TripDocumentError.locked }
+        guard importGeneration == importRevision else { throw CancellationError() }
         try saveImportDraft(draft)
     }
     func importDraftPayload() throws -> TripDocumentPayload {
@@ -223,6 +227,7 @@ enum TripSummary {
     }
     func discardImportDraft() throws {
         guard unlocked else { throw TripDocumentError.locked }
+        importGeneration = UUID()
         if FileManager.default.fileExists(atPath: importDirectory.path) { try FileManager.default.removeItem(at: importDirectory) }
         importDraft = nil
     }
