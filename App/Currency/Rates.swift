@@ -36,6 +36,13 @@ struct RateSnapshot: Codable {
     func dates(from: String, to: String) -> [String] {
         Array(Set([from, to].filter { $0 != "USD" }.compactMap { row($0)?.date })).sorted()
     }
+    func needsRefresh(from: String, to: String, now: Date = Date()) -> Bool {
+        guard from != to else { return false }
+        let dates = dates(from: from, to: to).compactMap(Self.validDate)
+        guard let oldest = dates.min() else { return true }
+        // Allow for weekends and market holidays while flagging clearly old rates.
+        return now.timeIntervalSince(oldest) < 0 || now.timeIntervalSince(oldest) >= 7 * 86400
+    }
 }
 
 enum Amount {

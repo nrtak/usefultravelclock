@@ -80,6 +80,10 @@ final class ConverterStore: ObservableObject {
 
     var detail: String {
         guard Amount.parse(amount) != nil else { return "Enter an amount." }
+        return rateDetail
+    }
+
+    var rateDetail: String {
         if source == target { return "Same currency" }
         guard let snapshot, snapshot.multiplier(from: source, to: target) != nil else {
             return isLoading ? "Getting exchange rates…" : "Rate unavailable. Connect and tap Refresh."
