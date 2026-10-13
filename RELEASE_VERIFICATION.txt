@@ -1,0 +1,49 @@
+Trip Info - reliability and usability verification
+2026-10-13
+
+Local source changes
+- Preserve unreadable trip drafts and translations instead of overwriting them.
+- Prevent import metadata from replacing a draft without a document payload.
+- Remove obsolete reminder times when replacement fails; preserve unchanged reminders.
+- Check current notification authorization during reconciliation and on activation.
+- Debounce trip and document metadata autosaves; flush when leaving or inactive.
+- Prepare encrypted import payloads on a background task, rejecting commits after locking.
+- Show draft save times, accessible discard actions, and clearer trip timing labels.
+- Sort documents by date, trip or type; filter unassigned documents and clear filters.
+- Improve first-use guidance and hide decorative document icons from VoiceOver.
+- Explain old offline forecasts and exchange rates.
+- Explain low-storage failures and offer an import-draft retry.
+
+Verification performed locally
+- Diff whitespace checks passed.
+- Added regression coverage for corrupt files, import payload preservation,
+  failed reminder replacement, permission changes, old data and timing boundaries.
+- Checked new optional draft timestamp against decoding of older trip schemas.
+
+Required before release - not yet verified
+1. Run the GitHub Mac build and full simulator test suite on these changes.
+2. Install the resulting build on an iPhone. Confirm existing trips and documents
+   from 1.1 (1044) survive installation and unlock without a new vault key.
+3. Type quickly, leave before the autosave pause, background/relaunch, and resume.
+   Save or delete an entry and confirm its draft does not return.
+4. Import a near-25 MB PDF and a photo; background during preparation. Recover
+   the draft, replace a document, retry a booking reference, and check for duplicates.
+5. Use airplane mode: open original documents, view trips and cached rates/weather.
+   Verify older data is clearly described and refresh works when reconnected.
+6. Schedule a near-term reminder, edit its time, and disable/re-enable permission
+   in Settings. Return to the app and check the status and actual delivery.
+7. Test device time-zone changes and DST bookings. Check local date labels and
+   the reminder's actual scheduled instant. Check Focus settings during delivery.
+8. Test largest accessibility text and VoiceOver: resume/discard, sorting, filters,
+   document actions, empty-state guidance, timing labels and error/retry controls.
+   Check contrast on device in light and dark appearance.
+9. Simulate storage failure in tests; verify saved originals remain and retry is
+   available. On device, verify memory responsiveness during large imports.
+10. Verify the approved suitcase icon, app bundle identity and signing team;
+    select a unique build number and confirm archive/upload success.
+
+Limitations
+- Windows has no Xcode/iOS runtime; new tests and screen layouts have not run here.
+- Import draft encryption/storage now runs in the background; final document
+  save and recovered-payload decoding still need device performance measurement.
+- No new GitHub upload or TestFlight release has been performed for this patch.
