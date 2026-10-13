@@ -6,6 +6,22 @@ import ImageIO
 import UniformTypeIdentifiers
 import Vision
 
+enum TripSaveError {
+    static func message(_ error: Error) -> String {
+        let failure = error as NSError
+        if failure.domain == NSCocoaErrorDomain && failure.code == CocoaError.fileWriteOutOfSpace.rawValue {
+            return "Your iPhone does not have enough free storage. Free space in iPhone Settings, then return here and retry."
+        }
+        if let underlying = failure.userInfo[NSUnderlyingErrorKey] as? Error {
+            let nested = underlying as NSError
+            if nested.domain == NSPOSIXErrorDomain && nested.code == 28 {
+                return "Your iPhone does not have enough free storage. Free space in iPhone Settings, then return here and retry."
+            }
+        }
+        return failure.localizedDescription
+    }
+}
+
 enum TripDocumentKind: String, Codable, CaseIterable, Identifiable {
     case boardingPass = "Boarding pass", confirmation = "Booking confirmation", receipt = "Receipt", other = "Other"
     var id: String { rawValue }

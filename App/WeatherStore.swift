@@ -111,7 +111,7 @@ struct CachedWeather: Codable {
     func status(for place: WeatherLocation, now: Date = Date(), offline: Bool) -> String {
         guard let saved = cache[place.id] else { return offline ? "Offline · no saved forecast" : "No saved forecast · refresh while connected" }
         if cacheWriteFailures.contains(place.id) { return "Updated for this session · could not save for offline use" }
-        if offline { return "Offline · cached forecast" }
+        if offline { return now.timeIntervalSince(saved.fetchedAt) < 0 || now.timeIntervalSince(saved.fetchedAt) >= 1800 ? "Offline · older forecast; refresh when connected" : "Offline · recently saved forecast" }
         if errors[place.id] != nil { return "Refresh failed · cached forecast" }
         if now.timeIntervalSince(saved.fetchedAt) < 0 || now.timeIntervalSince(saved.fetchedAt) >= 1800 { return "Cached forecast · refresh for current weather" }
         return "Recently updated forecast"

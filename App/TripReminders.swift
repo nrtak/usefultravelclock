@@ -3,6 +3,7 @@ import UserNotifications
 
 @MainActor protocol TripNotificationClient {
     func requestAccess() async throws -> Bool
+    func authorizationStatus() async -> UNAuthorizationStatus
     func pending() async -> [UNNotificationRequest]
     func add(_ request: UNNotificationRequest) async throws
     func remove(_ identifiers: [String])
@@ -11,6 +12,10 @@ import UserNotifications
 struct SystemTripNotifications: TripNotificationClient {
     private let center = UNUserNotificationCenter.current()
     func requestAccess() async throws -> Bool { try await center.requestAuthorization(options: [.alert, .sound]) }
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        let settings = await center.notificationSettings()
+        return settings.authorizationStatus
+    }
     func pending() async -> [UNNotificationRequest] { await center.pendingNotificationRequests() }
     func add(_ request: UNNotificationRequest) async throws { try await center.add(request) }
     func remove(_ identifiers: [String]) {
@@ -68,12 +73,27 @@ struct SystemTripNotifications: TripNotificationClient {
         let desired = latestRecords.sorted { (Self.fireDate(for: $0) ?? .distantFuture) < (Self.fireDate(for: $1) ?? .distantFuture) }.compactMap { Self.request(for: $0, now: latestNow) }
         let requests = Array(desired.prefix(50))
         let pending = await client.pending()
+        let authorization = await client.authorizationStatus()
         if generation != revision { continue }
+        switch authorization {
+        case .denied: accessIssue = "Notifications are off; enable Trip Info notifications in iPhone Settings to receive reminders."
+        case .notDetermined: accessIssue = "Reminder permission is needed. Save a travel entry with a reminder to enable notifications."
+        default: accessIssue = nil
+        }
         let ids = Set(requests.map(\.identifier))
         client.remove(pending.filter { $0.identifier.hasPrefix("trip-reminder-") && !ids.contains($0.identifier) }.map(\.identifier))
         do {
             for request in requests {
                 if generation != revision { break }
+                if let previous = pending.first(where: { $0.identifier == request.identifier }) {
+                    let oldTrigger = previous.trigger as? UNCalendarNotificationTrigger
+                    let newTrigger = request.trigger as? UNCalendarNotificationTrigger
+                    if oldTrigger?.dateComponents == newTrigger?.dateComponents,
+                       previous.content.title == request.content.title,
+                       previous.content.body == request.content.body { continue }
+                    // Remove the old schedule first so a failed replacement cannot fire at the wrong time.
+                    client.remove([previous.identifier])
+                }
                 try await client.add(request)
             }
             if generation == revision { message = !desired.isEmpty && accessIssue != nil ? accessIssue : (desired.count > 50 ? "The next 50 reminders are scheduled. Open Trip Info during your travels to schedule later ones." : nil) }

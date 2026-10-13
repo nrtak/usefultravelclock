@@ -21,6 +21,11 @@ struct TravelRecord: Codable, Identifiable, Equatable {
     var bookingWebsite: String? = nil
     var traveler: String? = nil
     var reminderMinutes: Int? = nil
+    var draftSavedAt: Date? = nil
+    func timingLabel(at now: Date) -> String {
+        if end <= now { return "Completed" }
+        return start <= now ? "Happening now" : "Upcoming"
+    }
     func matches(_ query: String) -> Bool {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return text.isEmpty || [kind, name, reference, from, to, note, traveler ?? "", bookingReference ?? "", departureCity ?? "", arrivalCity ?? ""].contains { $0.localizedStandardContains(text) }
@@ -69,6 +74,8 @@ enum TripSummary {
     private var key: SymmetricKey?
     private var unlockGeneration = UUID()
     private var reminderGeneration = UUID()
+    private var draftWritesBlocked = false
+    private var translationWritesBlocked = false
     private let directory: URL
     private let keyLoader: ((LAContext) async throws -> Data)?
     let reminders: TripReminderStore
@@ -80,7 +87,7 @@ enum TripSummary {
             try FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
             let url = self.directory.appendingPathComponent("translations.json")
             if FileManager.default.fileExists(atPath: url.path) { translations = try JSONDecoder().decode([TranslationRecord].self, from: Data(contentsOf: url)) }
-        } catch { self.error = error.localizedDescription }
+        } catch { translationWritesBlocked = true; self.error = "Saved translations could not be loaded. The original file has been preserved: " + TripSaveError.message(error) }
     }
     func unlock() async {
         guard !loading && !unlocked else { return }
@@ -109,16 +116,17 @@ enum TripSummary {
             let loadedDocuments = try vault.load()
             var loadedDrafts: [TravelRecord] = []
             var draftError: String?
+            draftWritesBlocked = false
             do { loadedDrafts = try readDrafts(using: loadedKey) }
-            catch { draftError = "Saved trips loaded, but drafts could not be recovered: " + error.localizedDescription }
+            catch { draftWritesBlocked = true; draftError = "Saved trips loaded, but drafts could not be recovered. The original draft file has been preserved: " + TripSaveError.message(error) }
             records = loaded; documents = loadedDocuments; drafts = loadedDrafts; key = loadedKey; unlocked = true
             do { importDraft = try readImportDraft(using: loadedKey) }
-            catch { draftError = "Saved trips loaded, but the document import draft could not be recovered: " + error.localizedDescription }
+            catch { draftError = "Saved trips loaded, but the document import draft could not be recovered: " + TripSaveError.message(error) }
             error = draftError
             vault.prune(except: loadedDocuments)
             clearDocumentPreviews()
             scheduleReminders(for: loaded)
-        } catch { if generation == unlockGeneration { self.error = error.localizedDescription } }
+        } catch { if generation == unlockGeneration { self.error = TripSaveError.message(error) } }
     }
     func lock() { unlockGeneration = UUID(); loading = false; records = []; drafts = []; importDraft = nil; documents = []; key = nil; unlocked = false; clearDocumentPreviews() }
     @discardableResult
@@ -136,7 +144,7 @@ enum TripSummary {
             if clearDraft { _ = discardDraft(record.id) }
             scheduleReminders(for: next)
             return true
-        } catch { self.error = error.localizedDescription; return false }
+        } catch { self.error = TripSaveError.message(error); return false }
     }
     private func readDrafts(using key: SymmetricKey) throws -> [TravelRecord] {
         let url = directory.appendingPathComponent("drafts.sealed")
@@ -154,9 +162,11 @@ enum TripSummary {
     @discardableResult
     func saveDraft(_ record: TravelRecord) -> Bool {
         guard unlocked, let key else { return false }
-        var next = drafts.filter { $0.id != record.id }; next.insert(record, at: 0)
+        guard !draftWritesBlocked else { error = "Existing drafts could not be read and have not been replaced. Save your travel entry directly, then retry loading drafts."; return false }
+        var saved = record; saved.draftSavedAt = Date()
+        var next = drafts.filter { $0.id != record.id }; next.insert(saved, at: 0)
         do { try persistDrafts(next, using: key); drafts = next; return true }
-        catch { self.error = "Draft could not be saved. Keep the editor open and retry: " + error.localizedDescription; return false }
+        catch { self.error = "Draft could not be saved. Keep the editor open and retry: " + TripSaveError.message(error); return false }
     }
     @discardableResult
     func discardDraft(_ id: UUID) -> Bool {
@@ -164,9 +174,10 @@ enum TripSummary {
         let next = drafts.filter { $0.id != id }
         guard next.count != drafts.count else { return true }
         do { try persistDrafts(next, using: key); drafts = next; return true }
-        catch { self.error = "Could not clear the saved draft: " + error.localizedDescription; return false }
+        catch { self.error = "Could not clear the saved draft: " + TripSaveError.message(error); return false }
     }
     private func persistDrafts(_ values: [TravelRecord], using key: SymmetricKey) throws {
+        guard !draftWritesBlocked else { throw CocoaError(.fileReadCorruptFile) }
         guard let bytes = try AES.GCM.seal(JSONEncoder().encode(values), using: key).combined else { throw TripDocumentError.invalidFile }
         try bytes.write(to: directory.appendingPathComponent("drafts.sealed"), options: [.atomic, .completeFileProtection])
     }
@@ -184,11 +195,24 @@ enum TripSummary {
             guard let bytes = try AES.GCM.seal(JSONEncoder().encode(payload), using: key).combined else { throw TripDocumentError.invalidFile }
             try bytes.write(to: importDirectory.appendingPathComponent(draft.storageID.uuidString + ".sealed"), options: [.atomic, .completeFileProtection])
         }
+        guard FileManager.default.fileExists(atPath: importDirectory.appendingPathComponent(draft.storageID.uuidString + ".sealed").path) else { throw TripDocumentError.missing }
         guard let metadata = try AES.GCM.seal(JSONEncoder().encode(draft), using: key).combined else { throw TripDocumentError.invalidFile }
         try metadata.write(to: importDirectory.appendingPathComponent("metadata.sealed"), options: [.atomic, .completeFileProtection])
         importDraft = draft
         let keep = Set(["metadata.sealed", draft.storageID.uuidString + ".sealed"])
         for file in (try? FileManager.default.contentsOfDirectory(at: importDirectory, includingPropertiesForKeys: nil)) ?? [] where file.pathExtension == "sealed" && !keep.contains(file.lastPathComponent) { try? FileManager.default.removeItem(at: file) }
+    }
+    func prepareImportDraft(_ draft: TripImportDraft, payload: TripDocumentPayload) async throws {
+        guard unlocked, let key else { throw TripDocumentError.locked }
+        let revision = unlockGeneration
+        let directory = importDirectory
+        try await Task.detached {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            guard let bytes = try AES.GCM.seal(JSONEncoder().encode(payload), using: key).combined else { throw TripDocumentError.invalidFile }
+            try bytes.write(to: directory.appendingPathComponent(draft.storageID.uuidString + ".sealed"), options: [.atomic, .completeFileProtection])
+        }.value
+        guard unlocked, unlockGeneration == revision else { throw TripDocumentError.locked }
+        try saveImportDraft(draft)
     }
     func importDraftPayload() throws -> TripDocumentPayload {
         guard unlocked, let key, let draft = importDraft else { throw TripDocumentError.locked }
@@ -203,12 +227,13 @@ enum TripSummary {
         importDraft = nil
     }
     func saveTranslation(_ entry: TranslationRecord) -> Bool {
+        guard !translationWritesBlocked else { error = "Existing translations could not be read and have not been replaced. Retry opening the app before saving a translation."; return false }
         do {
             var next = translations
             if let index = next.firstIndex(where: { $0.id == entry.id }) { next[index] = entry } else { next.insert(entry, at: 0) }
             try JSONEncoder().encode(next).write(to: directory.appendingPathComponent("translations.json"), options: [.atomic, .completeFileProtection])
             translations = next; return true
-        } catch { self.error = error.localizedDescription; return false }
+        } catch { self.error = TripSaveError.message(error); return false }
     }
     nonisolated private static func readKey(context: LAContext, allowCreation: Bool) throws -> Data {
         let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.usefultravelclock.app.trip-vault", kSecAttrAccount as String: "travel-key-v2"]

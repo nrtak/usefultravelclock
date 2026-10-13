@@ -66,7 +66,7 @@ struct TravelDashboard: View {
         .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil; editingCities = false }
         .onChange(of: phase) { _, value in
             if value == .background { homeDocument = nil; trip.lock(); shift = 0; editingTabs = false; editingCities = false }
-            if value == .active { Task { await trip.unlock() } }
+            if value == .active { Task { await trip.unlock(); if trip.unlocked { await trip.reminders.synchronize(records: trip.records) } } }
         }
         .task { await trip.unlock(); await currency.refresh() }
     }
