@@ -281,6 +281,60 @@ import UserNotifications
         XCTAssertNotNil(currency.snapshot?.multiplier(from: currency.source, to: currency.target))
     }
 
+    func testLegacyTranslationSearchRenameDeleteUndoAndPersistence() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let value = store(directory)
+        var entry = try JSONDecoder().decode(TranslationRecord.self, from: Data("{\"id\":\"00000000-0000-0000-0000-000000000001\",\"text\":\"Ticket office\",\"note\":\"Station directions\"}".utf8))
+        XCTAssertNil(entry.title)
+        XCTAssertTrue(entry.matches("ticket")); XCTAssertTrue(entry.matches("station"))
+        entry.title = "Train station"
+        XCTAssertTrue(value.saveTranslation(entry))
+        let second = TranslationRecord(text: "Restaurant", note: "", image: nil)
+        XCTAssertTrue(value.saveTranslation(second))
+        XCTAssertTrue(value.deleteTranslation(entry.id))
+        XCTAssertEqual(value.translations.count, 1)
+        XCTAssertTrue(value.canUndoTranslationDeletion)
+        XCTAssertTrue(value.undoTranslationDeletion())
+        XCTAssertEqual(value.translations.map(\.id), [second.id, entry.id])
+        XCTAssertFalse(value.canUndoTranslationDeletion)
+        let reopened = store(directory)
+        XCTAssertEqual(reopened.translations.last?.displayTitle, "Train station")
+        XCTAssertTrue(reopened.translations.last?.matches("TRAIN") == true)
+    }
+
+    func testRepeatedTranslationSaveDoesNotCreateDuplicates() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let value = store(directory)
+        var entry = TranslationRecord(text: "Ticket office", note: "", image: nil)
+        XCTAssertTrue(value.saveTranslation(entry)); XCTAssertTrue(value.saveTranslation(entry))
+        XCTAssertEqual(value.translations.count, 1)
+        entry.note = "Station entrance"
+        XCTAssertTrue(value.saveTranslation(entry))
+        let reopened = store(directory)
+        XCTAssertEqual(reopened.translations.count, 1)
+        XCTAssertEqual(reopened.translations.first?.note, "Station entrance")
+    }
+
+    func testFailedTranslationDeletionPreservesEntryAndUndo() throws {
+        let directory = folder(); defer { try? FileManager.default.removeItem(at: directory) }
+        let value = store(directory)
+        let first = TranslationRecord(text: "First", note: "", image: nil)
+        let second = TranslationRecord(text: "Second", note: "", image: nil)
+        XCTAssertTrue(value.saveTranslation(first)); XCTAssertTrue(value.saveTranslation(second))
+        XCTAssertTrue(value.deleteTranslation(first.id))
+        let file = directory.appendingPathComponent("translations.json")
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+        XCTAssertFalse(value.deleteTranslation(second.id))
+        XCTAssertEqual(value.translations.map(\.id), [second.id])
+        XCTAssertTrue(value.canUndoTranslationDeletion)
+        XCTAssertFalse(value.undoTranslationDeletion())
+        XCTAssertTrue(value.canUndoTranslationDeletion)
+        try FileManager.default.removeItem(at: file)
+        XCTAssertTrue(value.undoTranslationDeletion())
+        XCTAssertEqual(value.translations.map(\.id), [second.id, first.id])
+    }
+
     func testStoragePressureShowsRecoveryInstructions() {
         XCTAssertTrue(TripSaveError.message(CocoaError(.fileWriteOutOfSpace)).contains("free storage"))
         let nested = NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileWriteUnknown.rawValue, userInfo: [NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: 28)])
