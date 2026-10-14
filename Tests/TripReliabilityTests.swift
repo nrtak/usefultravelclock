@@ -398,3 +398,12 @@ import UserNotifications
         XCTAssertNotNil(reminders.message)
     }
 }
+
+
+extension TripReliabilityTests {
+    func testImageDocumentRequiresDecodablePixelsNotOnlyHeader() throws {
+        let bytes = try XCTUnwrap(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="))
+        XCTAssertNoThrow(try TripDocumentPayload.validate(bytes, filename: "ticket.png"))
+        XCTAssertThrowsError(try TripDocumentPayload.validate(Data(bytes.prefix(33)), filename: "broken.png"))
+    }
+}
