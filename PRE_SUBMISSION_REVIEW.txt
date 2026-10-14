@@ -1,0 +1,24 @@
+Pre-submission source review - October 14, 2026
+
+Local fixes:
+- Cancel pending camera capture when hidden, inactive, or scan is reset; clear busy UI through interruption message. Cancel controller capture task on reset and teardown; reject outdated capture callbacks.
+- Structured photo selection tasks replace detached UI callbacks. Cancellation and revision guards reject older OCR results after photo replacement, live-mode switching, or leaving screen.
+- Ignore outdated translation photo errors after scan changes.
+- Add built-in support email without external navigation.
+- Retry weather refresh after previous failure even with recent cache.
+- Reject image documents that have a recognizable header but no decodable pixels. Added valid PNG/truncated PNG regression test.
+- Release temporary decrypted document data between readiness checks with autoreleasepool.
+- Selected ocean-blue gradient icon is installed locally at opaque 1024x1024.
+
+Reviewed: camera lifecycle, photo OCR, translation response guards, vault key migration, atomic record/draft/document writes, import generations, reminder reconciliation, rates and weather caching, privacy/support UI.
+
+Verification: local diff whitespace check passed. Windows has no Xcode/iOS runtime; Swift compilation and simulator regression tests have NOT run for this patch.
+
+Required next checks on final build:
+1. Capture while paused; reset during capture; background/return during capture; leave scanner or change tabs; confirm camera indicator stops and buttons recover.
+2. Rapidly select photos then switch to live/text; confirm older image/results/errors cannot replace current selection.
+3. Verify valid imports, truncated image rejection, recovered drafts and upgrade preservation.
+4. Install on iPhone 16 Pro and measure foreground/background battery use.
+5. Fresh Mac tests/archive/upload including selected icon. Source fixes, regression test and selected icon uploaded to GitHub October 14; final Mac checks pending.
+6. Public privacy/support website updates and App Store Connect metadata/privacy answers remain outstanding. No public policy changes or App Review submission made.
+
