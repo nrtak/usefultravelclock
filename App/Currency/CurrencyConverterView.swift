@@ -122,9 +122,6 @@ struct CurrencyConverterView: View {
         let code = source ? store.source : store.target
         return VStack(alignment: .leading, spacing: 6) {
             currencyButton(code, side: source ? .source : .target)
-            if !source {
-                Rectangle().fill(Color.blue.opacity(0.35)).frame(height: 1)
-            }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(Currency.named(code).symbol)
                     .font(.title2.weight(.medium)).foregroundStyle(.secondary)
