@@ -25,6 +25,7 @@ struct PriceImageView: View {
     @State private var data: Data?
     @State private var prices: [RecognizedPrice] = []
     @State private var error = ""
+    @State private var photoRevision = UUID()
     @State private var busy = false
     @State private var live = true
     @State private var page = 0
@@ -61,7 +62,7 @@ struct PriceImageView: View {
             Toggle("Include unmarked numbers", isOn: $includeUnmarked).font(.subheadline)
             HStack(spacing: 8) {
                 priceModeButton("Live Camera", icon: "camera.viewfinder", selected: live) {
-                    live = true; data = nil; prices = []; page = 0
+                    photoRevision = UUID(); photo = nil; busy = false; live = true; data = nil; prices = []; page = 0
                     pricesHeld = false; scanID = UUID(); error = ""
                     captureID = nil; capturingPhoto = false; referencePhoto = nil; noPriceFound = false
                     scanningPaused = false
@@ -154,7 +155,16 @@ struct PriceImageView: View {
             prices = []; page = 0; pricesHeld = false; captureID = nil; capturingPhoto = false; scanID = UUID()
             if !live, let data { Task { await recognize(data) } }
         }
-        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self) { await recognize(raw) } } catch { self.error = error.localizedDescription } } }
+        .task(id: photo) {
+            guard let selected = photo else { return }
+            let revision = UUID(); photoRevision = revision; busy = false
+            do {
+                if let raw = try await selected.loadTransferable(type: Data.self), !Task.isCancelled, photoRevision == revision {
+                    await recognize(raw, revision: revision)
+                }
+            } catch { if !Task.isCancelled && photoRevision == revision { self.error = error.localizedDescription } }
+        }
+        .onDisappear { photoRevision = UUID(); busy = false }
     }
     private func priceModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -181,15 +191,18 @@ struct PriceImageView: View {
         pricesHeld = true
         referencePhoto = nil; captureID = UUID()
     }
-    private func recognize(_ raw: Data) async {
+    private func recognize(_ raw: Data, revision suppliedRevision: UUID? = nil) async {
+        let revision = suppliedRevision ?? UUID()
+        photoRevision = revision
         guard let sanitized = ConversionPhoto.jpeg(from: raw) else { error = "Couldn’t read that image."; return }
-        live = false; data = sanitized; busy = true; error = ""; defer { busy = false }
+        live = false; data = sanitized; busy = true; error = ""; defer { if photoRevision == revision { busy = false } }
         do {
             let text = try await ImageText.read(sanitized).map(\.text).joined(separator: "\n")
+            guard !Task.isCancelled, photoRevision == revision else { return }
             prices = PriceRecognition.read(text, currency: .named(store.source), includeUnmarked: includeUnmarked)
             page = 0
             if prices.isEmpty { error = "No marked prices found. Include a currency symbol, code or price label in the photo." }
-        } catch { self.error = error.localizedDescription }
+        } catch { if !Task.isCancelled && photoRevision == revision { self.error = error.localizedDescription } }
     }
     private func preparePriceSave(_ value: Decimal) {
         guard let rate = store.source == store.target ? Decimal(1) : store.snapshot?.multiplier(from: store.source, to: store.target) else {
@@ -254,8 +267,8 @@ struct TripTranslateView: View {
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation && image == nil) { liveTranslation = false; image = nil }
-                        translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { liveTranslation = true }
+                        translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation && image == nil) { photo = nil; liveScanID = UUID(); keepingPhoto = false; liveTranslation = false; image = nil }
+                        translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { photo = nil; resetTranslationScan(); liveTranslation = true }
                         Spacer(minLength: 0)
                         PhotosPicker(selection: $photo, matching: .images) {
                             HStack(spacing: 4) {
@@ -283,7 +296,7 @@ struct TripTranslateView: View {
                                     if input.isEmpty { message = "No text found. Move closer or try another photo."; return }
                                     let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
                                     if config == next { config?.invalidate() } else { config = next }
-                                } catch { message = "Couldn’t read photo. Tap Scan again to retry." }
+                                } catch { if generation == liveScanID && liveTranslation { message = "Couldn’t read photo. Tap Scan again to retry." } }
                             }
                         }).frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 14))
                             .overlay(alignment: .bottom) {
@@ -365,7 +378,19 @@ struct TripTranslateView: View {
             }
         }
         .translationTask(config) { session in await translate(using: session) }
-        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
+        .task(id: photo) {
+            guard let selected = photo else { return }
+            let generation = liveScanID
+            do {
+                guard let raw = try await selected.loadTransferable(type: Data.self), !Task.isCancelled,
+                      generation == liveScanID, let cleaned = ConversionPhoto.jpeg(from: raw) else { return }
+                let recognized = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n")
+                guard !Task.isCancelled, generation == liveScanID else { return }
+                liveTranslation = false; image = cleaned; input = recognized; output = ""
+                message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate"
+            } catch { if !Task.isCancelled && generation == liveScanID { message = error.localizedDescription } }
+        }
+        .onDisappear { liveScanID = UUID(); keepingPhoto = false }
         .sheet(isPresented: $saved) { SavedTranslationsView() }
     }
     private func translate(using session: TranslationSession) async {
@@ -401,7 +426,7 @@ struct TripTranslateView: View {
     }
     private func resetTranslationScan() {
         livePaused = false; liveText = ""; image = nil; input = ""; output = ""; message = ""
-        liveCaptureID = nil; liveScanID = UUID(); config = nil
+        keepingPhoto = false; liveCaptureID = nil; liveScanID = UUID(); config = nil
     }
     private func translationModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {

@@ -35,7 +35,15 @@ struct LiveTextCamera: View {
                     Label("Camera paused", systemImage: "camera").foregroundStyle(.secondary)
                 }
             }
-        }.onAppear { visible = true }.onDisappear { visible = false }
+        }.onAppear { visible = true }
+        .onDisappear { visible = false; cancelCapture() }
+        .onChange(of: phase) { _, value in if value != .active { cancelCapture() } }
+        .onChange(of: resetID) { _, _ in cancelCapture() }
+    }
+    private func cancelCapture() {
+        guard pendingCapture != nil else { return }
+        completedCaptureID = captureID
+        onError("Photo capture interrupted. Tap the camera button to retry.")
     }
 }
 
@@ -79,17 +87,18 @@ private struct TripScannerController: UIViewControllerRepresentable {
             context.coordinator.lastCaptureID = captureID
             let coordinator = context.coordinator
             let generation = coordinator.lastResetID
-            Task { @MainActor in
+            coordinator.captureTask?.cancel()
+            coordinator.captureTask = Task { @MainActor in
                 do {
                     let image = try await scanner.capturePhoto()
-                    if !coordinator.stopped && generation == coordinator.lastResetID { onPhoto?(image) }
+                    if !Task.isCancelled && !coordinator.stopped && generation == coordinator.lastResetID && captureID == coordinator.lastCaptureID { onPhoto?(image) }
                 } catch {
-                    if !coordinator.stopped && generation == coordinator.lastResetID { onError("Couldn’t capture photo. Try again.") }
+                    if !Task.isCancelled && !coordinator.stopped && generation == coordinator.lastResetID && captureID == coordinator.lastCaptureID { onError("Couldn’t capture photo. Try again.") }
                 }
             }
         }
     }
-    static func dismantleUIViewController(_ scanner: DataScannerViewController, coordinator: Coordinator) { coordinator.stopped = true; coordinator.resetRecognition(); scanner.stopScanning() }
+    static func dismantleUIViewController(_ scanner: DataScannerViewController, coordinator: Coordinator) { coordinator.stopped = true; coordinator.captureTask?.cancel(); coordinator.resetRecognition(); scanner.stopScanning() }
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
         var recognitionEnabled = true
         private var latest: [RecognizedItem] = []
@@ -98,7 +107,8 @@ private struct TripScannerController: UIViewControllerRepresentable {
         var onError: (String) -> Void
         private var previous = ""
         var lastResetID: UUID?
-        func resetRecognition() { pending?.cancel(); pending = nil; latest = []; previous = "" }
+        func resetRecognition() { captureTask?.cancel(); captureTask = nil; pending?.cancel(); pending = nil; latest = []; previous = "" }
+        var captureTask: Task<Void, Never>?
         var lastCaptureID: UUID?
         var stopped = false
         init(onText: @escaping (String) -> Void, onError: @escaping (String) -> Void) { self.onText = onText; self.onError = onError }

@@ -328,7 +328,7 @@ extension TripStore {
         let values = documents
         let result = await Task.detached {
             Set(values.compactMap { document -> UUID? in
-                (try? vault.data(document)) == nil ? nil : document.id
+                autoreleasepool { (try? vault.data(document)) == nil ? nil : document.id }
             })
         }.value
         return unlocked && generation == unlockGeneration ? result : []

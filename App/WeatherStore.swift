@@ -82,7 +82,7 @@ struct CachedWeather: Codable {
         guard !loading.contains(place.id) else { return }
         loading.insert(place.id); defer { loading.remove(place.id) }
         if force { lastManualRefresh[place.id] = nil }
-        if !force, let saved = cache[place.id], saved.hourly != nil, saved.daily != nil, (0..<1800).contains(Date().timeIntervalSince(saved.fetchedAt)) { return }
+        if !force, let saved = cache[place.id], saved.hourly != nil, saved.daily != nil, (0..<1800).contains(Date().timeIntervalSince(saved.fetchedAt)), errors[place.id] == nil { return }
         guard !TripConnectionStore.shared.isOffline else { errors[place.id] = "Offline · fresh weather needs internet."; return }
         do {
             if attribution == nil { attribution = try? await service.attribution }

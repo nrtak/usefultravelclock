@@ -68,6 +68,7 @@ struct TripDocumentPayload: Sendable, Codable {
         } else if let source = CGImageSourceCreateWithData(data as CFData, nil),
                   let type = CGImageSourceGetType(source), CGImageSourceGetCount(source) > 0,
                   let imageType = UTType(type as String), imageType.conforms(to: .image),
+                  CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCache: false] as CFDictionary) != nil,
                   let preferred = imageType.preferredFilenameExtension {
             ext = preferred
         } else { throw TripDocumentError.invalidFile }
