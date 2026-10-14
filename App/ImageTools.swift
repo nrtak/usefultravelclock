@@ -207,6 +207,7 @@ struct PriceImageView: View {
 }
 struct TripTranslateView: View {
     @EnvironmentObject private var trip: TripStore
+    @State private var translationSaveID = UUID()
     @State private var photo: PhotosPickerItem?
     @State private var image: Data?
     @State private var input = ""
@@ -320,8 +321,11 @@ struct TripTranslateView: View {
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {
-            TripActionButton("Save", primary: true) { if trip.saveTranslation(TranslationRecord(text: output, note: note, image: image)) { message = "Saved on this device" } }.disabled(output.isEmpty && image == nil)
+            TripActionButton("Save", primary: true) { if trip.saveTranslation(TranslationRecord(id: translationSaveID, text: output, note: note, image: image)) { message = "Saved on this iPhone" } else { message = trip.error ?? "Could not save. Keep this screen open and tap Save to retry." } }.disabled(output.isEmpty && image == nil)
         }.tripToolbarBackground() }
+        .onChange(of: output) { _, _ in translationSaveID = UUID() }
+        .onChange(of: note) { _, _ in translationSaveID = UUID() }
+        .onChange(of: image) { _, _ in translationSaveID = UUID() }
         .sheet(item: $languageSide) { side in
             TranslationLanguagePicker(selection: side == .source ? $source : $target, title: side == .source ? "From language" : "To language")
         }
@@ -378,7 +382,7 @@ struct TripTranslateView: View {
             }
         }
         .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
-        .sheet(isPresented: $saved) { NavigationStack { List(trip.translations) { record in NavigationLink { SavedTranslationEditor(record: record) } label: { HStack { if let data = record.image { TripPhotoThumbnail(id: "translation-" + record.id.uuidString, data: data) }; VStack(alignment: .leading) { Text(record.text.isEmpty ? "Saved image" : record.text).lineLimit(2); Text(record.note).font(.caption).lineLimit(2) } } } }.navigationTitle("Saved translations").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { saved = false }  }.tripToolbarBackground() } } }
+        .sheet(isPresented: $saved) { SavedTranslationsView() }
     }
     private func checkOfflineLanguages() async {
         let from = source, to = target
@@ -430,7 +434,39 @@ struct SavedTranslationEditor: View {
     @EnvironmentObject private var trip: TripStore
     @Environment(\.dismiss) private var dismiss
     @State var record: TranslationRecord
-    var body: some View { VStack(spacing: 16) { if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180) }; Text("Translation"); TextEditor(text: $record.text).frame(height: 120); Text("Notes"); TextEditor(text: $record.note).frame(height: 90); Spacer() }.padding().navigationTitle("Saved translation").toolbar { ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { if trip.saveTranslation(record) { dismiss() } } }.tripToolbarBackground() } }
+    @State private var deleting = false
+    @State private var original: TranslationRecord?
+    @State private var leaving = false
+    private var hasChanges: Bool {
+        guard let original else { return false }
+        return original.title != record.title || original.text != record.text || original.note != record.note
+    }
+    var body: some View {
+        Form {
+            Section("Title") { TextField("Optional title", text: Binding(get: { record.title ?? "" }, set: { record.title = $0 })) }
+            if let data = record.image, let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 180).accessibilityLabel("Saved reference photo") }
+            Section("Translation") { TextEditor(text: $record.text).frame(minHeight: 150).accessibilityLabel("Saved translation text") }
+            Section("Notes") { TextEditor(text: $record.note).frame(minHeight: 100).accessibilityLabel("Translation notes") }
+            if let error = trip.error { Section { Text(error).foregroundStyle(.red); Button("Retry save") { save() } } }
+            Section { Button("Delete translation", role: .destructive) { deleting = true } }
+        }.navigationTitle("Saved translation")
+            .navigationBarBackButtonHidden(true)
+            .interactiveDismissDisabled(hasChanges)
+            .onAppear { if original == nil { original = record } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Back") { if hasChanges { leaving = true } else { dismiss() } } }
+                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() } }.tripToolbarBackground()
+            }
+            .confirmationDialog("Save your changes before leaving?", isPresented: $leaving, titleVisibility: .visible) {
+                Button("Save changes") { save() }
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) { }
+            }
+            .confirmationDialog("Delete this saved translation?", isPresented: $deleting, titleVisibility: .visible) {
+                Button("Delete translation", role: .destructive) { if trip.deleteTranslation(record.id) { dismiss() } }
+            } message: { Text("Undo is available in Saved translations while the app remains open.") }
+    }
+    private func save() { if trip.saveTranslation(record) { dismiss() } }
 }
 
 

@@ -32,6 +32,7 @@ struct TravelDashboard: View {
     @State private var settings = false
     @State private var shift: Double = 0
     @State private var homeDocument: TripPreviewFile?
+    @AppStorage("trip-getting-started-dismissed") private var gettingStartedDismissed = false
     @FocusState private var homeEditingSide: AmountSide?
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
@@ -231,8 +232,17 @@ struct TravelDashboard: View {
             }
             NavigationLink {
                 TripReadinessView(currency: currency, cities: readinessCities)
-            } label: { Label("Check offline readiness", systemImage: "checklist").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
+            } label: { Label("Before you leave", systemImage: "checklist").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
             TripReminderStatus(store: trip.reminders)
+            if trip.unlocked && trip.records.isEmpty && !gettingStartedDismissed {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Ready for your first trip?").font(.headline)
+                    Text("Add your booking, keep its ticket handy, then check what’s available offline.").font(.subheadline)
+                    Button("Add your first trip", systemImage: "suitcase") { tab = 3 }.frame(minHeight: 44)
+                    NavigationLink("Getting started") { TripGettingStartedView() }.frame(minHeight: 44)
+                    Button("Dismiss this guide") { gettingStartedDismissed = true }.font(.caption).frame(minHeight: 44)
+                }.tripPanel()
+            }
         }.padding(12).fixedSize(horizontal: false, vertical: true)
     }
     private var readinessCities: [City] {

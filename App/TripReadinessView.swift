@@ -1,4 +1,6 @@
 import SwiftUI
+import Translation
+import UIKit
 
 struct TripReadinessView: View {
     @EnvironmentObject private var trip: TripStore
@@ -8,6 +10,13 @@ struct TripReadinessView: View {
     let cities: [City]
     @State private var readable = Set<UUID>()
     @State private var checking = true
+    @AppStorage("trip-translation-source") private var source = "ja"
+    @AppStorage("trip-translation-target") private var target = "en"
+    @State private var languageDetail = "Checking downloaded languages…"
+    @State private var languagesReady = false
+    @Environment(\.scenePhase) private var phase
+    @State private var checkRevision = UUID()
+    private var documentCheckID: String { checkRevision.uuidString + String(trip.unlocked) + trip.documents.map { $0.storageID.uuidString }.joined() }
     var body: some View {
         List {
             Section {
@@ -15,6 +24,7 @@ struct TripReadinessView: View {
                 Text("Check saved information before departure. Weather and rates can become outdated; online booking websites and new location searches require internet.").font(.subheadline)
             }
             Section("Trips & documents") {
+                NavigationLink("Review trips and add tickets") { TravelRecordsView() }
                 status("Travel details", detail: trip.unlocked ? "\(trip.records.count) saved entries on this iPhone" : "Unlock travel details to check", ready: trip.unlocked && !trip.records.isEmpty)
                 if checking { ProgressView("Checking saved documents…") }
                 else if trip.documents.isEmpty { Text("No documents saved. Add tickets and confirmations from My Trip.") }
@@ -46,12 +56,35 @@ struct TripReadinessView: View {
             Section("Reminders") {
                 Text("\(trip.records.filter { $0.reminderMinutes != nil }.count) travel entries have reminders enabled. Delivery also depends on iPhone notification and Focus settings.")
                 TripReminderStatus(store: trip.reminders)
+                Link("Open notification settings", destination: URL(string: UIApplication.openSettingsURLString)!)
             }
-        }.navigationTitle("Offline readiness")
-        .task(id: trip.unlocked) {
+            Section("Translation languages") {
+                status(TranslationLanguageLabel.name(source) + " → " + TranslationLanguageLabel.name(target), detail: languageDetail, ready: languagesReady)
+                NavigationLink("Prepare languages for offline use") { TripTranslateView().navigationTitle("Translate") }
+            }
+            Section("Final check") {
+                Text("Try opening a saved ticket with airplane mode on. Review booking times and download languages while connected. Keep your original tickets in Files as well.")
+            }
+        }.navigationTitle("Before you leave")
+        .onAppear { checkRevision = UUID() }
+        .onChange(of: phase) { _, value in if value == .active { checkRevision = UUID() } }
+        .task(id: documentCheckID) {
             checking = true
-            readable = await trip.readableDocuments()
+            let result = await trip.readableDocuments()
+            guard !Task.isCancelled else { return }; readable = result
             checking = false
+            if trip.unlocked { await trip.reminders.synchronize(records: trip.records) }
+        }
+        .task(id: checkRevision.uuidString + source + "|" + target) {
+            let availability = await LanguageAvailability().status(from: Locale.Language(identifier: source), to: Locale.Language(identifier: target))
+            guard !Task.isCancelled else { return }
+            languagesReady = availability == .installed
+            switch availability {
+            case .installed: languageDetail = "Languages downloaded · ready offline"
+            case .supported: languageDetail = "Download these languages while connected before leaving."
+            case .unsupported: languageDetail = "This language pair is unavailable. Choose another pair in Translate."
+            @unknown default: languageDetail = "Open Translate to check language availability."
+            }
         }
     }
     private func status(_ title: String, detail: String, ready: Bool) -> some View {

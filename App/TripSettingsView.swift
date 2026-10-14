@@ -51,6 +51,9 @@ struct TripSettingsView: View {
                     }
                 }
                 Section("About & support") {
+                    NavigationLink { TripGettingStartedView() } label: { Label("Getting started", systemImage: "list.number") }
+                    Link(destination: URL(string: "https://irvineapps.wordpress.com/")!) { Label("Privacy policy", systemImage: "hand.raised") }
+                    Link(destination: URL(string: "https://irvineapps.wordpress.com/")!) { Label("Support", systemImage: "questionmark.bubble") }
                     NavigationLink { TripHelpView() } label: { Label("Help", systemImage: "questionmark.circle") }
                     NavigationLink { CurrencyInformationView() } label: { Label("Rates & privacy", systemImage: "hand.raised") }
                     NavigationLink { TripCreditsView() } label: { Label("Credits", systemImage: "heart") }
@@ -100,7 +103,7 @@ private struct TripHelpView: View {
                 Text("Set an optional departure or check-in reminder in each travel entry, then Save. Enable notifications when asked. Reminders use the booking’s actual time; changing your phone’s time zone does not change the scheduled instant. Focus and notification settings can affect delivery.")
             }
             Section("Preparing for offline travel") {
-                Text("Open Check offline readiness on Home before leaving. It checks saved trip details, readable document copies, your selected currency pair and saved weather. Refresh weather and exchange rates while connected. Cached information may be outdated.")
+                Text("Open Before you leave on Home. It checks saved travel details, readable tickets, exchange rates, weather and translation languages. Refresh weather and rates and prepare languages while connected. Cached information may be outdated.")
                 Text("Document import drafts can be resumed from Documents. If a document saves but its booking reference fails, retry the reference from the import screen; the saved document is kept.")
             }
             Section("Camera & photos") {

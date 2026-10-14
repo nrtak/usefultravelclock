@@ -26,6 +26,28 @@ struct TravelRecordsView: View {
                 }
             } else {
                 List {
+                    if query.isEmpty && !trip.records.isEmpty {
+                        Section("Today & next") {
+                            let next = TripSummary.record(in: trip.records, at: Date())
+                            if let next {
+                            Button { draft = trip.drafts.first { $0.id == next.id } ?? next } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(next.timingLabel(at: Date())).font(.subheadline)
+                                    Text(next.name.isEmpty ? next.kind : next.name).font(.headline)
+                                    Text(next.timeLabel(start: next.start > Date())).font(.subheadline)
+                                }.foregroundStyle(.primary)
+                            }
+                            }
+                            let today = trip.records.filter { Calendar.current.isDateInToday($0.start) && $0.id != next?.id }.sorted { $0.start < $1.start }
+                            ForEach(today) { record in
+                                Button { draft = trip.drafts.first { $0.id == record.id } ?? record } label: {
+                                    Text((record.name.isEmpty ? record.kind : record.name) + " · " + record.timingLabel(at: Date()))
+                                }
+                            }
+                            if next == nil && today.isEmpty { Text("No upcoming bookings. Add your next trip when you’re ready.").foregroundStyle(.secondary) }
+                            Text("Today follows your iPhone’s calendar date. Booking times show each location’s time zone.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     if !trip.drafts.isEmpty {
                         Section("Unfinished edits") {
                             ForEach(trip.drafts) { saved in
@@ -71,6 +93,14 @@ struct TravelRecordsView: View {
                                 }
                             }.foregroundStyle(Color.primary).padding(.vertical, 4)
                         }.buttonStyle(.plain).accessibilityElement(children: .combine).accessibilityHint("Edit travel details and view attached documents")
+                        .contextMenu {
+                            ForEach(trip.documents(for: record.id)) { document in
+                                Button("Open " + document.name, systemImage: "doc.viewfinder") {
+                                    do { preview = TripPreviewFile(url: try trip.previewURL(document)) }
+                                    catch { trip.error = TripSaveError.message(error) }
+                                }
+                            }
+                        }
                     }
                 }
             }

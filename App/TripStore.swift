@@ -53,6 +53,15 @@ struct TranslationRecord: Codable, Identifiable {
     var text: String
     var note: String
     var image: Data?
+    var title: String? = nil
+    var displayTitle: String {
+        if let title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return title }
+        return text.isEmpty ? "Saved image" : text
+    }
+    func matches(_ query: String) -> Bool {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return query.isEmpty || [title ?? "", text, note].contains { $0.localizedStandardContains(query) }
+    }
 }
 enum TripSummary {
     static func record(in records: [TravelRecord], at now: Date) -> TravelRecord? {
@@ -77,6 +86,8 @@ enum TripSummary {
     private var importGeneration = UUID()
     private var draftWritesBlocked = false
     private var translationWritesBlocked = false
+    private var deletedTranslation: (record: TranslationRecord, index: Int)?
+    @Published private(set) var canUndoTranslationDeletion = false
     private let directory: URL
     private let keyLoader: ((LAContext) async throws -> Data)?
     let reminders: TripReminderStore
@@ -237,7 +248,30 @@ enum TripSummary {
             var next = translations
             if let index = next.firstIndex(where: { $0.id == entry.id }) { next[index] = entry } else { next.insert(entry, at: 0) }
             try JSONEncoder().encode(next).write(to: directory.appendingPathComponent("translations.json"), options: [.atomic, .completeFileProtection])
-            translations = next; return true
+            translations = next; error = nil; return true
+        } catch { self.error = TripSaveError.message(error); return false }
+    }
+    @discardableResult
+    func deleteTranslation(_ id: UUID) -> Bool {
+        guard !translationWritesBlocked, let index = translations.firstIndex(where: { $0.id == id }) else { return false }
+        let entry = translations[index]
+        var next = translations; next.remove(at: index)
+        do {
+            try JSONEncoder().encode(next).write(to: directory.appendingPathComponent("translations.json"), options: [.atomic, .completeFileProtection])
+            translations = next; deletedTranslation = (entry, index); canUndoTranslationDeletion = true; error = nil
+            return true
+        } catch { self.error = TripSaveError.message(error); return false }
+    }
+    @discardableResult
+    func undoTranslationDeletion() -> Bool {
+        guard !translationWritesBlocked, let deletedTranslation else { return false }
+        var next = translations
+        guard !next.contains(where: { $0.id == deletedTranslation.record.id }) else { return false }
+        next.insert(deletedTranslation.record, at: min(deletedTranslation.index, next.count))
+        do {
+            try JSONEncoder().encode(next).write(to: directory.appendingPathComponent("translations.json"), options: [.atomic, .completeFileProtection])
+            translations = next; self.deletedTranslation = nil; canUndoTranslationDeletion = false; error = nil
+            return true
         } catch { self.error = TripSaveError.message(error); return false }
     }
     nonisolated private static func readKey(context: LAContext, allowCreation: Bool) throws -> Data {
