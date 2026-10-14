@@ -1,0 +1,39 @@
+Local app improvements - 2026-10-13
+
+Built on the tested TestFlight 1.1 (1045) source.
+- Before you leave extends offline readiness with translation language status,
+  preparation navigation, notification settings and a final airplane-mode check.
+- Saved translations support optional titles, search, confirmed deletion and
+  persistent undo of the most recent deletion during the current app session.
+  Older translations without titles remain readable.
+- Translation editing uses scrollable sections, accessible fields and save retries.
+- Home offers first-trip guidance without forcing an onboarding modal; Getting
+  started remains available from Settings after dismissal.
+- My Trip shows today's bookings and the current/next booking with timing labels.
+  Long-press a booking to open its attached documents directly; existing visible
+  document shortcuts remain available from Home and the booking editor.
+- Privacy policy and Support both open the user-specified URL:
+  https://irvineapps.wordpress.com/
+- Help and Home use the same Before you leave label.
+- Translation editing prompts Save changes, Discard changes or Keep editing
+  before Back navigation, and disables sheet-swipe dismissal while edits exist.
+- Repeated Save taps for unchanged translation content reuse its identifier.
+- Checklist checks restart on return-navigation and foreground activation,
+  with cancellation guards preventing old results from changing current status.
+- First-trip guidance appears after the main Home information.
+
+Verification
+- Local whitespace checks passed.
+- Added tests for legacy translation decoding, title/search persistence,
+  deletion order/undo, and failed deletion/undo preserving memory state.
+- New code has not been compiled or run on iOS in this local Windows environment.
+- The WordPress URL could not be read by the web tool; its privacy/support
+  contents are unverified. The requested links have been added as supplied.
+- No GitHub upload or TestFlight build has been triggered for this new patch.
+
+Next Mac/device checks
+- Compile and run the full simulator suite.
+- Render Getting started, Saved translations and Before you leave at the largest
+  text sizes in light and dark appearance.
+- On iPhone, check language preparation, return-navigation status refresh,
+  translation delete/undo across navigation, and first-trip guidance dismissal.
