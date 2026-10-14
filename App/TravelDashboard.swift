@@ -189,7 +189,7 @@ struct TravelDashboard: View {
     }
     private func homeContent(compact: Bool) -> some View {
         VStack(spacing: compact ? 8 : 10) {
-            TimelineView(.periodic(from: .now, by: 30)) { context in clocks(at: context.date, selectable: true, compact: compact) }
+            TripVisibleTimeline(interval: 30, enabled: tab == 0) { context in clocks(at: context.date, selectable: true, compact: compact) }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     TripSectionLabel(title: "Currency", symbol: "banknote")
@@ -218,11 +218,11 @@ struct TravelDashboard: View {
                 HStack {
                     Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
                         .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                    TimelineView(.periodic(from: .now, by: 60)) { context in nextTrip(at: context.date) }
+                    TripVisibleTimeline(interval: 60, enabled: tab == 0) { context in nextTrip(at: context.date) }
                     Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
                 }.padding(compact ? 10 : 12)
             }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            TimelineView(.periodic(from: .now, by: 60)) { context in
+            TripVisibleTimeline(interval: 60, enabled: tab == 0) { context in
                 if let document = trip.summaryDocument(at: context.date) {
                     Button {
                         do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }
@@ -239,7 +239,7 @@ struct TravelDashboard: View {
                     Text("Ready for your first trip?").font(.headline)
                     Text("Add your booking, keep its ticket handy, then check what’s available offline.").font(.subheadline)
                     Button("Add your first trip", systemImage: "suitcase") { tab = 3 }.frame(minHeight: 44)
-                    NavigationLink("Getting started") { TripGettingStartedView() }.frame(minHeight: 44)
+                    NavigationLink("App guide") { TripGettingStartedView() }.frame(minHeight: 44)
                     Button("Dismiss this guide") { gettingStartedDismissed = true }.font(.caption).frame(minHeight: 44)
                 }.tripPanel()
             }
@@ -281,7 +281,7 @@ struct TravelDashboard: View {
         }
     }
     private var world: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { context in
+        TripVisibleTimeline(interval: 30, enabled: tab == 2) { context in
             let date = context.date.addingTimeInterval(shift * 3600)
             ScrollView {
             VStack(spacing: 10) {

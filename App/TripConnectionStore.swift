@@ -1,15 +1,50 @@
 import SwiftUI
 import Network
 
+struct TripVisibleTimelineContext { let date: Date }
+
+struct TripVisibleTimeline<Content: View>: View {
+    @Environment(\.scenePhase) private var phase
+    @State private var visible = false
+    let interval: TimeInterval
+    let enabled: Bool
+    private let content: (TripVisibleTimelineContext) -> Content
+    init(interval: TimeInterval, enabled: Bool = true, @ViewBuilder content: @escaping (TripVisibleTimelineContext) -> Content) {
+        self.interval = interval; self.enabled = enabled; self.content = content
+    }
+    var body: some View {
+        Group {
+            if visible && phase == .active && enabled {
+                TimelineView(.periodic(from: .now, by: interval)) { context in content(TripVisibleTimelineContext(date: context.date)) }
+            } else {
+                content(TripVisibleTimelineContext(date: Date()))
+            }
+        }.onAppear { visible = true }.onDisappear { visible = false }
+    }
+}
+
 struct TripRefreshStamp: View {
     let success: Date?
     let fallback: String
+    @State private var fresh = false
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 5)) { context in
-            let fresh = success.map { context.date.timeIntervalSince($0) < 8 } ?? false
-            Text(fresh ? "Updated just now" : fallback)
-                .foregroundStyle(fresh ? Color.teal : Color.secondary)
-        }
+        Text(fresh ? "Updated just now" : fallback)
+            .foregroundStyle(fresh ? Color.teal : Color.secondary)
+            .task(id: success) {
+                let remaining = TripRefreshFreshness.remaining(success: success, now: Date())
+                fresh = remaining > 0
+                guard fresh else { return }
+                do { try await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000)) } catch { return }
+                guard !Task.isCancelled else { return }; fresh = false
+            }
+    }
+}
+
+enum TripRefreshFreshness {
+    static func remaining(success: Date?, now: Date) -> Double {
+        guard let success else { return 0 }
+        let age = now.timeIntervalSince(success)
+        return age >= 0 && age < 8 ? 8 - age : 0
     }
 }
 

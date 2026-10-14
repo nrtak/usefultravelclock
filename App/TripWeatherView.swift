@@ -62,7 +62,7 @@ struct TripWeatherCard: View {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
                     Text(result.condition).font(.caption)
                     TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption2)
-                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                    TripVisibleTimeline(interval: 60) { context in
                         Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.caption2).foregroundStyle(.secondary)
                     }
                 } else if weather.loading.contains(city.id) { ProgressView() }
@@ -171,7 +171,7 @@ struct TripWeatherSearchView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
-                        TimelineView(.periodic(from: .now, by: 60)) { context in Text(weather.status(for: place, now: context.date, offline: connection.isOffline)) }
+                        TripVisibleTimeline(interval: 60) { context in Text(weather.status(for: place, now: context.date, offline: connection.isOffline)) }
                     }.font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
                 }

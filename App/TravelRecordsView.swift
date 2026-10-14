@@ -110,7 +110,7 @@ struct TravelRecordsView: View {
         .confirmationDialog("Discard these unfinished edits?", isPresented: Binding(get: { discard != nil }, set: { if !$0 { discard = nil } }), titleVisibility: .visible) {
             Button("Discard draft", role: .destructive) { if let discard { _ = trip.discardDraft(discard.id) }; discard = nil }
         } message: { Text("Saved trip details remain available.") }
-        .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Label("Documents", systemImage: "folder").labelStyle(.iconOnly).frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
         .sheet(item: $draft) { record in RecordEditor(record: record) }
         .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .sheet(item: $incoming, onDismiss: { inbox.clear() }) { file in TripDocumentImport(recordID: nil, incomingURL: file.url) }

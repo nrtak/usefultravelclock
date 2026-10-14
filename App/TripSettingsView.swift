@@ -50,15 +50,11 @@ struct TripSettingsView: View {
                         }
                     }
                 }
-                Section("About & support") {
-                    NavigationLink { TripGettingStartedView() } label: { Label("Getting started", systemImage: "list.number") }
-                    Link(destination: URL(string: "https://irvineapps.wordpress.com/")!) { Label("Privacy policy", systemImage: "hand.raised") }
-                    Link(destination: URL(string: "https://irvineapps.wordpress.com/")!) { Label("Support", systemImage: "questionmark.bubble") }
-                    NavigationLink { TripHelpView() } label: { Label("Help", systemImage: "questionmark.circle") }
-                    NavigationLink { CurrencyInformationView() } label: { Label("Rates & privacy", systemImage: "hand.raised") }
-                    NavigationLink { TripCreditsView() } label: { Label("Credits", systemImage: "heart") }
-                    NavigationLink { TripAppInformationView() } label: {
-                        HStack { Label("App information", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.caption) }
+                Section("Guide & information") {
+                    NavigationLink { TripGettingStartedView() } label: { Label("App guide", systemImage: "questionmark.circle") }
+                    NavigationLink { TripPrivacySupportView() } label: { Label("Privacy & support", systemImage: "hand.raised") }
+                    NavigationLink { TripCreditsView() } label: {
+                        HStack { Label("About Trip Info", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.caption) }
                     }
                 }
             }.navigationTitle("Settings")
@@ -93,43 +89,10 @@ private enum TripAppInformation {
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unavailable" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unavailable" }
 }
-private struct TripHelpView: View {
-    var body: some View {
-        List {
-            Section("Home") { Text("Choose your Home and Destination cities. Edit either currency amount to convert both ways. Tap the swap arrows to reverse currencies, or Full converter for more tools.") }
-            Section("Conversions") { Text("Currency is the main tool. Add multiple prices supports addition and subtraction; Clear all asks before removing entries. Unit converter handles measurements such as distance, temperature and volume.") }
-            Section("Drafts & travel reminders") {
-                Text("Unfinished travel edits are encrypted on this iPhone. Resume them from Unfinished edits in My Trip, or swipe a draft to discard it. Back closes the editor and keeps your draft.")
-                Text("Set an optional departure or check-in reminder in each travel entry, then Save. Enable notifications when asked. Reminders use the booking’s actual time; changing your phone’s time zone does not change the scheduled instant. Focus and notification settings can affect delivery.")
-            }
-            Section("Preparing for offline travel") {
-                Text("Open Before you leave on Home. It checks saved travel details, readable tickets, exchange rates, weather and translation languages. Refresh weather and rates and prepare languages while connected. Cached information may be outdated.")
-                Text("Document import drafts can be resumed from Documents. If a document saves but its booking reference fails, retry the reference from the import screen; the saved document is kept.")
-            }
-            Section("Camera & photos") {
-                Text("The checkmark shows the selected input. Point the camera at a clear price or measurement, or choose Photo. Use the shutter to keep a reference image. Pause holds recognition; Resume or Scan again starts a new reading.")
-                Text("Review detected values and units before saving. For prices, Include unmarked numbers also reads values without a currency label, so quantities and product IDs can be mistaken for prices.")
-            }
-            Section("Saved entries") { Text("Save a conversion with a note and optional photo. The preview shows what will be saved. Open Saved to revisit it. Swipe a saved conversion to delete; Undo restores the most recent deletion during the current session.") }
-            Section("World Time") {
-                Text("The comparison slider starts at Now, centered at zero. Move it to compare all cities at another time; Return to now restores live clocks. Yesterday and Tomorrow compare each city's date with Home.")
-                Text("Hold Home or Destination to change its city. Hold an additional city to edit or reorder the list, then tap Done.")
-            }
-            Section("Translate") { Text("Choose source and target languages, then enter text or use Camera or Photo. English (General) has no country specified. Tap Prepare for offline use to download the selected language pair while connected. Save a translation with a reference image and note.") }
-            Section("My Trip") { Text("Add hotel and transport details. Set departure and arrival locations to display their local times. Entries without a selected location use device time. Save an entry, then add PDFs or images in Documents. Label each document by traveler and type. The next trip document opens from My Trip. Open Documents to search, rename, replace, share or remove copies from completed trips. Documents stay on this iPhone and work offline. From another app, use Open in Trip Info when offered, or import from Files or Photos. Use Lock app to protect access. For airline bookings, copy your reference and open the saved booking website; the app does not sign in or sync bookings.") }
-            Section("Weather & offline use") { Text("Tap Weather for hourly and daily forecasts. Refresh updates the selected city when connected. Clocks, built-in city search, unit conversion, camera text recognition, saved entries and this guide work offline. Currency uses downloaded or bundled dated reference rates. Weather uses saved forecasts. Fresh rates, fresh weather, weather location search and language downloads need internet. Photos stored only in iCloud may also need downloading before your trip.") }
-            Section("Tab order & app lock") { Text("Hold a bottom tab, drag to reorder, and tap Done. The app remembers your tab order and last-used tab. Enable Lock app in Settings to use Face ID, Touch ID or your iPhone passcode. Widgets are not protected by the app lock.") }
-            Section("Troubleshooting") {
-                Text("If scanning finds nothing, move closer, improve lighting or choose a clearer photo. Check camera permission in iPhone Settings. If a rate or forecast is unavailable, connect and retry Refresh.")
-                Text("When reporting a bug, include the app version, build number and steps to reproduce it. Remove personal details from any screenshots.")
-            }
-        }.navigationTitle("Help").navigationBarTitleDisplayMode(.inline)
-    }
-}
 private struct TripCreditsView: View {
     var body: some View {
         List {
-            Section("Development") { LabeledContent("App", value: "Trip Info"); LabeledContent("Developer", value: "Irvine Dynamics") }
+            Section("Installed app") { LabeledContent("App", value: "Trip Info"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.caption) }
             Section("Project foundations") { Text("Clock and currency tools build on UsefulTravelClock and SimpleCurrency. Original contributor and license notices are retained in the source repository.") }
             Section("Services & frameworks") {
                 LabeledContent("Reference rates", value: "Frankfurter")
@@ -139,23 +102,6 @@ private struct TripCreditsView: View {
                 LabeledContent("Translation", value: "Apple Translation")
                 Text("Weather source links appear beside Apple Weather credits in the weather views.").font(.caption).foregroundStyle(.secondary)
             }
-        }.navigationTitle("Credits").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle("About Trip Info").navigationBarTitleDisplayMode(.inline)
     }
 }
-private struct TripAppInformationView: View {
-    var body: some View {
-        List {
-            Section("Installed app") {
-                LabeledContent("Name", value: "Trip Info")
-                LabeledContent("Version", value: TripAppInformation.version)
-                LabeledContent("Build", value: TripAppInformation.build)
-                LabeledContent("Developer", value: "Irvine Dynamics")
-                Text("© 2026 Irvine Dynamics").font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Support") {
-                Text("Include this version and build number when reporting an issue.")
-            }
-        }.navigationTitle("App information").navigationBarTitleDisplayMode(.inline)
-    }
-}
-

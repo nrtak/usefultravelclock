@@ -2,10 +2,44 @@ import SwiftUI
 import VisionKit
 import UIKit
 
-struct LiveTextCamera: UIViewControllerRepresentable {
+enum TripCameraActivity {
+    static func shouldRun(visible: Bool, active: Bool, recognizing: Bool, pendingCapture: Bool) -> Bool {
+        visible && active && (recognizing || pendingCapture)
+    }
+}
+
+struct LiveTextCamera: View {
     #if DEBUG
     static var tutorialImage: UIImage?
     #endif
+    @Environment(\.scenePhase) private var phase
+    @State private var visible = false
+    @State private var completedCaptureID: UUID?
+    var recognitionEnabled = true
+    var onText: (String) -> Void
+    var onError: (String) -> Void
+    var resetID: UUID? = nil
+    var captureID: UUID? = nil
+    var onPhoto: ((UIImage) -> Void)? = nil
+    private var pendingCapture: UUID? { captureID == completedCaptureID ? nil : captureID }
+    var body: some View {
+        Group {
+            if TripCameraActivity.shouldRun(visible: visible, active: phase == .active, recognizing: recognitionEnabled, pendingCapture: pendingCapture != nil) {
+                TripScannerController(recognitionEnabled: recognitionEnabled, onText: onText, onError: { message in
+                    completedCaptureID = captureID; onError(message)
+                }, resetID: resetID, captureID: pendingCapture, onPhoto: { image in
+                    completedCaptureID = captureID; onPhoto?(image)
+                })
+            } else {
+                Color(.secondarySystemBackground).overlay {
+                    Label("Camera paused", systemImage: "camera").foregroundStyle(.secondary)
+                }
+            }
+        }.onAppear { visible = true }.onDisappear { visible = false }
+    }
+}
+
+private struct TripScannerController: UIViewControllerRepresentable {
     var recognitionEnabled = true
     var onText: (String) -> Void
     var onError: (String) -> Void
@@ -17,7 +51,7 @@ struct LiveTextCamera: UIViewControllerRepresentable {
         let scanner = DataScannerViewController(recognizedDataTypes: [.text()], qualityLevel: .balanced, recognizesMultipleItems: true, isHighFrameRateTrackingEnabled: false, isPinchToZoomEnabled: true, isGuidanceEnabled: true, isHighlightingEnabled: true)
         scanner.delegate = context.coordinator
         #if DEBUG
-        if let image = Self.tutorialImage {
+        if let image = LiveTextCamera.tutorialImage {
             let preview = UIImageView(image: image)
             preview.contentMode = .scaleAspectFill; preview.clipsToBounds = true
             preview.frame = scanner.view.bounds; preview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -32,7 +66,7 @@ struct LiveTextCamera: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
         #if DEBUG
-        if Self.tutorialImage != nil { return }
+        if LiveTextCamera.tutorialImage != nil { return }
         #endif
         context.coordinator.recognitionEnabled = recognitionEnabled
         context.coordinator.onText = onText
