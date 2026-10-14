@@ -107,6 +107,9 @@ final class TutorialCaptureTests: XCTestCase {
         try await screen("21-home-large-text", dashboard(tab: 0).environment(\.dynamicTypeSize, .accessibility3))
         try await screen("22-trip-large-text", RecordEditor(record: flight).environment(\.dynamicTypeSize, .accessibility3))
         try await screen("23-home-dark", dashboard(tab: 0).environment(\.colorScheme, .dark))
+        try await screen("24-app-guide", NavigationStack { TripGettingStartedView() })
+        try await screen("25-privacy-support", NavigationStack { TripPrivacySupportView() })
+        try await screen("26-guide-largest-text", NavigationStack { TripGettingStartedView() }.environment(\.dynamicTypeSize, .accessibility5))
 
     }
     @MainActor
