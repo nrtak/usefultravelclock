@@ -37,3 +37,29 @@ Next Mac/device checks
   text sizes in light and dark appearance.
 - On iPhone, check language preparation, return-navigation status refresh,
   translation delete/undo across navigation, and first-trip guidance dismissal.
+
+Feedback changes - local, not released
+- Removed the To amount card's blue separator to match From.
+- Documents now uses a folder icon; actual Copy actions retain the copy icon.
+- Settings consolidated to App guide, Privacy & support, and About Trip Info.
+- App guide updated for all features and contains information only.
+- Privacy/support/rates explanations are built-in text with no website-opening
+  controls. Credits, version, build and developer now share one About page.
+- Camera controller is removed while paused, hidden or inactive. A new shutter
+  request can briefly activate it; it stops again when capture completes.
+- Refresh stamps use one expiry task instead of an indefinite five-second timer.
+- Clock/weather timelines schedule updates only while visible and active.
+- Added camera lifecycle/freshness regressions and guide/privacy screen captures.
+
+Battery report and validation
+- Reported on iPhone 16 Pro, current iOS; drain during use and while not using app.
+- Source review found scanning previously continued after callback delivery was
+  paused, plus repeated refresh-label timer updates. These are plausible causes;
+  no battery reduction or root cause has yet been measured on a physical device.
+- No continuous location tracking or declared app background modes found.
+- Verify camera indicator goes off on Pause, leaving scanner and backgrounding.
+- Check shutter capture while paused, Resume, returning from another tab, and
+  stale callbacks after leaving. Use a physical device for energy measurements.
+- Compare idle Home, live prices, live translation, and backgrounded app usage on
+  iPhone 16 Pro. Include widget configuration and Battery settings details.
+- Run Mac compilation, regression tests and screen capture review before release.
