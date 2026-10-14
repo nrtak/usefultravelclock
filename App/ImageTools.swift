@@ -229,7 +229,7 @@ struct TripTranslateView: View {
     @State private var keepingPhoto = false
     @State private var noTextFound = false
     @State private var languageSide: TranslationLanguageSide?
-    var body: some View {
+    private var translationContent: some View {
         ScrollView {
             VStack(spacing: 14) {
                 VStack(spacing: 10) {
@@ -329,6 +329,9 @@ struct TripTranslateView: View {
         .sheet(item: $languageSide) { side in
             TranslationLanguagePicker(selection: side == .source ? $source : $target, title: side == .source ? "From language" : "To language")
         }
+    }
+    var body: some View {
+        translationContent
         .task(id: liveScanID) {
             noTextFound = false
             do { try await Task.sleep(for: .seconds(6)) } catch { return }
@@ -361,7 +364,11 @@ struct TripTranslateView: View {
                 message = "Languages were not prepared. Connect and try Prepare for offline use again."
             }
         }
-        .translationTask(config) { session in
+        .translationTask(config) { session in await translate(using: session) }
+        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
+        .sheet(isPresented: $saved) { SavedTranslationsView() }
+    }
+    private func translate(using session: TranslationSession) async {
             let requested = input
             let requestedSource = source, requestedTarget = target
             do {
@@ -380,9 +387,6 @@ struct TripTranslateView: View {
                     message = error.localizedDescription
                 }
             }
-        }
-        .onChange(of: photo) { _, item in Task { do { if let raw = try await item?.loadTransferable(type: Data.self), let cleaned = ConversionPhoto.jpeg(from: raw) { liveTranslation = false; image = cleaned; input = try await ImageText.read(cleaned).map(\.text).joined(separator: "\n"); output = ""; message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate" } } catch { message = error.localizedDescription } } }
-        .sheet(isPresented: $saved) { SavedTranslationsView() }
     }
     private func checkOfflineLanguages() async {
         let from = source, to = target
