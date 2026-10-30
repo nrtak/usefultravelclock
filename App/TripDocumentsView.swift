@@ -223,6 +223,7 @@ struct TripDocumentImport: View {
     @State var recordID: UUID?
     var replacing: TripDocument? = nil
     var incomingURL: URL? = nil
+    var onPreserved: (() -> Void)? = nil
     @State private var payload: TripDocumentPayload?
     @State private var files = false
     @State private var photo: PhotosPickerItem?
@@ -242,6 +243,8 @@ struct TripDocumentImport: View {
     @State private var restored = false
     @State private var draftTask: Task<Void, Never>?
     @State private var finished = false
+    @State private var blockedByExistingDraft = false
+    @State private var recoveringDraftPayload = false
     private var draftValue: TripImportDraft {
         TripImportDraft(storageID: storageID, recordID: recordID, replacingID: replacementID, savedDocumentID: savedDocumentID, name: name, kind: kind, traveler: traveler, note: note, bookingReference: bookingReference, recognized: recognized, recognitionDone: recognitionDone)
     }
@@ -278,17 +281,18 @@ struct TripDocumentImport: View {
                     else if let payload { Button("Retry preserving import draft") {
                         busy = true
                         Task {
-                            do { try await trip.prepareImportDraft(draftValue, payload: payload); self.error = nil }
+                            do { try await trip.prepareImportDraft(draftValue, payload: payload); onPreserved?(); self.error = nil }
                             catch { self.error = TripSaveError.message(error) }
                             busy = false
                         }
                     }.disabled(busy) }
                 } }
-            }.disabled(busy).navigationTitle(replacementID == nil ? "Add document" : "Replace document").navigationBarTitleDisplayMode(.inline)
+            }.disabled(busy || blockedByExistingDraft).navigationTitle(replacementID == nil ? "Add document" : "Replace document").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) { Button(savedDocumentID == nil ? "Save" : "Retry") { save() }.disabled(payload == nil || busy || !trip.unlocked || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }
+            .interactiveDismissDisabled(busy)
             .fileImporter(isPresented: $files, allowedContentTypes: [.pdf, .image]) { result in
                 switch result { case .success(let url): prepare(url); case .failure(let failure): error = failure.localizedDescription }
             }
@@ -309,15 +313,24 @@ struct TripDocumentImport: View {
             .onAppear {
                 guard !restored else { return }; restored = true
                 replacementID = replacing?.id
+                if let draft = trip.importDraft,
+                   !draft.canResume(replacing: replacing?.id, hasIncomingFile: incomingURL != nil) {
+                    blockedByExistingDraft = true
+                    error = "Finish or discard your unfinished import in Documents before starting another. Its file and notes have been kept."
+                    return
+                }
                 if incomingURL == nil, let draft = trip.importDraft, replacing == nil || draft.replacingID == replacing?.id {
+                    storageID = draft.storageID; recordID = draft.recordID; replacementID = draft.replacingID; savedDocumentID = draft.savedDocumentID ?? trip.documents.first { $0.id == draft.storageID }?.id
+                    name = draft.name; kind = draft.kind; traveler = draft.traveler; note = draft.note; bookingReference = draft.bookingReference
+                    recognized = draft.recognized ?? ""; recognitionDone = draft.recognitionDone ?? false
                     do {
                         payload = try trip.importDraftPayload()
-                        storageID = draft.storageID; recordID = draft.recordID; replacementID = draft.replacingID; savedDocumentID = draft.savedDocumentID ?? trip.documents.first { $0.id == draft.storageID }?.id
-                        name = draft.name; kind = draft.kind; traveler = draft.traveler; note = draft.note; bookingReference = draft.bookingReference
-                        recognized = draft.recognized ?? ""; recognitionDone = draft.recognitionDone ?? false
                         if savedDocumentID != nil { error = "Document already saved. Retry the booking reference or keep the document and finish." }
-                        return
-                    } catch { self.error = "Could not recover the import. Choose the original file again: " + TripSaveError.message(error) }
+                    } catch {
+                        recoveringDraftPayload = true
+                        self.error = "The import’s labels and notes were kept. Choose the original file again: " + TripSaveError.message(error)
+                    }
+                    return
                 }
                 if let replacing { name = replacing.name; kind = replacing.kind; traveler = replacing.traveler; note = replacing.note }
                 else { traveler = trip.records.first { $0.id == recordID }?.traveler ?? "" }
@@ -351,10 +364,17 @@ struct TripDocumentImport: View {
     }
     private func accept(_ value: TripDocumentPayload) async {
         guard trip.unlocked else { return }
-        payload = value; recognized = ""; recognitionDone = false; bookingReference = ""
+        let previousDefaultName = payload.map { URL(fileURLWithPath: $0.filename).deletingPathExtension().lastPathComponent }
+        let replaceDefaultName = name.isEmpty || name == previousDefaultName
+        payload = value
+        if !recoveringDraftPayload { recognized = ""; recognitionDone = false; bookingReference = "" }
+        recoveringDraftPayload = false
+        if let savedDocumentID, trip.documents.contains(where: { $0.id == savedDocumentID }) {
+            replacementID = savedDocumentID
+        }
         storageID = UUID(); savedDocumentID = nil
-        if replacing == nil { name = URL(fileURLWithPath: value.filename).deletingPathExtension().lastPathComponent }
-        do { try await trip.prepareImportDraft(draftValue, payload: value) }
+        if replacing == nil && replaceDefaultName { name = URL(fileURLWithPath: value.filename).deletingPathExtension().lastPathComponent }
+        do { try await trip.prepareImportDraft(draftValue, payload: value); onPreserved?() }
         catch { self.error = "Could not save the import draft. Keep this screen open and retry: " + TripSaveError.message(error) }
     }
     private func recognize() {
@@ -396,7 +416,7 @@ struct TripDocumentImport: View {
     }
     private func persistDraft() {
         guard payload != nil, trip.unlocked else { return }
-        do { try trip.saveImportDraft(draftValue, payload: trip.importDraft?.storageID == storageID ? nil : payload) }
+        do { try trip.saveImportDraft(draftValue, payload: trip.importDraft?.storageID == storageID ? nil : payload); onPreserved?() }
         catch { self.error = "Could not preserve the import draft: " + TripSaveError.message(error) }
     }
     private func finish() {

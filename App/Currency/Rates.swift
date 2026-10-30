@@ -38,10 +38,14 @@ struct RateSnapshot: Codable {
     }
     func needsRefresh(from: String, to: String, now: Date = Date()) -> Bool {
         guard from != to else { return false }
+        guard multiplier(from: from, to: to) != nil else { return true }
         let dates = dates(from: from, to: to).compactMap(Self.validDate)
-        guard let oldest = dates.min() else { return true }
-        // Allow for weekends and market holidays while flagging clearly old rates.
-        return now.timeIntervalSince(oldest) < 0 || now.timeIntervalSince(oldest) >= 7 * 86400
+        guard !dates.isEmpty else { return true }
+        // Check both legs of a cross-currency conversion, including future dates.
+        return dates.contains { date in
+            let age = now.timeIntervalSince(date)
+            return age < 0 || age >= 7 * 86400
+        }
     }
 }
 

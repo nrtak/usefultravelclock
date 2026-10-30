@@ -2,12 +2,18 @@ import SwiftUI
 import UIKit
 
 struct TravelRecordsView: View {
+    var currency: ConverterStore? = nil
+    var cities: [City] = []
+    var acceptsIncomingDocuments = true
     @EnvironmentObject private var trip: TripStore
     @EnvironmentObject private var inbox: TripDocumentInbox
     @Environment(\.scenePhase) private var phase
     @State private var draft: TravelRecord?
     @State private var preview: TripPreviewFile?
     @State private var incoming: TripPreviewFile?
+    @State private var incomingSource: URL?
+    @State private var incomingPreserved = false
+    @State private var visible = false
     @State private var query = ""
     @State private var discard: TravelRecord?
     private var nextDocument: TripDocument? {
@@ -26,6 +32,17 @@ struct TravelRecordsView: View {
                 }
             } else {
                 List {
+                    if query.isEmpty {
+                        Section("Trip essentials") {
+                            NavigationLink { TripDocumentsView() } label: { Label("Documents", systemImage: "folder") }
+                            if inbox.url != nil, trip.importDraft != nil {
+                                Text("Finish or discard your current document draft in Documents before importing the next file.").font(.caption).foregroundStyle(.secondary)
+                            }
+                            if let currency {
+                                NavigationLink { TripReadinessView(currency: currency, cities: cities) } label: { Label("Before you leave", systemImage: "checklist") }
+                            }
+                        }
+                    }
                     if query.isEmpty && !trip.records.isEmpty {
                         Section("Today & next") {
                             let next = TripSummary.record(in: trip.records, at: Date())
@@ -110,19 +127,38 @@ struct TravelRecordsView: View {
         .confirmationDialog("Discard these unfinished edits?", isPresented: Binding(get: { discard != nil }, set: { if !$0 { discard = nil } }), titleVisibility: .visible) {
             Button("Discard draft", role: .destructive) { if let discard { _ = trip.discardDraft(discard.id) }; discard = nil }
         } message: { Text("Saved trip details remain available.") }
-        .toolbar { ToolbarItem(placement: .primaryAction) { NavigationLink { TripDocumentsView() } label: { Label("Documents", systemImage: "folder").labelStyle(.iconOnly).frame(width: 44, height: 44) }.accessibilityLabel("Documents") } }
-        .sheet(item: $draft) { record in RecordEditor(record: record) }
-        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
-        .sheet(item: $incoming, onDismiss: { inbox.clear() }) { file in TripDocumentImport(recordID: nil, incomingURL: file.url) }
-        .onAppear { receiveDocument() }
+
+        .sheet(item: $draft, onDismiss: receiveDocument) { record in RecordEditor(record: record) }
+        .sheet(item: $preview, onDismiss: { trip.clearDocumentPreviews(); receiveDocument() }) { file in TripDocumentPreviewSheet(url: file.url) }
+        .sheet(item: $incoming, onDismiss: finishIncoming) { file in
+            TripDocumentImport(recordID: nil, incomingURL: file.url, onPreserved: {
+                if incomingSource == file.url { incomingPreserved = true; inbox.markPreserved(file.url) }
+            })
+        }
+        .onAppear { visible = true; receiveDocument() }
+        .onDisappear { visible = false }
+        .onChange(of: trip.importDraft?.storageID) { _, _ in receiveDocument() }
+        .onChange(of: acceptsIncomingDocuments) { _, accepts in if accepts { receiveDocument() } }
         .onChange(of: inbox.url) { _, _ in receiveDocument() }
         .onChange(of: trip.unlocked) { _, value in if value { receiveDocument() } else { preview = nil; incoming = nil } }
         .onChange(of: phase) { _, value in if value == .background { preview = nil; trip.clearDocumentPreviews() } }
     }
     private func receiveDocument() {
-        guard trip.unlocked, let url = inbox.url, incoming == nil else { return }
-        draft = nil
+        guard visible, acceptsIncomingDocuments, phase == .active, trip.unlocked else { return }
+        // App lock can recreate this screen after an import was preserved. Don't
+        // import its original URL again when the encrypted draft is recoverable.
+        if incomingSource == nil, inbox.currentPreserved { inbox.finishCurrent() }
+        guard let url = inbox.url, trip.importDraft == nil, incomingSource == nil, incoming == nil, draft == nil, preview == nil else { return }
+        incomingSource = url; incomingPreserved = false
         incoming = TripPreviewFile(url: url)
+    }
+    private func finishIncoming() {
+        if let incomingSource {
+            inbox.finishCurrent(ifMatching: incomingSource, preserved: incomingPreserved,
+                                interrupted: phase != .active || !trip.unlocked)
+        }
+        incomingSource = nil; incomingPreserved = false
+        receiveDocument()
     }
 }
 

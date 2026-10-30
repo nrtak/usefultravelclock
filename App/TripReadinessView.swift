@@ -40,7 +40,7 @@ struct TripReadinessView: View {
                        ready: currency.source == currency.target || (currency.snapshot?.multiplier(from: currency.source, to: currency.target) != nil && !currency.cacheWriteFailed))
                 if currency.cacheWriteFailed { Text("The latest rates could not be saved. Retry refresh before leaving.").foregroundStyle(.orange) }
                 if currency.usingBundledRates { Text("Included rates are available offline. Refresh while connected for newer rates.").font(.caption) }
-                if currency.snapshot?.needsRefresh(from: currency.source, to: currency.target) == true { Label("Saved rates are over a week old or have an unexpected date. Refresh before departure; conversions are estimates.", systemImage: "exclamationmark.triangle").font(.subheadline) }
+                if currency.snapshot?.needsRefresh(from: currency.source, to: currency.target) == true { Label("Some rates are missing, over a week old, or have an unexpected date. Refresh before departure; conversions are estimates.", systemImage: "exclamationmark.triangle").font(.subheadline) }
                 Button("Refresh rates") { Task { await currency.refresh(force: true) } }.disabled(connection.isOffline || currency.isLoading)
             }
             Section("Weather") {
@@ -52,6 +52,7 @@ struct TripReadinessView: View {
                     Button("Refresh " + city.name) { Task { await weather.load(city: city, force: true) } }.disabled(connection.isOffline || weather.loading.contains(city.id))
                 }
                 if cities.isEmpty { Text("Choose a Home or Destination city to check weather.") }
+                WeatherCreditView()
             }
             Section("Reminders") {
                 Text("\(trip.records.filter { $0.reminderMinutes != nil }.count) travel entries have reminders enabled. Delivery also depends on iPhone notification and Focus settings.")

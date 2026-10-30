@@ -11,277 +11,147 @@ struct TravelDashboard: View {
     @AppStorage("travel-destination") private var destinationID = "tyo"
     @AppStorage("trip-home-color") private var homeColor = "EAF4ED"
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
-    @AppStorage("trip-currency-color") private var currencyColor = "F3F3F3"
-    @AppStorage("trip-selected-tab") private var tab = 0
-    @AppStorage("trip-tab-order") private var savedTabOrder = "0,1,2,3,4"
-    @AppStorage("trip-tab-reorder-hint-seen") private var tabHintSeen = false
+    @AppStorage("trip-navigation-tab-v2") private var tab = 0
+    @AppStorage("trip-home-sections") private var savedHomeSections = HomeSection.defaults
     @State private var editingCities = false
     @State private var cityEditFeedback = 0
-    @State private var editingTabs = false
-    @State private var tabEditFeedback = 0
-    private let tabTitles = ["Home", "Conversions", "World Time", "My Trip", "Translate"]
-    private let tabSymbols = ["house", "banknote", "clock", "suitcase", "character.bubble"]
-    private var tabOrder: [Int] {
-        var result: [Int] = []
-        for id in savedTabOrder.split(separator: ",").compactMap({ Int($0) }) where (0...4).contains(id) && !result.contains(id) {
-            result.append(id)
-        }
-        return result + (0...4).filter { !result.contains($0) }
-    }
+    @State private var customizingHome = false
+    @State private var homeCapacity = 0
+    @State private var tool: DashboardTool?
+    @State private var homeRecord: TravelRecord?
     @State private var picker: String?
     @State private var settings = false
     @State private var shift: Double = 0
     @State private var homeDocument: TripPreviewFile?
-    @AppStorage("trip-getting-started-dismissed") private var gettingStartedDismissed = false
-    @FocusState private var homeEditingSide: AmountSide?
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { home.navigationTitle("Trip Info").toolbar { Button { settings = true } label: { Image(systemName: "gearshape").frame(width: 44, height: 44) }.accessibilityLabel("Settings") } }.tabItem { Label("Home", systemImage: "house") }.toolbar(.hidden, for: .tabBar).tag(0)
-            CurrencyConverterView(store: currency, onBack: { tab = 0 }).tabItem { Label("Conversions", systemImage: "banknote") }.toolbar(.hidden, for: .tabBar).tag(1)
-            NavigationStack { world.navigationTitle("World Time").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("World Time", systemImage: "clock") }.toolbar(.hidden, for: .tabBar).tag(2)
-            NavigationStack { TravelRecordsView().navigationTitle("My Trip").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("My Trip", systemImage: "suitcase") }.toolbar(.hidden, for: .tabBar).tag(3)
-            NavigationStack { TripTranslateView().navigationTitle("Translate").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Back") { tab = 0 }  }.tripToolbarBackground() } }.tabItem { Label("Translate", systemImage: "character.bubble") }.toolbar(.hidden, for: .tabBar).tag(4)
+            NavigationStack {
+                home.navigationTitle("Trip Info").toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Customize") { customizingHome = true }
+                            .tripToolbarButtonStyle().accessibilityLabel("Customize Home")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { settings = true } label: { Image(systemName: "gearshape") }
+                            .tripToolbarButtonStyle().accessibilityLabel("Settings")
+                    }
+                }
+            }.tabItem { Label("Home", systemImage: "house") }.tag(0)
+            NavigationStack {
+                TravelRecordsView(currency: currency, cities: readinessCities, acceptsIncomingDocuments: tab == 1 && !hasModal).navigationTitle("My Trip")
+            }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(1)
+            NavigationStack { tools.navigationTitle("Tools") }
+                .tabItem { Label("Tools", systemImage: "square.grid.2x2") }.tag(2)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { bottomTabs }
+        .tripNavigationAppearance()
+        .tint(.blue)
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .environmentObject(weather)
         .environmentObject(trip)
-        .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) {
-            TripCityPicker { city in
-                if picker == "home" { clock.homeMode = .manual; clock.homeCityID = city.id }
-                else if let selection = picker, selection.hasPrefix("city:") {
-                    let previous = String(selection.dropFirst(5))
-                    if city.id != previous && !clock.replaceCity(previous, with: city.id) {
-                        trip.error = "That city is already in your world clocks. Choose another city."
-                    }
-                } else { destinationID = city.id }
-                picker = nil
-            }
-        }
-        .sheet(isPresented: $settings) { TripSettingsView() }
-        .sheet(item: $homeDocument, onDismiss: { trip.clearDocumentPreviews() }) { file in TripDocumentPreviewSheet(url: file.url) }
+        .sheet(isPresented: Binding(get: { picker != nil && tool == nil }, set: { if !$0 { picker = nil } }), onDismiss: routeInbox) { cityPicker }
+        .sheet(isPresented: $customizingHome, onDismiss: routeInbox) { HomeCustomizationView(savedSections: $savedHomeSections, capacity: homeCapacity) }
+        .sheet(item: $tool, onDismiss: routeInbox) { selection in toolScreen(selection) }
+        .sheet(item: $homeRecord, onDismiss: routeInbox) { RecordEditor(record: $0) }
+        .sheet(isPresented: $settings, onDismiss: routeInbox) { TripSettingsView() }
+        .sheet(item: $homeDocument, onDismiss: { trip.clearDocumentPreviews(); routeInbox() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
-        .onChange(of: documentInbox.url) { _, value in if value != nil { tab = 3 } }
-        .onAppear { if documentInbox.url != nil { tab = 3 } }
-        .onChange(of: tab) { _, _ in shift = 0; homeEditingSide = nil; editingCities = false }
+        .onChange(of: documentInbox.url) { _, _ in routeInbox() }
+        .onAppear { if !(0...2).contains(tab) { tab = 0 }; routeInbox() }
+        .onChange(of: tab) { _, _ in shift = 0; editingCities = false }
+        .onChange(of: tool) { _, value in if value == nil { shift = 0; editingCities = false; picker = nil } }
         .onChange(of: phase) { _, value in
-            if value == .background { homeDocument = nil; trip.lock(); shift = 0; editingTabs = false; editingCities = false }
-            if value == .active { Task { await trip.unlock(); if trip.unlocked { await trip.reminders.synchronize(records: trip.records) } } }
+            if value == .background { homeDocument = nil; trip.lock(); homeRecord = nil; picker = nil; shift = 0; editingCities = false }
+            if value == .active { Task { await trip.unlock(); if trip.unlocked { await trip.reminders.synchronize(records: trip.records) }; routeInbox() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
     }
 
-    private var bottomTabs: some View {
-        VStack(spacing: 4) {
-            if !tabHintSeen && !editingTabs {
-                HStack {
-                    Text("Hold a tab to reorder").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button { tabHintSeen = true } label: {
-                        Image(systemName: "xmark").frame(width: 44, height: 44)
-                    }.buttonStyle(.plain).accessibilityLabel("Dismiss tab hint")
-                }.padding(.horizontal, 16)
-                .task {
-                    do { try await Task.sleep(for: .seconds(8)) } catch { return }
-                    tabHintSeen = true
+    private var hasModal: Bool { tool != nil || homeRecord != nil || homeDocument != nil || picker != nil || settings || customizingHome }
+    private func routeInbox() {
+        guard phase == .active, documentInbox.url != nil, !hasModal else { return }
+        tab = 1
+    }
+    private var cityPicker: some View {
+        TripCityPicker { city in
+            if picker == "home" { clock.homeMode = .manual; clock.homeCityID = city.id }
+            else if let selection = picker, selection.hasPrefix("city:") {
+                let previous = String(selection.dropFirst(5))
+                if city.id != previous && !clock.replaceCity(previous, with: city.id) {
+                    trip.error = "That city is already in your world clocks. Choose another city."
                 }
-            }
-            if editingTabs {
-                HStack {
-                    Text("Drag tabs to reorder").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Done") { editingTabs = false }
-                        .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
-                }.padding(.horizontal, 16)
-            }
-            ViewThatFits(in: .horizontal) {
-                tabItems
-                ScrollView(.horizontal) { tabItems }.scrollIndicators(.hidden)
-            }
+            } else { destinationID = city.id }
+            picker = nil
         }
-        .background(.regularMaterial)
-        .sensoryFeedback(.impact(weight: .light), trigger: tabEditFeedback)
-    }
-    private var tabItems: some View {
-        HStack(spacing: 0) { ForEach(tabOrder, id: \.self) { id in reorderableTab(id) } }.padding(.vertical, 8)
-    }
-    @ViewBuilder
-    private func reorderableTab(_ id: Int) -> some View {
-        if editingTabs {
-            tabButton(id)
-                .draggable(String(id))
-                .dropDestination(for: String.self) { items, _ in
-                    guard let value = items.first, let moved = Int(value),
-                          let from = tabOrder.firstIndex(of: moved),
-                          let to = tabOrder.firstIndex(of: id), from != to else { return false }
-                    var order = tabOrder
-                    order.remove(at: from)
-                    order.insert(moved, at: to)
-                    withAnimation { savedTabOrder = order.map(String.init).joined(separator: ",") }
-                    return true
-                }
-                .accessibilityActions {
-                    Button("Move left") { moveTab(id, by: -1) }
-                    Button("Move right") { moveTab(id, by: 1) }
-                }
-        } else {
-            tabButton(id)
-                .onLongPressGesture(minimumDuration: 0.6) {
-                    homeEditingSide = nil
-                    tabHintSeen = true
-                    editingTabs = true
-                    tabEditFeedback += 1
-                }
-                .accessibilityAction(named: "Reorder tabs") { tabHintSeen = true; editingTabs = true }
-        }
-    }
-    private func tabButton(_ id: Int) -> some View {
-        Button {
-            if !editingTabs { tab = id }
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: tabSymbols[id]).font(.system(size: 25, weight: .medium))
-                    .frame(height: 30)
-                    .rotationEffect(.degrees(editingTabs && !reduceMotion ? (id.isMultiple(of: 2) ? 2 : -2) : 0))
-                    .animation(editingTabs && !reduceMotion ? .easeInOut(duration: 0.15).repeatForever(autoreverses: true) : .default, value: editingTabs)
-                Text(typeSize.isAccessibilitySize && id == 1 ? "Convert" : tabTitles[id]).font(.caption2.weight(tab == id ? .semibold : .regular))
-                    .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
-            }
-            .foregroundStyle(tab == id ? Color.blue : Color.primary)
-            .frame(minWidth: typeSize.isAccessibilitySize ? 100 : 65, maxWidth: .infinity, minHeight: 48)
-            .padding(.horizontal, 2)
-            .background(tab == id ? Color.blue.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 14))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tabTitles[id])
-        .accessibilityAddTraits(tab == id ? .isSelected : [])
-        .accessibilityValue("Tab \(tabOrder.firstIndex(of: id).map { $0 + 1 } ?? 1) of \(tabOrder.count)")
-        .accessibilityHint(editingTabs ? "Use Move left or Move right actions to change order" : "Use the Reorder tabs action to change order")
-    }
-    private func moveTab(_ id: Int, by offset: Int) {
-        var order = tabOrder
-        guard let index = order.firstIndex(of: id), order.indices.contains(index + offset) else { return }
-        order.swapAt(index, index + offset)
-        savedTabOrder = order.map(String.init).joined(separator: ",")
     }
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
-        GeometryReader { geometry in
-            ScrollViewReader { proxy in
-                ScrollView { homeContent(compact: !typeSize.isAccessibilitySize) }
-                    .scrollBounceBehavior(.basedOnSize)
-                    // Keep overflow reachable on small screens and with larger text.
-                    .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: homeEditingSide) { _, side in
-                        if side != nil { withAnimation { proxy.scrollTo("home-currency", anchor: .top) } }
-                    }
-            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
-        }.navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if homeEditingSide != nil {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        TripNavigationButton(title: "Done") { homeEditingSide = nil }
-                    }.tripToolbarBackground()
-                }
-            }
+        DashboardHome(currency: currency, capacity: $homeCapacity, active: tab == 0 && tool == nil,
+            open: openHomeSection, chooseCity: { picker = $0 },
+            openRecord: { homeRecord = $0 }, openDocument: { document in
+                do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }
+                catch { trip.error = error.localizedDescription }
+            })
     }
-    private func homeContent(compact: Bool) -> some View {
-        VStack(spacing: compact ? 8 : 10) {
-            TripVisibleTimeline(interval: 30, enabled: tab == 0) { context in clocks(at: context.date, selectable: true, compact: compact) }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    TripSectionLabel(title: "Currency", symbol: "banknote")
-                    Spacer(minLength: 4)
-                    Button { homeEditingSide = nil; tab = 1 } label: {
-                        Label("Full converter", systemImage: "arrow.up.right")
-                            .font(.caption.weight(.semibold)).frame(minHeight: 44)
-                    }.buttonStyle(.bordered).tint(.blue)
-                        .accessibilityHint("Open currency tools, multiple prices, live camera and saved conversions")
-                }
-                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
-                    quick(.source)
-                    Button { homeEditingSide = nil; currency.swap() } label: {
-                        Image(systemName: "arrow.left.arrow.right").frame(width: 44, height: 44)
-                    }.buttonStyle(.plain).foregroundStyle(.blue).accessibilityLabel("Swap currencies")
-                    quick(.target)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    if !currency.amount.isEmpty { Text(currency.detail) }
-                    TripRateStatus(store: currency)
-                    if let checked = currency.lastChecked { TripRefreshStamp(success: currency.lastManualRefresh, fallback: checked) }
-                }.font(.caption2).foregroundStyle(.secondary)
-            }.tripPanel().id("home-currency")
-            TripWeatherCard(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
-            Button { tab = 3 } label: {
-                HStack {
-                    Image(systemName: "suitcase.fill").font(.title2).foregroundStyle(.orange)
-                        .frame(width: 40, height: 44).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                    TripVisibleTimeline(interval: 60, enabled: tab == 0) { context in nextTrip(at: context.date) }
-                    Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                }.padding(compact ? 10 : 12)
-            }.buttonStyle(.plain).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            TripVisibleTimeline(interval: 60, enabled: tab == 0) { context in
-                if let document = trip.summaryDocument(at: context.date) {
-                    Button {
-                        do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }
-                        catch { trip.error = error.localizedDescription }
-                    } label: { Label("Open " + document.name, systemImage: "doc.viewfinder").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }.buttonStyle(.bordered)
-                }
+    private func openHomeSection(_ section: HomeSection) {
+        switch section {
+        case .clocks: tool = .world
+        case .currency: tool = .currency
+        case .trip: tab = 1
+        case .weather: tool = .weather
+        case .documents: tool = .documents
+        case .readiness: tool = .readiness
+        }
+    }
+    private var tools: some View {
+        List {
+            Section("Travel tools") {
+                toolButton(.currency, title: "Currency", detail: "Amounts, multiple prices and saved conversions", symbol: "banknote")
+                toolButton(.translate, title: "Translate", detail: "Text, camera and photos", symbol: "character.bubble")
+                toolButton(.world, title: "World Time", detail: "Cities and time comparison", symbol: "clock")
+                toolButton(.units, title: "Measurements", detail: "Distance, temperature, volume and weight", symbol: "ruler")
+                toolButton(.weather, title: "Weather", detail: "Search cities and view forecasts", symbol: "cloud.sun")
             }
-            NavigationLink {
-                TripReadinessView(currency: currency, cities: readinessCities)
-            } label: { Label("Before you leave", systemImage: "checklist").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
-            TripReminderStatus(store: trip.reminders)
-            if trip.unlocked && trip.records.isEmpty && !gettingStartedDismissed {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Ready for your first trip?").font(.headline)
-                    Text("Add your booking, keep its ticket handy, then check what’s available offline.").font(.subheadline)
-                    Button("Add your first trip", systemImage: "suitcase") { tab = 3 }.frame(minHeight: 44)
-                    NavigationLink("App guide") { TripGettingStartedView() }.frame(minHeight: 44)
-                    Button("Dismiss this guide") { gettingStartedDismissed = true }.font(.caption).frame(minHeight: 44)
-                }.tripPanel()
+        }.navigationBarTitleDisplayMode(.inline)
+    }
+    private func toolButton(_ selection: DashboardTool, title: String, detail: String, symbol: String) -> some View {
+        Button { tool = selection } label: {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).foregroundStyle(.blue).frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(detail).font(.caption).foregroundStyle(.secondary) }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }.foregroundStyle(.primary).padding(.vertical, 6)
+        }.buttonStyle(.plain)
+    }
+    @ViewBuilder
+    private func toolScreen(_ selection: DashboardTool) -> some View {
+        if selection == .currency {
+            CurrencyConverterView(store: currency, onBack: { tool = nil })
+        } else {
+            NavigationStack {
+                Group {
+                    switch selection {
+                    case .world:
+                        world.navigationTitle("World Time")
+                            .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) { cityPicker }
+                    case .translate: TripTranslateView(onClose: { tool = nil }).navigationTitle("Translate")
+                    case .units: TripUnitsView()
+                    case .weather: TripWeatherSearchView(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
+                    case .documents: TripDocumentsView()
+                    case .readiness: TripReadinessView(currency: currency, cities: readinessCities)
+                    case .currency: EmptyView()
+                    }
+                }.toolbar { if selection != .translate { ToolbarItem(placement: .confirmationAction) { Button("Done") { tool = nil } } } }
             }
-        }.padding(12).fixedSize(horizontal: false, vertical: true)
+        }
     }
     private var readinessCities: [City] {
         var seen = Set<String>()
         return [clock.homeMode == .manual ? clock.homeCity : nil, destination].compactMap { $0 }.filter { seen.insert($0.id).inserted }
     }
-    private func quick(_ side: AmountSide) -> some View {
-        let code = side == .source ? currency.source : currency.target
-        return VStack(alignment: .leading) {
-            Text(code).font(.caption)
-            HStack(spacing: 4) {
-                Text(Currency.named(code).symbol)
-                TextField("Amount", text: Binding(
-                    get: { currency.fieldText(for: side, focused: homeEditingSide == side) },
-                    set: { currency.edit($0, side: side) }
-                ))
-                .focused($homeEditingSide, equals: side)
-                .keyboardType(.decimalPad).font(.title2.weight(.semibold)).monospacedDigit()
-                .accessibilityLabel("\(side == .source ? "From" : "To") amount in \(Currency.named(code).name)")
-            }
-        }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10)).frame(maxWidth: .infinity)
-    }
-    private func nextTrip(at now: Date) -> some View {
-        let next = TripSummary.record(in: trip.records, at: now)
-        let active = next.map { $0.start <= now && $0.end > now } ?? false
-        return VStack(alignment: .leading, spacing: 3) {
-            Text(next == nil ? "My Trip" : (active ? "My Trip · In progress" : "My Trip · Next")).font(.caption)
-            Text(next.map { $0.name.isEmpty ? $0.kind : $0.name } ?? "View travel details").font(.headline).lineLimit(2)
-            if let next {
-                Text((active ? (next.kind == "Hotel" ? "Check-out · " : "Arrival · ") : (next.kind == "Hotel" ? "Check-in · " : "Departure · ")) + next.timeLabel(start: !active))
-                    .font(.caption).foregroundStyle(.secondary)
-                if !next.from.isEmpty {
-                    Text(next.from + (next.to.isEmpty ? "" : " → " + next.to)).font(.caption).lineLimit(2)
-                }
-            }
-        }
-    }
     private var world: some View {
-        TripVisibleTimeline(interval: 30, enabled: tab == 2) { context in
+        TripVisibleTimeline(interval: 30, enabled: tool == .world) { context in
             let date = context.date.addingTimeInterval(shift * 3600)
             ScrollView {
             VStack(spacing: 10) {
@@ -479,15 +349,20 @@ struct TripCityPicker: View {
 
 #if DEBUG
 extension TravelDashboard {
-    init(tutorialCurrency currency: ConverterStore, trip: TripStore, weather: TripWeatherStore, shift: Double = 0, reordering: Bool = false) {
+    init(tutorialCurrency currency: ConverterStore, trip: TripStore, weather: TripWeatherStore, shift: Double = 0, reordering: Bool = false, initialTool: DashboardTool? = nil) {
         self.init(currency: currency)
         _trip = StateObject(wrappedValue: trip)
         _weather = StateObject(wrappedValue: weather)
         _shift = State(initialValue: shift)
+        _tool = State(initialValue: initialTool)
         _editingCities = State(initialValue: reordering)
-        _editingTabs = State(initialValue: reordering)
     }
 }
 #endif
 
 
+
+enum DashboardTool: String, Identifiable {
+    case currency, translate, world, units, weather, documents, readiness
+    var id: String { rawValue }
+}

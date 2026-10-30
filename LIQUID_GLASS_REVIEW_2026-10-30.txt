@@ -1,0 +1,19 @@
+Approved Liquid Glass styling, implemented locally 2026-10-30.
+
+Changes:
+- Native Home/My Trip/Tools tab bar uses the system appearance on iOS 26 and later. Minimization is disabled so all three tabs stay available.
+- Toolbar glass is no longer suppressed by the shared toolbar helper. Home Customize/Settings and existing Save/Cancel/Done controls use the native toolbar button style on iOS 26 and later.
+- Key actions (saving currency/unit conversions, translation, saved-item actions and scan-result actions) use Apple's glass/glassProminent button styles with capsule shapes. Native toolbar buttons do not add a second glass effect.
+- Information cards retain their opaque backgrounds. Home's card capacity still comes from the actual available area and text size, with no scroll container.
+- iOS 18 remains the deployment target. Every iOS 26 API is guarded; earlier releases use the existing solid button style with at least 44-point hit dimensions.
+- The native controls provide system accessibility adaptations; no custom shimmer, blur animation, timer or background work was added. Actual accessibility appearance and battery use require device verification.
+
+Primary references checked:
+https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass
+https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glass
+https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glassprominent
+https://developer.apple.com/documentation/swiftui/tabbarminimizebehavior
+
+Validation: full Swift syntax scan and Git whitespace check on Windows. Confirm new style APIs remain inside availability guards, old custom style call sites are migrated, and Home remains opaque and without scrolling. Xcode compilation, XCTest execution, iOS 18 fallback appearance, iOS 26 glass appearance, large text, dark mode, Reduce Transparency/Increase Contrast/Reduce Motion and iPhone battery measurements remain to be checked on macOS/device.
+
+No commit, push, TestFlight upload or App Store change was performed for this styling task. The logo candidates remain separate from the production icon.

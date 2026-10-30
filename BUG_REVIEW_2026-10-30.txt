@@ -1,0 +1,18 @@
+Review of the new Home/navigation and existing travel tools, 2026-10-30.
+
+Fixed:
+- Home's trailing Spacer added a layout gap beyond the card budget. Removed it so the actual stack matches its capacity calculation.
+- Home currency card omitted rate dates when online and could show a blank conversion result. Added the dated estimate and explicit unavailable result.
+- Compact clocks lacked local dates, making date-line crossings ambiguous. Added local dates and stopped displaying UTC as a chosen destination when no city is selected.
+- External document opening could dismiss a tool with unsaved work and could compete with another sheet. Routing waits for modals/editors to close. Multiple incoming files are queued with their security-scoped access retained until consumed. Invalid URLs and duplicate callbacks no longer replace pending imports.
+- Weather city/search requests could finish out of order and replace a newer choice. A cancellable request scope rejects outdated completions and cancels work when the view disappears. Requests superseded before starting do not start.
+- Simultaneous weather loads for the same city now share the in-progress request instead of returning before location resolution finishes.
+- Weather tools open the destination forecast consistently with the Home card. Forecast freshness/hour/day filtering advances with time while visible; no network polling was added. Missing time-zone metadata explicitly labels forecast times as UTC.
+- Live scanning could continue behind photo pickers or saved/edit sheets. Camera activity now includes a covered-screen condition; covered translation screens also cancel active live translation configuration.
+
+Checks run locally: Swift syntax parser across all 78 Swift files (App, Shared, widget and Tests): passed. Independent card-budget checks for 81,081 screen/card sizes: passed. Home scroll-container check: passed. Git whitespace check: passed.
+Regression tests added/extended: RequestAndInboxTests (stale completions, leaving a view, file queue ordering/duplicates/invalid URLs); CameraLifecycleTests (covered screens including pending capture). Existing HomeLayoutTests and WeatherAttributionTests remain in the iOS test suite.
+
+Limits: This Windows environment has no Swift compiler, Xcode or iOS simulator. The XCTest suite, Swift type checking, device layout and battery measurements have NOT been run. Before uploading, build/test on macOS and inspect small screens and accessibility text, pending imports while Translate or an editor is open, rapid weather city switches, and camera privacy indicator while sheets cover the scanner. WeatherKit attribution links and mark loading still require on-device online/offline checks. No push, TestFlight upload or App Store action was performed.
+
+Liquid Glass was subsequently approved and implemented locally. See LIQUID_GLASS_REVIEW_2026-10-30.txt for the styling changes and remaining device checks.

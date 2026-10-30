@@ -153,9 +153,11 @@ enum TripSummary {
             try data.write(to: directory.appendingPathComponent("travel.sealed"), options: [.atomic, .completeFileProtection])
             records = next
             error = nil
-            if clearDraft { _ = discardDraft(record.id) }
+            let draftCleared = !clearDraft || discardDraft(record.id)
             scheduleReminders(for: next)
-            return true
+            // The trip may be on disk already. Keep its editor open if the old
+            // draft could not be removed, so retrying cannot reopen stale edits.
+            return draftCleared
         } catch { self.error = TripSaveError.message(error); return false }
     }
     private func readDrafts(using key: SymmetricKey) throws -> [TravelRecord] {

@@ -100,7 +100,7 @@ struct TripUnitsView: View {
                     Button {
                         guard let from = value(sourceSide: true), let to = value(sourceSide: false) else { return }
                         if saved.save(SavedUnitConversion(source: source, target: target, sourceValue: from, targetValue: to, note: note, image: image)) { message = "Saved on this device" }
-                    } label: { Label("Save conversion", systemImage: "bookmark").font(.subheadline).frame(maxWidth: .infinity, minHeight: 36) }.buttonStyle(TripButtonStyle(primary: true)).disabled(value(sourceSide: true) == nil || value(sourceSide: false) == nil)
+                    } label: { Label("Save conversion", systemImage: "bookmark").font(.subheadline).frame(maxWidth: .infinity, minHeight: 36) }.tripButtonStyle(primary: true).disabled(value(sourceSide: true) == nil || value(sourceSide: false) == nil)
                     Button("Saved (\(saved.entries.count))") { showSaved = true }.buttonStyle(.bordered)
                 }
                 if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
@@ -124,7 +124,7 @@ struct TripUnitsView: View {
         }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }
             .safeAreaInset(edge: .bottom) {
                 if saved.canUndo {
-                    HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.buttonStyle(TripButtonStyle()) }.padding().background(Color(.secondarySystemBackground))
+                    HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.tripButtonStyle() }.padding().background(Color(.secondarySystemBackground))
                 }
             }.navigationTitle("Saved units").toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showSaved = false }  }.tripToolbarBackground() } } }
         .onChange(of: photo) { _, item in
@@ -227,7 +227,7 @@ struct UnitReadingView: View {
             Button(reading.text) {
                 guard let referencePhoto else { return }
                 select(reading, referencePhoto)
-            }.buttonStyle(TripButtonStyle()).disabled(referencePhoto == nil)
+            }.tripButtonStyle().disabled(referencePhoto == nil)
         }
     }.padding(12) }.scrollBounceBehavior(.basedOnSize)
     }.task(id: scanID) { noReadingFound = false; do { try await Task.sleep(for: .seconds(6)) } catch { return }; if readings.isEmpty { noReadingFound = true } }

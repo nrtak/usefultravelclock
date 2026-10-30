@@ -14,6 +14,9 @@ struct SaveConversionView: View {
     @State private var showsCamera = false
     @State private var error: String?
     @State private var saving = false
+    @State private var didSave = false
+    @State private var photoLoadID = UUID()
+    @State private var visible = false
     @State private var loadedInitialPhoto = false
 
     var body: some View {
@@ -56,24 +59,26 @@ struct SaveConversionView: View {
                 }
                 Section { Text("Saved on this iPhone. Available offline after saving.").font(.caption).foregroundStyle(.secondary) }
             }
-            .onAppear { if !loadedInitialPhoto { photo = initialPhoto; loadedInitialPhoto = true } }
+            .onAppear { visible = true; if !loadedInitialPhoto { photo = initialPhoto; loadedInitialPhoto = true } }
+            .onDisappear { visible = false; photoLoadID = UUID(); loadingPhoto = false }
             .navigationTitle("Save conversion").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
-                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() }.disabled(loadingPhoto || saving || saved.loadError != nil) }.tripToolbarBackground()
+                ToolbarItem(placement: .confirmationAction) { TripActionButton("Save", primary: true) { save() }.disabled(loadingPhoto || saving || didSave || saved.loadError != nil) }.tripToolbarBackground()
             }
             .task(id: selectedPhoto) {
-                guard let selectedPhoto else { return }
+                let revision = UUID(); photoLoadID = revision
+                guard let selectedPhoto else { loadingPhoto = false; return }
                 loadingPhoto = true
-                defer { loadingPhoto = false }
+                defer { if photoLoadID == revision { loadingPhoto = false } }
                 do {
                     guard let data = try await selectedPhoto.loadTransferable(type: Data.self) else { throw CocoaError(.fileReadCorruptFile) }
                     let encoded = await Task.detached(priority: .userInitiated) { ConversionPhoto.jpeg(from: data) }.value
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled, photoLoadID == revision, !didSave else { return }
                     guard let encoded else { throw CocoaError(.fileReadCorruptFile) }
                     photo = encoded
                 } catch {
-                    if !Task.isCancelled { self.error = "Couldn’t load that photo. Try another image or download it from iCloud first." }
+                    if !Task.isCancelled && photoLoadID == revision { self.error = "Couldn’t load that photo. Try another image or download it from iCloud first." }
                 }
             }
             .fullScreenCover(isPresented: $showsCamera) {
@@ -92,21 +97,23 @@ struct SaveConversionView: View {
     }
 
     @MainActor private func openCamera() async {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
+        guard visible, !saving, !didSave, UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         let allowed: Bool
         if status == .notDetermined { allowed = await AVCaptureDevice.requestAccess(for: .video) }
         else { allowed = status == .authorized }
+        guard visible, !saving, !didSave else { return }
         if allowed { showsCamera = true }
-        else { error = "Camera access is disabled. Enable it for Simple Currency in Settings, or choose a photo from Photos." }
+        else { error = "Camera access is disabled. Enable it for Trip Info in Settings, or choose a photo from Photos." }
     }
 
     private func save() {
+        guard !saving, !didSave, !loadingPhoto else { return }
         saving = true
         defer { saving = false }
         var entry = draft
         entry.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        do { try saved.save(entry, photo: photo); dismiss() }
+        do { try saved.save(entry, photo: photo); didSave = true; dismiss() }
         catch { self.error = "Couldn’t save this conversion. Your note and photo are still here. Check available storage and try again." }
     }
 }
@@ -143,7 +150,7 @@ struct SavedConversionsView: View {
                     VStack(alignment: .leading) {
                         if let error = saved.actionError { Text(error).font(.caption).foregroundStyle(.red) }
                         if saved.canUndo {
-                            HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.buttonStyle(TripButtonStyle()) }
+                            HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.tripButtonStyle() }
                         }
                     }.padding().background(Color(.secondarySystemBackground))
                 }

@@ -44,7 +44,7 @@ struct ItemConversionView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground()
             ToolbarItem(placement: .confirmationAction) {
-                Button("Clear all") { confirmClear = true }.buttonStyle(TripButtonStyle())
+                Button("Clear all") { confirmClear = true }.tripToolbarButtonStyle()
                     .disabled(items.count == 1 && items[0].text.isEmpty && !items[0].subtract)
             }.tripToolbarBackground()
         }

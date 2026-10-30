@@ -11,7 +11,7 @@ final class TutorialCaptureTests: XCTestCase {
         let suite = "TutorialCaptures-\(UUID().uuidString)"
         let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
         let standard = UserDefaults.standard
-        let keys = ["travel-destination", "trip-selected-tab", "trip-tab-order", "trip-tab-reorder-hint-seen", "trip-translation-source", "trip-translation-target", "trip-unit-category", "trip-unit-source", "trip-unit-target"]
+        let keys = ["travel-destination", "trip-navigation-tab-v2", "trip-home-sections", "trip-translation-source", "trip-translation-target", "trip-unit-category", "trip-unit-source", "trip-unit-target"]
         let old = keys.map { standard.object(forKey: $0) }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
@@ -45,8 +45,7 @@ final class TutorialCaptureTests: XCTestCase {
         clock.homeMode = .manual; clock.homeCityID = la.id
         clock.cityIDs = [la.id, tokyo.id] + ["London", "Melbourne", "Paris"].compactMap { name in clock.allCities.first { $0.name == name }?.id }
         standard.set(tokyo.id, forKey: "travel-destination")
-        standard.set("0,1,2,3,4", forKey: "trip-tab-order")
-        standard.set(true, forKey: "trip-tab-reorder-hint-seen")
+        standard.set(HomeSection.defaults, forKey: "trip-home-sections")
         standard.set("ja", forKey: "trip-translation-source")
         standard.set("en", forKey: "trip-translation-target")
         standard.set("Weight", forKey: "trip-unit-category")
@@ -62,8 +61,8 @@ final class TutorialCaptureTests: XCTestCase {
             try await capture(name, view: view.environmentObject(clock).environmentObject(trip).environmentObject(weather).environmentObject(lock).environmentObject(TripDocumentInbox()).environment(\.scenePhase, .active).preferredColorScheme(.light), bottom: bottom)
         }
         func dashboard(tab: Int, shift: Double = 0, reorder: Bool = false) -> TravelDashboard {
-            standard.set(tab, forKey: "trip-selected-tab")
-            return TravelDashboard(tutorialCurrency: converter, trip: trip, weather: weather, shift: shift, reordering: reorder)
+            standard.set(tab == 3 ? 1 : (tab == 0 ? 0 : 2), forKey: "trip-navigation-tab-v2")
+            return TravelDashboard(tutorialCurrency: converter, trip: trip, weather: weather, shift: shift, reordering: reorder, initialTool: tab == 1 ? .currency : (tab == 2 ? .world : nil))
         }
         try await screen("00-home", dashboard(tab: 0))
         try await screen("01-currency", dashboard(tab: 1))
@@ -91,7 +90,7 @@ final class TutorialCaptureTests: XCTestCase {
         trip.records = [hotel, flight, train]
         try await screen("12-trip-list", dashboard(tab: 3))
         try await screen("13-reorder", dashboard(tab: 2, reorder: true))
-        try await screen("14-weather", dashboard(tab: 0), bottom: true)
+        try await screen("14-weather", NavigationStack { TripWeatherSearchView(home: la, destination: tokyo) })
         try await screen("15-settings", TripSettingsView())
         try await screen("15-settings-help", TripSettingsView(), bottom: true)
         try await screen("16-offline", dashboard(tab: 0))

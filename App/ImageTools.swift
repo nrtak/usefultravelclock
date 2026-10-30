@@ -74,7 +74,7 @@ struct PriceImageView: View {
             .photosPicker(isPresented: $choosesPhoto, selection: $photo, matching: .images)
             SavedConversionNotice(saved: savedPrices) { showsSavedPrices = true }
             if live {
-                LiveTextCamera(recognitionEnabled: live && !pricesHeld && !scanningPaused && !busy, onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, resetID: scanID, captureID: captureID, onPhoto: { image in
+                LiveTextCamera(covered: choosesPhoto || showsSavedPrices || priceDraft != nil || editingPrice != nil, recognitionEnabled: live && !pricesHeld && !scanningPaused && !busy, onText: captureLivePrices, onError: { error = $0; capturingPhoto = false }, resetID: scanID, captureID: captureID, onPhoto: { image in
                     let manualCapture = capturingPhoto
                     capturingPhoto = false
                     guard let raw = ConversionPhoto.jpeg(from: image) else { error = "Couldn’t read that photo."; return }
@@ -131,7 +131,7 @@ struct PriceImageView: View {
                 ForEach(Array(prices.dropFirst(page * pageSize).prefix(pageSize))) { price in
                     Button { preparePriceSave(price.value) } label: {
                         Label("Save " + Currency.named(store.source).symbol + " " + Amount.format(price.value, currency: .named(store.source)), systemImage: "bookmark")
-                    }.buttonStyle(TripButtonStyle()).disabled(live && referencePhoto == nil)
+                    }.tripButtonStyle().disabled(live && referencePhoto == nil)
                 }
             }
             if live && prices.isEmpty && noPriceFound && !scanningPaused {
@@ -219,6 +219,24 @@ struct PriceImageView: View {
     }
 }
 struct TripTranslateView: View {
+    var onClose: (() -> Void)? = nil
+    @State private var choosingTranslationPhoto = false
+    @State private var leavingTranslation = false
+    private var translationCovered: Bool { choosingTranslationPhoto || saved || languageSide != nil || leavingTranslation }
+    @State private var savedTranslationID: UUID?
+    private var hasUnsavedTranslation: Bool {
+        (!input.isEmpty || !output.isEmpty || !note.isEmpty || image != nil) && savedTranslationID != translationSaveID
+    }
+    @discardableResult
+    private func saveCurrentTranslation() -> Bool {
+        if trip.saveTranslation(TranslationRecord(id: translationSaveID, text: output, note: note, image: image)) {
+            savedTranslationID = translationSaveID
+            message = "Saved on this iPhone"
+            return true
+        }
+        message = trip.error ?? "Could not save. Keep this screen open and tap Save to retry."
+        return false
+    }
     @EnvironmentObject private var trip: TripStore
     @State private var translationSaveID = UUID()
     @State private var photo: PhotosPickerItem?
@@ -270,7 +288,7 @@ struct TripTranslateView: View {
                         translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation && image == nil) { photo = nil; liveScanID = UUID(); keepingPhoto = false; liveTranslation = false; image = nil }
                         translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { photo = nil; resetTranslationScan(); liveTranslation = true }
                         Spacer(minLength: 0)
-                        PhotosPicker(selection: $photo, matching: .images) {
+                        Button { choosingTranslationPhoto = true } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "photo")
                                 Text("Photo").font(.caption)
@@ -278,12 +296,13 @@ struct TripTranslateView: View {
                             }.frame(minWidth: 72, minHeight: 48).contentShape(Rectangle())
                         }
                             .buttonStyle(.plain)
+                            .photosPicker(isPresented: $choosingTranslationPhoto, selection: $photo, matching: .images)
                             .accessibilityLabel("Choose photo to translate")
                             .accessibilityAddTraits(!liveTranslation && image != nil ? .isSelected : [])
                             .accessibilityValue(!liveTranslation && image != nil ? "Selected" : "Not selected")
                     }
                     if liveTranslation {
-                        LiveTextCamera(recognitionEnabled: liveTranslation && !livePaused && !keepingPhoto, onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, resetID: liveScanID, captureID: liveCaptureID, onPhoto: { photo in
+                        LiveTextCamera(covered: translationCovered, recognitionEnabled: liveTranslation && !livePaused && !keepingPhoto, onText: { if liveTranslation && !livePaused { liveText = $0 } }, onError: { message = $0; keepingPhoto = false }, resetID: liveScanID, captureID: liveCaptureID, onPhoto: { photo in
                             keepingPhoto = false
                             guard let captured = ConversionPhoto.jpeg(from: photo) else { message = "Couldn’t keep photo. Tap Scan again to retry."; return }
                             image = captured; livePaused = true; output = ""; message = "Reading photo…"
@@ -322,7 +341,7 @@ struct TripTranslateView: View {
                         let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
                         if config == next { config?.invalidate() } else { config = next }
                     } label: { Label("Translate", systemImage: "arrow.right").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).disabled(input.isEmpty || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
+                    .tripButtonStyle(primary: true).disabled(input.isEmpty || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     TripSectionLabel(title: "Translation", symbol: "character.bubble.fill", color: .purple)
@@ -334,8 +353,24 @@ struct TripTranslateView: View {
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {
-            TripActionButton("Save", primary: true) { if trip.saveTranslation(TranslationRecord(id: translationSaveID, text: output, note: note, image: image)) { message = "Saved on this iPhone" } else { message = trip.error ?? "Could not save. Keep this screen open and tap Save to retry." } }.disabled(output.isEmpty && image == nil)
+            TripActionButton("Save", primary: true) { saveCurrentTranslation() }.disabled(output.isEmpty && image == nil)
         }.tripToolbarBackground() }
+        .toolbar {
+            if let onClose {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { if hasUnsavedTranslation { leavingTranslation = true } else { onClose() } }
+                }
+            }
+        }
+        .interactiveDismissDisabled(onClose != nil && hasUnsavedTranslation)
+        .confirmationDialog("Save before closing?", isPresented: $leavingTranslation, titleVisibility: .visible) {
+            if !output.isEmpty || image != nil {
+                Button("Save and close") { if saveCurrentTranslation() { onClose?() } }
+            }
+            Button("Discard and close", role: .destructive) { onClose?() }
+            Button("Keep editing", role: .cancel) { }
+        }
+        .onChange(of: input) { _, _ in translationSaveID = UUID() }
         .onChange(of: output) { _, _ in translationSaveID = UUID() }
         .onChange(of: note) { _, _ in translationSaveID = UUID() }
         .onChange(of: image) { _, _ in translationSaveID = UUID() }
@@ -351,14 +386,15 @@ struct TripTranslateView: View {
             if liveTranslation && liveText.isEmpty { noTextFound = true }
         }
         .task(id: liveText) {
-            guard liveTranslation && !livePaused else { return }
+            guard liveTranslation && !livePaused && !translationCovered else { return }
             do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !translationCovered else { return }
             input = liveText
             if liveText.isEmpty { output = ""; return }
             let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
             if config == next { config?.invalidate() } else { config = next }
         }
+        .onChange(of: translationCovered) { _, covered in if covered { config = nil } }
         .onChange(of: liveTranslation) { _, active in
             liveText = ""; message = ""; livePaused = false
             if active { resetTranslationScan() }

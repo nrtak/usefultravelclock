@@ -1,0 +1,10 @@
+Local implementation: Home, My Trip, Tools navigation; customizable ordered Home cards with a screen/text-size capacity limit; no Home scroll container. My Trip has labeled Documents and Before you leave entries. Bookings and suggested documents open directly from Home. Existing currency/language preferences are retained. Translation asks to save or discard work when closing its new tool sheet.
+
+WeatherKit: all forecast surfaces share a persistent Weather data sources link. Service-provided attribution URLs and unmodified light/dark marks are cached for later launches. On missing metadata or network failure, Apple Weather text and Apple's public legal sources link remain visible. Full forecast attribution appears above forecast data. Departure checklist includes attribution. Attribution fetches are throttled and do not block weather requests.
+Requirement source: https://developer.apple.com/weatherkit/ (Apple Weather and third-party attribution section), consulted 2026-10-30.
+
+Validation completed on Windows: Swift syntax parser passed for 14 touched/new Swift files. Independent layout arithmetic checked 81,081 screen/card-size combinations. Git whitespace checks passed. Added XCTest coverage for capacity boundaries, preferences, absence of Home scroll views at phone/text sizes, and offline/missing/corrupt attribution caches. Updated tutorial capture routes for three-tab navigation.
+Not run: Xcode build, iOS XCTest suite, or simulator/device visual checks. These require macOS/Xcode. Before release, inspect small iPhone and largest accessibility text, Home customization/reordering, nested city pickers, translation save/discard, and every weather credit link online/offline and in light/dark appearance.
+
+Logo: latest candidate designs/trip-info-icon-confident-v9.png, generated with built-in image_gen. Larger/lower face, white oval rims with blue-gradient centers, lower decorative lines removed. Saved at its generated 1254x1254 size for design review. Production AppIcon.png remains unchanged pending selection and 1024x1024 export.
+No commit, push, build upload or App Store submission was performed during this local redesign.

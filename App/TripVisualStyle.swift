@@ -4,19 +4,20 @@ extension ToolbarContent {
     @ToolbarContentBuilder
     func tripToolbarBackground() -> some ToolbarContent {
         if #available(iOS 26.0, *) {
-            self.sharedBackgroundVisibility(.hidden)
+            // Let the system group and draw its native glass toolbar controls.
+            self.sharedBackgroundVisibility(.automatic)
         } else {
             self
         }
     }
 }
 
-struct TripButtonStyle: ButtonStyle {
+private struct TripLegacyButtonStyle: ButtonStyle {
     var primary = false
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, 12).frame(minHeight: 44)
+            .padding(.horizontal, 12).frame(minWidth: 44, minHeight: 44)
             .foregroundStyle(enabled ? (primary ? Color.white : Color.blue) : Color.secondary)
             .background(enabled && primary ? Color.blue : Color(.systemBackground), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(enabled ? (primary ? Color.clear : Color.blue.opacity(0.45)) : Color.secondary.opacity(0.25)))
@@ -37,6 +38,40 @@ struct TripSectionLabel: View {
 }
 
 extension View {
+    // Used only for actions. Information cards retain their opaque surfaces.
+    @ViewBuilder
+    func tripButtonStyle(primary: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            if primary {
+                self.buttonStyle(.glassProminent).buttonBorderShape(.capsule)
+            } else {
+                self.buttonStyle(.glass).buttonBorderShape(.capsule)
+            }
+        } else {
+            self.buttonStyle(TripLegacyButtonStyle(primary: primary))
+        }
+    }
+
+    @ViewBuilder
+    func tripToolbarButtonStyle(primary: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            // Toolbar buttons already get glass; don't layer another effect.
+            self.buttonStyle(.automatic)
+        } else {
+            self.buttonStyle(TripLegacyButtonStyle(primary: primary))
+        }
+    }
+
+    @ViewBuilder
+    func tripNavigationAppearance() -> some View {
+        if #available(iOS 26.0, *) {
+            self.tabBarMinimizeBehavior(.never)
+                .toolbarBackground(.automatic, for: .tabBar)
+        } else {
+            self
+        }
+    }
+
     func tripPanel() -> some View {
         padding(12).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
@@ -84,10 +119,10 @@ struct TripActionButton: View {
     var body: some View {
         if primary {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "checkmark"); Text(title).fontWeight(.semibold) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(TripButtonStyle(primary: true))
+                .tripToolbarButtonStyle(primary: true)
         } else {
             Button(action: action) { HStack(spacing: 6) { Image(systemName: "xmark"); Text(title) }.fixedSize(horizontal: true, vertical: false) }
-                .buttonStyle(TripButtonStyle())
+                .tripToolbarButtonStyle()
         }
     }
 }
@@ -102,6 +137,6 @@ struct TripNavigationButton: View {
                 Text(title)
             }.font(.subheadline.weight(.semibold)).fixedSize(horizontal: true, vertical: false)
                 .frame(minHeight: 32)
-        }.buttonStyle(TripButtonStyle())
+        }.tripToolbarButtonStyle()
     }
 }

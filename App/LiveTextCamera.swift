@@ -3,8 +3,8 @@ import VisionKit
 import UIKit
 
 enum TripCameraActivity {
-    static func shouldRun(visible: Bool, active: Bool, recognizing: Bool, pendingCapture: Bool) -> Bool {
-        visible && active && (recognizing || pendingCapture)
+    static func shouldRun(visible: Bool, active: Bool, recognizing: Bool, pendingCapture: Bool, covered: Bool = false) -> Bool {
+        visible && active && !covered && (recognizing || pendingCapture)
     }
 }
 
@@ -15,6 +15,7 @@ struct LiveTextCamera: View {
     @Environment(\.scenePhase) private var phase
     @State private var visible = false
     @State private var completedCaptureID: UUID?
+    var covered = false
     var recognitionEnabled = true
     var onText: (String) -> Void
     var onError: (String) -> Void
@@ -24,7 +25,7 @@ struct LiveTextCamera: View {
     private var pendingCapture: UUID? { captureID == completedCaptureID ? nil : captureID }
     var body: some View {
         Group {
-            if TripCameraActivity.shouldRun(visible: visible, active: phase == .active, recognizing: recognitionEnabled, pendingCapture: pendingCapture != nil) {
+            if TripCameraActivity.shouldRun(visible: visible, active: phase == .active, recognizing: recognitionEnabled, pendingCapture: pendingCapture != nil, covered: covered) {
                 TripScannerController(recognitionEnabled: recognitionEnabled, onText: onText, onError: { message in
                     completedCaptureID = captureID; onError(message)
                 }, resetID: resetID, captureID: pendingCapture, onPhoto: { image in
@@ -38,6 +39,7 @@ struct LiveTextCamera: View {
         }.onAppear { visible = true }
         .onDisappear { visible = false; cancelCapture() }
         .onChange(of: phase) { _, value in if value != .active { cancelCapture() } }
+        .onChange(of: covered) { _, value in if value { cancelCapture() } }
         .onChange(of: resetID) { _, _ in cancelCapture() }
     }
     private func cancelCapture() {

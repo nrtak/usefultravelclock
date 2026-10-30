@@ -1,0 +1,44 @@
+Deep code review, 2026-10-30. Local changes only.
+
+Scope: save/draft completion, encrypted document imports and recovery, queued external files, app-lock/background transitions, conversion persistence, rate freshness, camera/photo callbacks, weather formatting, document OCR, and existing navigation/appearance integration. Existing work was retained.
+
+Confirmed issues fixed:
+
+1. Trip save reported success after draft cleanup failed.
+   Trigger: the travel file is written but drafts.sealed cannot be replaced.
+   Before: the editor dismissed while an older unfinished draft remained available to reopen.
+   After: save returns incomplete and keeps the editor available for retry; the committed trip remains intact and reminder synchronization reflects it.
+
+2. Repeated currency Save could append duplicate IDs and rewrite its photo.
+   Trigger: the same save draft is submitted twice before dismissal finishes.
+   After: saving an existing draft ID is idempotent, preserves the committed entry/photo, and the save screen prevents a second successful submission. Late photo and camera-permission completions are guarded; the old Simple Currency camera message now says Trip Info.
+
+3. External import could be dequeued before its file was preserved.
+   Trigger: background/app-lock interruption during document preparation, or a delayed dismissal callback after another file is queued.
+   After: interrupted, unpreserved files remain queued. Finishing checks the expected URL. Preservation state lives above the recreated screen, so returning through app lock does not import the same saved file again. Hidden record screens no longer present competing imports.
+
+4. Another import could overwrite an unfinished document draft.
+   Trigger: a new shared file or a different document replacement is opened while a draft exists.
+   After: the user must finish or discard the current draft first. Closing is disabled during preparation. Recovery retains readable labels, notes and references even if the draft payload is missing/unreadable. Selecting another file after a partial save targets the existing document as a replacement instead of creating a second document.
+
+5. Cross-currency readiness missed missing and future-dated legs.
+   Trigger: EUR is current but JPY is absent, or one required rate has a future date while the older leg looks current.
+   After: readiness checks conversion availability and every required rate date. Same-currency conversion still needs no rates.
+
+6. Document image recognition decoded the full original image.
+   After: image OCR uses an orientation-correct, downsampled image with a maximum edge of 2,000 pixels. Original imported bytes stay unchanged. PDF text extraction and the existing bounded PDF scan path are retained.
+
+7. Invalid weather numbers could trap during conversion to Int.
+   After: unrepresentable temperatures show Unavailable; precipitation handles non-finite values and clamps finite fractions to 0...100 percent. Ordinary formatting is unchanged.
+
+Validation completed here:
+- Swift syntax parser: all 79 Swift files passed (app, shared code, widget, tests).
+- Git whitespace check: passed.
+- Confirmed Home still has no scroll container; Liquid Glass availability guards and solid information cards remain in place.
+- Seven XCTest scenarios added in Tests/DeepReliabilityTests.swift: failed draft cleanup/retry; duplicate conversion/photo retention; incomplete/future cross rates; interrupted and stale import completion; bounded OCR/original bytes; conflicting import drafts; invalid weather values.
+
+NOT executed: Swift type checking, Xcode build, XCTest suite, iOS simulator or iPhone checks. This Windows environment has no Swift/Xcode installation. Syntax checks are not compilation or runtime verification. No claim of zero remaining bugs is made.
+
+Before uploading: run the full iOS suite on macOS; test backgrounding during import and through enabled app lock; cancel/resume several queued files; recover a draft with its payload removed; retry a trip save after a simulated draft-write failure; select/replace photos; inspect Liquid Glass with large text and accessibility appearance settings; recheck battery use and WeatherKit links on an iPhone.
+
+No commit, GitHub push, TestFlight upload or App Store submission was performed in this review.

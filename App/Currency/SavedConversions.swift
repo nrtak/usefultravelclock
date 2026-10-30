@@ -72,6 +72,9 @@ final class SavedConversions: ObservableObject {
     func save(_ draft: SavedConversion, photo: Data?) throws {
         lastSavedID = nil
         guard loadError == nil else { throw CocoaError(.fileReadCorruptFile) }
+        // A draft ID identifies one save action. Retrying it must neither append
+        // another row nor overwrite the already committed reference photo.
+        if items.contains(where: { $0.id == draft.id }) { lastSavedID = draft.id; return }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var entry = draft
         entry.photoFilename = nil

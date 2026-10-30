@@ -84,7 +84,17 @@ struct TripDocumentPayload: Sendable, Codable {
             guard let page = pdf.page(at: 0), let cg = page.thumbnail(of: CGSize(width: 1600, height: 2000), for: .mediaBox).cgImage else { return "" }
             return try Self.recognize(VNImageRequestHandler(cgImage: cg, options: [:]))
         }
-        return try Self.recognize(VNImageRequestHandler(data: data, options: [:]))
+        return try Self.recognize(VNImageRequestHandler(cgImage: recognitionImage(), options: [:]))
+    }
+    func recognitionImage() throws -> CGImage {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 2000,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { throw TripDocumentError.invalidFile }
+        return image
     }
     private static func recognize(_ handler: VNImageRequestHandler) throws -> String {
         let request = VNRecognizeTextRequest()
@@ -106,6 +116,9 @@ struct TripImportDraft: Codable, Equatable {
     var bookingReference = ""
     var recognized: String? = nil
     var recognitionDone: Bool? = nil
+    func canResume(replacing target: UUID?, hasIncomingFile: Bool) -> Bool {
+        !hasIncomingFile && (target == nil || replacingID == target)
+    }
 }
 
 enum TripDocumentError: LocalizedError {
@@ -160,15 +173,26 @@ struct TripDocumentVault {
 }
 
 @MainActor final class TripDocumentInbox: ObservableObject {
-    @Published var url: URL?
-    private var accessURL: URL?
+    @Published private(set) var url: URL?
+    @Published private(set) var currentPreserved = false
+    private var pending: [URL] = []
+    private var accessURLs = Set<URL>()
     func receive(_ value: URL) {
-        clear()
-        guard value.isFileURL else { return }
-        if value.startAccessingSecurityScopedResource() { accessURL = value }
-        url = value
+        guard value.isFileURL, value != url, !pending.contains(value) else { return }
+        if value.startAccessingSecurityScopedResource() { accessURLs.insert(value) }
+        if url == nil { url = value } else { pending.append(value) }
     }
-    func clear() { accessURL?.stopAccessingSecurityScopedResource(); accessURL = nil; url = nil }
+    func markPreserved(_ value: URL) { if url == value { currentPreserved = true } }
+    func finishCurrent(ifMatching expected: URL? = nil, preserved: Bool = true, interrupted: Bool = false) {
+        guard expected == nil || url == expected, !interrupted || preserved || currentPreserved else { return }
+        if let url, accessURLs.remove(url) != nil { url.stopAccessingSecurityScopedResource() }
+        currentPreserved = false
+        url = pending.isEmpty ? nil : pending.removeFirst()
+    }
+    func clear() {
+        for value in accessURLs { value.stopAccessingSecurityScopedResource() }
+        accessURLs.removeAll(); pending.removeAll(); currentPreserved = false; url = nil
+    }
 }
 
 struct TripAirlineLink: Identifiable {

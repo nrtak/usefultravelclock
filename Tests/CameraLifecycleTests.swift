@@ -8,6 +8,8 @@ final class CameraLifecycleTests: XCTestCase {
         XCTAssertFalse(TripCameraActivity.shouldRun(visible: false, active: true, recognizing: true, pendingCapture: true))
         XCTAssertFalse(TripCameraActivity.shouldRun(visible: true, active: false, recognizing: true, pendingCapture: true))
         XCTAssertTrue(TripCameraActivity.shouldRun(visible: true, active: true, recognizing: false, pendingCapture: true))
+        XCTAssertFalse(TripCameraActivity.shouldRun(visible: true, active: true, recognizing: true, pendingCapture: false, covered: true))
+        XCTAssertFalse(TripCameraActivity.shouldRun(visible: true, active: true, recognizing: false, pendingCapture: true, covered: true))
     }
     func testRefreshStampExpiresAndRejectsFutureDates() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)

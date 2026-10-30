@@ -71,7 +71,7 @@ struct CurrencyConverterView: View {
             .toolbar {
                 if let onBack {
                     ToolbarItem(placement: .topBarTrailing) {
-                        TripNavigationButton(title: "Back") { editingSide = nil; onBack() }
+                        TripNavigationButton(title: "Done") { editingSide = nil; onBack() }
                     }.tripToolbarBackground()
                 }
                 if editing {
@@ -182,11 +182,11 @@ struct CurrencyConverterView: View {
             Button { draft = store.savedDraft() } label: {
                 Label("Save conversion", systemImage: "bookmark")
                     .frame(maxWidth: .infinity, minHeight: 32)
-            }.buttonStyle(TripButtonStyle(primary: true))
+            }.tripButtonStyle(primary: true)
                 .disabled(store.savedDraft() == nil || saved.loadError != nil)
             Button { showsSaved = true } label: {
                 Text("Saved (\(saved.items.count))").frame(minHeight: 32)
-            }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: 8))
+            }.tripButtonStyle()
         }.font(.subheadline)
     }
 
