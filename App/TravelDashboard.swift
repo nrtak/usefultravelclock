@@ -47,8 +47,6 @@ struct TravelDashboard: View {
         .tripNavigationAppearance()
         .tint(.blue)
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
-        .environmentObject(weather)
-        .environmentObject(trip)
         .sheet(isPresented: Binding(get: { picker != nil && tool == nil }, set: { if !$0 { picker = nil } }), onDismiss: routeInbox) { cityPicker }
         .sheet(isPresented: $customizingHome, onDismiss: routeInbox) { HomeCustomizationView(savedSections: $savedHomeSections, capacity: homeCapacity) }
         .sheet(item: $tool, onDismiss: routeInbox) { selection in toolScreen(selection) }
@@ -65,6 +63,9 @@ struct TravelDashboard: View {
             if value == .active { Task { await trip.unlock(); if trip.unlocked { await trip.reminders.synchronize(records: trip.records) }; routeInbox() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
+        // Wrap the sheet presenters too: their content needs the same stores as the tabs.
+        .environmentObject(weather)
+        .environmentObject(trip)
     }
 
     private var hasModal: Bool { tool != nil || homeRecord != nil || homeDocument != nil || picker != nil || settings || customizingHome }
@@ -86,7 +87,7 @@ struct TravelDashboard: View {
     }
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
-        DashboardHome(currency: currency, capacity: $homeCapacity, active: tab == 0 && tool == nil,
+        DashboardHome(currency: currency, savedSections: $savedHomeSections, capacity: $homeCapacity, active: tab == 0 && tool == nil,
             open: openHomeSection, chooseCity: { picker = $0 },
             openRecord: { homeRecord = $0 }, openDocument: { document in
                 do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }

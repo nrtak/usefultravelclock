@@ -4,10 +4,11 @@ struct DashboardHome: View {
     @ObservedObject var currency: ConverterStore
     @EnvironmentObject private var clock: UsefulTravelClockStore
     @EnvironmentObject private var trip: TripStore
-    @AppStorage("trip-home-sections") private var savedSections = HomeSection.defaults
+    @Binding var savedSections: String
     @AppStorage("travel-destination") private var destinationID = "tyo"
     @ScaledMetric(relativeTo: .body) private var cardHeight: CGFloat = 160
     @Binding var capacity: Int
+    @State private var editingCurrency = false
     let active: Bool
     let open: (HomeSection) -> Void
     let chooseCity: (String) -> Void
@@ -18,8 +19,9 @@ struct DashboardHome: View {
         GeometryReader { geometry in
             let slots = HomeLayout.capacity(height: geometry.size.height, cardHeight: cardHeight)
             let sections = HomeSection.decode(savedSections)
+            let displayed = editingCurrency ? [.currency] : Array(sections.prefix(slots))
             VStack(spacing: HomeLayout.spacing) {
-                ForEach(Array(sections.prefix(slots))) { section in
+                ForEach(displayed) { section in
                     ViewThatFits(in: .vertical) {
                         detail(section).fixedSize(horizontal: false, vertical: true)
                         Button { open(section) } label: {
@@ -27,10 +29,11 @@ struct DashboardHome: View {
                                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         }.buttonStyle(.plain)
                     }
-                    .padding(12).frame(maxWidth: .infinity).frame(height: cardHeight)
+                    .padding(12).frame(maxWidth: .infinity)
+                    .frame(height: editingCurrency ? min(cardHeight, max(0, geometry.size.height - 2 * HomeLayout.padding)) : cardHeight)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
                 }
-                if sections.isEmpty || slots == 0 {
+                if !editingCurrency && (sections.isEmpty || slots == 0) {
                     ViewThatFits(in: .vertical) {
                         VStack(spacing: 12) {
                             Text(sections.isEmpty ? "Make Home your own" : "Your tools are always available").font(.headline)
@@ -57,15 +60,7 @@ struct DashboardHome: View {
                 }
             }
         case .currency:
-            Button { open(section) } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    heading(section)
-                    Text("\(currency.fieldText(for: .source, focused: false)) \(currency.source) → \(currency.result(for: currency.target)) \(currency.target)")
-                        .font(.title3.weight(.semibold)).monospacedDigit().lineLimit(2)
-                    Text("Estimate · " + currency.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-                    TripRateStatus(store: currency).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }.buttonStyle(.plain).accessibilityHint("Edit amounts and currencies")
+            HomeCurrencyCard(store: currency, active: active, editingChanged: { editingCurrency = $0 }) { open(section) }
         case .trip:
             TripVisibleTimeline(interval: 60, enabled: active) { context in
                 let next = TripSummary.record(in: trip.records, at: context.date)
@@ -130,5 +125,62 @@ struct DashboardHome: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         }.buttonStyle(.plain).accessibilityLabel(role + ", " + name + ", " + time + ", " + localDate).accessibilityHint("Choose a city")
+    }
+}
+
+struct HomeCurrencyCard: View {
+    @ObservedObject var store: ConverterStore
+    let active: Bool
+    let editingChanged: (Bool) -> Void
+    let openConverter: () -> Void
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Label("Currency", systemImage: "banknote").font(.headline)
+                    Spacer(minLength: 8)
+                    fullConverterButton
+                }
+                fullConverterButton
+            }
+            HStack(spacing: 8) {
+                Text(store.source).font(.subheadline.weight(.semibold)).fixedSize()
+                TextField("Amount", text: Binding(
+                    get: { store.fieldText(for: .source, focused: editing) },
+                    set: { store.edit($0, side: .source) }
+                ))
+                .textFieldStyle(.plain).keyboardType(.decimalPad).monospacedDigit()
+                .font(.title3.weight(.semibold)).focused($editing)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.horizontal, 6)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("Amount in \(Currency.named(store.source).name)")
+                .accessibilityIdentifier("home-currency-amount")
+                Image(systemName: "arrow.right").font(.caption).accessibilityHidden(true)
+                Text("\(store.result(for: store.target)) \(store.target)")
+                    .font(.headline).monospacedDigit().lineLimit(1)
+                    .accessibilityLabel("Converted amount, \(store.result(for: store.target)) \(store.target)")
+            }
+            if !editing {
+                Text("Estimate · " + store.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { editing = false } }
+        }
+        .onDisappear { editing = false }
+        .onChange(of: editing) { _, value in editingChanged(value) }
+        .onChange(of: active) { _, value in if !value { editing = false } }
+    }
+
+    private var fullConverterButton: some View {
+        Button { editing = false; openConverter() } label: {
+            Label("Full converter", systemImage: "arrow.up.right").font(.caption)
+                .frame(minHeight: 44)
+        }.buttonStyle(.plain).foregroundStyle(.blue)
+            .accessibilityHint("Open all currency conversion tools")
+            .accessibilityIdentifier("home-full-converter")
     }
 }

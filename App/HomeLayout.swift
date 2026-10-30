@@ -32,6 +32,24 @@ enum HomeSection: String, CaseIterable, Identifiable {
         return items.isEmpty && !value.isEmpty ? decode(defaults) : items
     }
     static func encode(_ items: [Self]) -> String { items.map(\.rawValue).joined(separator: ",") }
+
+    static func selecting(_ item: Self, in saved: String, capacity: Int, replacing old: Self? = nil) -> String {
+        guard capacity > 0 else { return saved }
+        var items = decode(saved)
+        let visible = Array(items.prefix(capacity))
+        guard !visible.contains(item) else { return saved }
+        if let old {
+            guard visible.contains(old) else { return saved }
+            items.removeAll { $0 == item }
+            guard let index = items.firstIndex(of: old) else { return saved }
+            items[index] = item
+        } else {
+            guard visible.count < capacity else { return saved }
+            items.removeAll { $0 == item }
+            items.insert(item, at: visible.count)
+        }
+        return encode(items)
+    }
 }
 
 enum HomeLayout {
@@ -49,12 +67,15 @@ struct HomeCustomizationView: View {
     @Binding var savedSections: String
     let capacity: Int
     @Environment(\.dismiss) private var dismiss
+    @State private var replacement: HomeSection?
+    @State private var editMode = EditMode.inactive
     private var sections: [HomeSection] { HomeSection.decode(savedSections) }
+    private var visible: [HomeSection] { Array(sections.prefix(capacity)) }
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Text("Choose what appears on Home. Up to \(capacity) cards fit with your current screen and text size. Drag to change their order.")
+                    Text("Choose what appears on Home. Up to \(capacity) cards fit with your current screen and text size. Tap a card below to add it or replace one already shown. Use Reorder to change their order.")
                     Text("Home never scrolls. If less space becomes available, the first cards stay visible and the rest remain saved here. Every feature is also available in My Trip or Tools.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Section("Your cards · \(min(capacity, sections.count)) shown") {
@@ -73,24 +94,45 @@ struct HomeCustomizationView: View {
                     }
                 }
                 Section("Available cards") {
-                    ForEach(HomeSection.allCases.filter { !sections.contains($0) }) { item in
+                    ForEach(HomeSection.allCases.filter { !visible.contains($0) }) { item in
                         Button {
-                            guard sections.count < capacity else { return }
-                            savedSections = HomeSection.encode(sections + [item])
+                            if visible.count >= capacity { replacement = item }
+                            else { savedSections = HomeSection.selecting(item, in: savedSections, capacity: capacity) }
                         } label: { Label(item.title, systemImage: "plus.circle") }
-                            .disabled(sections.count >= capacity)
+                            .disabled(capacity == 0)
+                            .accessibilityHint(visible.count >= capacity ? "Choose a Home card to replace" : "Add to Home")
                     }
-                    if sections.count >= capacity {
-                        Text("Remove a card to make room for another.").font(.caption).foregroundStyle(.secondary)
+                    if capacity == 0 {
+                        Text("No cards fit at the current screen and text size. Your choices stay saved.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Section {
                     Button("Restore default cards") { savedSections = HomeSection.defaults }
                 }
             }
-            .environment(\.editMode, .constant(.active))
+            .environment(\.editMode, $editMode)
             .navigationTitle("Customize Home").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(editMode == .active ? "Finish reordering" : "Reorder") {
+                        editMode = editMode == .active ? .inactive : .active
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .confirmationDialog("Replace a Home card", isPresented: Binding(get: { replacement != nil }, set: { if !$0 { replacement = nil } }), titleVisibility: .visible) {
+                if let replacement {
+                    ForEach(visible) { old in
+                        Button("Replace \(old.title)") {
+                            savedSections = HomeSection.selecting(replacement, in: savedSections, capacity: capacity, replacing: old)
+                            self.replacement = nil
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { replacement = nil }
+            } message: {
+                if let replacement { Text("Choose where to show \(replacement.title). Home stays on one screen.") }
+            }
         }
     }
 }

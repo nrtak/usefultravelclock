@@ -15,7 +15,6 @@ struct CurrencyConverterView: View {
     @State private var showsSaved = false
     @State private var showsItems = false
     @State private var showsPhotoPrices = false
-    @State private var showsUnits = false
     @State private var copiedAmount = false
     @AppStorage("trip-currency-color") private var boxColor = "F3F3F3"
     @FocusState private var editingSide: AmountSide?
@@ -46,14 +45,6 @@ struct CurrencyConverterView: View {
                             }.frame(minHeight: geometry.size.height < 600 ? 64 : 80)
                             saveButtons
                             SavedConversionNotice(saved: saved) { showsSaved = true }
-                            Button { showsUnits = true } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "ruler").foregroundStyle(.teal)
-                                    Text("Unit converter").font(.subheadline.weight(.medium)).foregroundStyle(Color.primary)
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.secondary)
-                                }.frame(minHeight: 44).contentShape(Rectangle())
-                            }.buttonStyle(.plain).accessibilityHint("Convert distance, temperature, volume and weight")
                             VStack(spacing: 0) {
                                 Text("Rates: Frankfurter · Bank rates may differ.")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -88,15 +79,6 @@ struct CurrencyConverterView: View {
             .sheet(isPresented: $showsPhotoPrices) { NavigationStack { PriceImageView(store: store, savedPrices: saved).toolbar { ToolbarItem(placement: .confirmationAction) { TripNavigationButton(title: "Done") { showsPhotoPrices = false }  }.tripToolbarBackground() } } }
             .sheet(item: $draft) { entry in SaveConversionView(draft: entry, saved: saved) }
             .sheet(isPresented: $showsSaved) { SavedConversionsView(saved: saved) }
-            .sheet(isPresented: $showsUnits) {
-                NavigationStack {
-                    TripUnitsView().toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            TripNavigationButton(title: "Back") { showsUnits = false }
-                        }.tripToolbarBackground()
-                    }
-                }
-            }
             .task { await store.refresh() }
             .task(id: copiedAmount) {
                 if copiedAmount {
