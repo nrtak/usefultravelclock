@@ -77,23 +77,23 @@ struct TripUnitsView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(UnitCategory.allCases) { kind in
                         Button { select(kind) } label: {
-                            Label(kind.rawValue, systemImage: kind.icon).font(.subheadline).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36)
+                            Label(kind.rawValue, systemImage: kind.icon).font(.subheadline).lineLimit(1).minimumScaleFactor(0.9).frame(maxWidth: .infinity, minHeight: 36)
                         }.buttonStyle(.bordered).tint(category == kind ? .blue : .gray)
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { selectedInput = "Text"; focusSource = inputSource } label: { Label("Text", systemImage: selectedInput == "Text" ? "checkmark.circle.fill" : "keyboard").font(.caption).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Text" ? .isSelected : [])
-                    Button { selectedInput = "Camera"; focusSource = nil; showScanner = true } label: { Label("Camera", systemImage: selectedInput == "Camera" ? "checkmark.circle.fill" : "camera.viewfinder").font(.caption).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.borderedProminent).accessibilityAddTraits(selectedInput == "Camera" ? .isSelected : [])
-                    PhotosPicker(selection: $photo, matching: .images) { Label("Photo", systemImage: selectedInput == "Photo" ? "checkmark.circle.fill" : "photo").font(.caption).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Photo" ? .isSelected : [])
+                    Button { selectedInput = "Text"; focusSource = inputSource } label: { Label("Text", systemImage: selectedInput == "Text" ? "checkmark.circle.fill" : "keyboard").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Text" ? .isSelected : [])
+                    Button { selectedInput = "Camera"; focusSource = nil; showScanner = true } label: { Label("Camera", systemImage: selectedInput == "Camera" ? "checkmark.circle.fill" : "camera.viewfinder").font(.subheadline).lineLimit(1).minimumScaleFactor(0.9).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.borderedProminent).accessibilityAddTraits(selectedInput == "Camera" ? .isSelected : [])
+                    PhotosPicker(selection: $photo, matching: .images) { Label("Photo", systemImage: selectedInput == "Photo" ? "checkmark.circle.fill" : "photo").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityAddTraits(selectedInput == "Photo" ? .isSelected : [])
                 }
                 VStack(spacing: 6) {
                     amountBox(true)
                     Button { let old = source; source = target; target = old; inputSource.toggle(); focusSource = nil } label: { Image(systemName: "arrow.up.arrow.down").frame(width: 44, height: 36) }.buttonStyle(.bordered).accessibilityLabel("Swap units")
                     amountBox(false)
-                    HStack { Text("Edit either value to convert both ways.").font(.caption2).foregroundStyle(.secondary); Spacer(); Button("Clear") { amount = ""; note = ""; image = nil; message = "" }.font(.caption) }
+                    HStack { Text("Edit either value to convert both ways.").font(.footnote).foregroundStyle(.secondary); Spacer(); Button("Clear") { amount = ""; note = ""; image = nil; message = "" }.font(.subheadline) }
                 }.tripPanel()
                 if let image, let ui = UIImage(data: image) {
-                    HStack { Image(uiImage: ui).resizable().scaledToFit().frame(width: 60, height: 50); Text("Attached photo").font(.caption); Spacer(); Button("Remove") { self.image = nil }.font(.caption) }
+                    HStack { Image(uiImage: ui).resizable().scaledToFit().frame(width: 60, height: 50); Text("Attached photo").font(.subheadline); Spacer(); Button("Remove") { self.image = nil }.font(.subheadline) }
                 }
                 TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 HStack {
@@ -103,8 +103,8 @@ struct TripUnitsView: View {
                     } label: { Label("Save conversion", systemImage: "bookmark").font(.subheadline).frame(maxWidth: .infinity, minHeight: 36) }.tripButtonStyle(primary: true).disabled(value(sourceSide: true) == nil || value(sourceSide: false) == nil)
                     Button("Saved (\(saved.entries.count))") { showSaved = true }.buttonStyle(.bordered)
                 }
-                if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
-                if let error = saved.error { Text(error).font(.caption).foregroundStyle(.red) }
+                if !message.isEmpty { Text(message).font(.subheadline).foregroundStyle(.secondary) }
+                if let error = saved.error { Text(error).font(.subheadline).foregroundStyle(.red) }
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationTitle("Unit Converter").navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPicker) { UnitSearchView(category: category, selected: pickerSource == true ? source : target) { unit in if pickerSource == true { source = unit.id } else { target = unit.id }; showPicker = false } }
@@ -114,12 +114,12 @@ struct TripUnitsView: View {
                 NavigationLink {
                     ScrollView { VStack(alignment: .leading, spacing: 12) {
                         Text(summary(entry)).font(.title2)
-                        Text(entry.date.formatted()).font(.caption).foregroundStyle(.secondary)
+                        Text(entry.date.formatted()).font(.subheadline).foregroundStyle(.secondary)
                         Text(entry.note).textSelection(.enabled)
                         if let data = entry.image, let ui = UIImage(data: data) { Image(uiImage: ui).resizable().scaledToFit().frame(maxHeight: 260) }
                         Spacer()
                     }.padding() }.navigationTitle("Saved conversion")
-                } label: { HStack { if let data = entry.image { TripPhotoThumbnail(id: "unit-" + entry.id.uuidString, data: data) }; VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.caption).lineLimit(2) } } }
+                } label: { HStack { if let data = entry.image { TripPhotoThumbnail(id: "unit-" + entry.id.uuidString, data: data) }; VStack(alignment: .leading) { Text(summary(entry)); Text(entry.note).font(.subheadline).lineLimit(2) } } }
             }.onDelete { saved.remove(at: $0) }
         }.overlay { if saved.entries.isEmpty { ContentUnavailableView("No saved conversions", systemImage: "bookmark") } }
             .safeAreaInset(edge: .bottom) {
@@ -147,7 +147,7 @@ struct TripUnitsView: View {
         let unit = TravelUnit.named(sourceSide ? source : target)
         return VStack(spacing: 6) {
             Button { focusSource = nil; pickerSource = sourceSide; showPicker = true } label: {
-                HStack { Text(sourceSide ? "From" : "To").font(.caption).foregroundStyle(.secondary); Text(unit.name).font(.headline).lineLimit(1).minimumScaleFactor(0.6); Spacer(); Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }.contentShape(Rectangle())
+                HStack { Text(sourceSide ? "From" : "To").font(.subheadline).foregroundStyle(.secondary); Text(unit.name).font(.headline).lineLimit(1).minimumScaleFactor(0.9); Spacer(); Image(systemName: "magnifyingglass").frame(width: 44, height: 44) }.contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("Change \(sourceSide ? "source" : "target") unit")
             HStack { TextField("Amount", text: field(sourceSide)).accessibilityLabel("\(sourceSide ? "From" : "To") amount in \(unit.name)").keyboardType(category == .temperature ? .numbersAndPunctuation : .decimalPad).focused($focusSource, equals: sourceSide).font(.title.weight(.semibold)).monospacedDigit(); Text(unit.symbol).foregroundStyle(.secondary) }
         }.padding(8).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
@@ -211,18 +211,18 @@ struct UnitReadingView: View {
             }
         HStack {
             Text(readings.isEmpty ? (paused ? "Paused" : noReadingFound ? "No measurement found · try 500 ml" : "Scanning for measurements…") : referencePhoto == nil ? "Readings held" : "Readings held • Photo included")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(.secondary)
             Spacer()
             Button(paused ? "Resume" : "Pause", systemImage: paused ? "play.fill" : "pause.fill") {
                 if paused { scanAgain() } else { paused = true }
-            }.font(.caption).frame(minHeight: 44).disabled(capturing)
+            }.font(.subheadline).frame(minHeight: 44).disabled(capturing)
             Button("Scan again", systemImage: "arrow.clockwise") { scanAgain() }
-                .font(.caption).disabled(capturing)
+                .font(.subheadline).disabled(capturing)
         }
         Text("Tap a measurement to convert. Save conversion keeps its photo for later.")
-            .font(.caption).foregroundStyle(.secondary)
-        if capturing { ProgressView("Keeping reference photo…").font(.caption) }
-        if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
+            .font(.subheadline).foregroundStyle(.secondary)
+        if capturing { ProgressView("Keeping reference photo…").font(.subheadline) }
+        if !error.isEmpty { Text(error).font(.subheadline).foregroundStyle(.red) }
         ForEach(readings) { reading in
             Button(reading.text) {
                 guard let referencePhoto else { return }

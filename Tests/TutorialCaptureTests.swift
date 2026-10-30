@@ -11,7 +11,7 @@ final class TutorialCaptureTests: XCTestCase {
         let suite = "TutorialCaptures-\(UUID().uuidString)"
         let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
         let standard = UserDefaults.standard
-        let keys = ["travel-destination", "trip-navigation-tab-v2", "trip-home-sections", "trip-translation-source", "trip-translation-target", "trip-unit-category", "trip-unit-source", "trip-unit-target"]
+        let keys = ["travel-destination", "trip-navigation-tab-v2", "trip-tab-order", "trip-home-sections", "trip-translation-source", "trip-translation-target", "trip-unit-category", "trip-unit-source", "trip-unit-target"]
         let old = keys.map { standard.object(forKey: $0) }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
@@ -46,6 +46,7 @@ final class TutorialCaptureTests: XCTestCase {
         clock.cityIDs = [la.id, tokyo.id] + ["London", "Melbourne", "Paris"].compactMap { name in clock.allCities.first { $0.name == name }?.id }
         standard.set(tokyo.id, forKey: "travel-destination")
         standard.set(HomeSection.defaults, forKey: "trip-home-sections")
+        standard.set(DashboardTab.defaults, forKey: "trip-tab-order")
         standard.set("ja", forKey: "trip-translation-source")
         standard.set("en", forKey: "trip-translation-target")
         standard.set("Weight", forKey: "trip-unit-category")

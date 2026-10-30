@@ -13,12 +13,12 @@ struct TripSettingsView: View {
                 Section("Privacy") {
                     Toggle("Lock app", isOn: Binding(get: { appLock.enabled }, set: { value in Task { await appLock.setEnabled(value) } }))
                         .disabled(appLock.authenticating)
-                    Text("Unlock with Face ID, Touch ID or your iPhone passcode (PIN). Uses the security already set up on your iPhone. Locks when you leave the app; widgets are not protected.").font(.caption).foregroundStyle(.secondary)
-                    if !appLock.error.isEmpty { Text(appLock.error).font(.caption).foregroundStyle(.secondary) }
+                    Text("Unlock with Face ID, Touch ID or your iPhone passcode (PIN). Uses the security already set up on your iPhone. Locks when you leave the app; widgets are not protected.").font(.subheadline).foregroundStyle(.secondary)
+                    if !appLock.error.isEmpty { Text(appLock.error).font(.subheadline).foregroundStyle(.secondary) }
                 }
                 Section("Appearance") {
                     Picker("Theme", selection: $clock.theme) { ForEach(ThemeMode.allCases) { Text($0.rawValue.capitalized).tag($0) } }
-                    Text("Box theme").font(.caption).foregroundStyle(.secondary)
+                    Text("Box theme").font(.subheadline).foregroundStyle(.secondary)
                     ForEach(BoxTheme.allCases) { theme in
                         Button {
                             home = theme.colors[0]; destination = theme.colors[1]; currency = theme.colors[2]
@@ -34,6 +34,9 @@ struct TripSettingsView: View {
                             }
                         }.accessibilityLabel(theme.rawValue + " box theme")
                     }
+                }
+                Section("Navigation") {
+                    NavigationLink { DashboardTabSettings() } label: { Label("Bottom tabs", systemImage: "square.grid.2x2") }
                 }
                 Section("Clock settings") {
                     Toggle("24-hour time", isOn: $clock.use24)
@@ -54,7 +57,7 @@ struct TripSettingsView: View {
                     NavigationLink { TripGettingStartedView() } label: { Label("App guide", systemImage: "questionmark.circle") }
                     NavigationLink { TripPrivacySupportView() } label: { Label("Privacy & support", systemImage: "hand.raised") }
                     NavigationLink { TripCreditsView() } label: {
-                        HStack { Label("About Trip Info", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.caption) }
+                        HStack { Label("About Trip Info", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.subheadline) }
                     }
                 }
             }.navigationTitle("Settings")
@@ -92,7 +95,7 @@ private enum TripAppInformation {
 private struct TripCreditsView: View {
     var body: some View {
         List {
-            Section("Installed app") { LabeledContent("App", value: "Trip Info"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.caption) }
+            Section("Installed app") { LabeledContent("App", value: "Trip Info"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.subheadline) }
             Section("Project foundations") { Text("Clock and currency tools build on UsefulTravelClock and SimpleCurrency. Original contributor and license notices are retained in the source repository.") }
             Section("Services & frameworks") {
                 LabeledContent("Reference rates", value: "Frankfurter")
@@ -100,7 +103,7 @@ private struct TripCreditsView: View {
                 LabeledContent("City search", value: "Apple Maps")
                 LabeledContent("Text recognition", value: "Apple Vision & VisionKit")
                 LabeledContent("Translation", value: "Apple Translation")
-                Text("Weather source links appear beside Apple Weather credits in the weather views.").font(.caption).foregroundStyle(.secondary)
+                Text("Weather source links appear beside Apple Weather credits in the weather views.").font(.subheadline).foregroundStyle(.secondary)
             }
         }.navigationTitle("About Trip Info").navigationBarTitleDisplayMode(.inline)
     }

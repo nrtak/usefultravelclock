@@ -15,7 +15,7 @@ struct SettingsSheet: View {
                     }
                     Button("Edit cities") { store.isEditingCities = true; dismiss() }
                     Text("You can also touch and hold a city in Clocks. Pinned cities always stay at the top.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Section("Display") {
                     Toggle("24-hour time", isOn: $store.use24)
@@ -45,7 +45,7 @@ struct SettingsSheet: View {
                     case .automatic:
                         LabeledContent("This device") {
                             Text(TimeEngine.readableZone(store.deviceTimeZoneID))
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                     case .manual:

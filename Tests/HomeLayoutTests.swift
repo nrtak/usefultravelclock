@@ -129,4 +129,50 @@ final class HomeLayoutTests: XCTestCase {
             }
         }
     }
+
+    @MainActor
+    func testRemovingCurrencyWhileFocusedDoesNotKeepTheRemovedCardVisible() async throws {
+        let suite = "HomeFocusedRemoval-" + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let converter = ConverterStore(preferences: defaults, cacheURL: directory.appendingPathComponent("rates.json"), isOffline: { true })
+        let state = HomeRemovalState()
+        let home = HomeRemovalHarness(state: state, converter: converter)
+            .environmentObject(UsefulTravelClockStore(defaults: defaults))
+            .environmentObject(TripStore(directory: directory.appendingPathComponent("trip")))
+            .environment(\.dynamicTypeSize, .large)
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 800)
+        let controller = UIHostingController(rootView: home)
+        window.rootViewController = controller; window.makeKeyAndVisible()
+        defer { window.endEditing(true); window.isHidden = true; previous?.makeKeyAndVisible() }
+        try await Task.sleep(for: .milliseconds(400))
+        func inputs(_ view: UIView) -> [UITextField] {
+            if let input = view as? UITextField { return [input] }
+            return view.subviews.flatMap(inputs)
+        }
+        let input = try XCTUnwrap(inputs(controller.view).first)
+        XCTAssertTrue(input.becomeFirstResponder())
+        try await Task.sleep(for: .milliseconds(300))
+        state.sections = ""
+        try await Task.sleep(for: .milliseconds(300))
+        controller.view.layoutIfNeeded()
+        XCTAssertTrue(inputs(controller.view).isEmpty, "Removing a focused Currency card must end the temporary editing layout")
+        XCTAssertEqual(state.sections, "")
+    }
+}
+
+@MainActor private final class HomeRemovalState: ObservableObject {
+    @Published var sections = "currency"
+}
+
+private struct HomeRemovalHarness: View {
+    @ObservedObject var state: HomeRemovalState
+    let converter: ConverterStore
+    var body: some View {
+        DashboardHome(currency: converter, savedSections: $state.sections, capacity: .constant(0), active: true, open: { _ in }, chooseCity: { _ in }, openRecord: { _ in }, openDocument: { _ in })
+    }
 }

@@ -51,7 +51,7 @@ struct AddCitySheet: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Design.foreground(scheme))
                     Text(city.subtitle)
-                        .font(.system(size: 11))
+                        .font(.footnote)
                         .foregroundStyle(Design.mutedForeground(scheme))
                 }
                 Spacer()

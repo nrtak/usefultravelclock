@@ -39,7 +39,7 @@ struct TripReadinessView: View {
                        detail: currency.source == currency.target ? "Same currency · no rates needed" : currency.rateDetail,
                        ready: currency.source == currency.target || (currency.snapshot?.multiplier(from: currency.source, to: currency.target) != nil && !currency.cacheWriteFailed))
                 if currency.cacheWriteFailed { Text("The latest rates could not be saved. Retry refresh before leaving.").foregroundStyle(.orange) }
-                if currency.usingBundledRates { Text("Included rates are available offline. Refresh while connected for newer rates.").font(.caption) }
+                if currency.usingBundledRates { Text("Included rates are available offline. Refresh while connected for newer rates.").font(.subheadline) }
                 if currency.snapshot?.needsRefresh(from: currency.source, to: currency.target) == true { Label("Some rates are missing, over a week old, or have an unexpected date. Refresh before departure; conversions are estimates.", systemImage: "exclamationmark.triangle").font(.subheadline) }
                 Button("Refresh rates") { Task { await currency.refresh(force: true) } }.disabled(connection.isOffline || currency.isLoading)
             }
@@ -47,7 +47,7 @@ struct TripReadinessView: View {
                 ForEach(cities) { city in
                     if let place = weather.locations[city.id] {
                         status(city.name, detail: weather.status(for: place, offline: connection.isOffline), ready: weather.cache[place.id] != nil && !weather.cacheWriteFailures.contains(place.id))
-                        if let saved = weather.cache[place.id] { Text("Last fetched " + saved.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary) }
+                        if let saved = weather.cache[place.id] { Text("Last fetched " + saved.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.subheadline).foregroundStyle(.secondary) }
                     } else { status(city.name, detail: "No saved location or forecast", ready: false) }
                     Button("Refresh " + city.name) { Task { await weather.load(city: city, force: true) } }.disabled(connection.isOffline || weather.loading.contains(city.id))
                 }

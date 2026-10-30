@@ -4,6 +4,11 @@ import WeatherKit
 import MapKit
 import CoreLocation
 
+enum WeatherForecastPeriod: String, CaseIterable, Identifiable {
+    case hourly = "Hourly", tomorrow = "Tomorrow", fiveDays = "5 days", week = "7 days"
+    var id: String { rawValue }
+}
+
 struct WeatherLocation: Codable, Identifiable, Equatable {
     var id: String { "\(latitude),\(longitude)" }
     let name: String
@@ -24,13 +29,34 @@ struct CachedWeather: Codable {
     var daily: [CachedWeatherDay]? = nil
     var timeZoneIdentifier: String? = nil
     func upcomingHours(now: Date = Date()) -> [CachedWeatherHour] {
-        Array((hourly ?? []).filter { $0.date >= now.addingTimeInterval(-3600) }.sorted { $0.date < $1.date }.prefix(24))
+        var seen = Set<Date>()
+        let lower = now.addingTimeInterval(-3600), upper = now.addingTimeInterval(48 * 3600)
+        return Array((hourly ?? []).filter { $0.date >= lower && $0.date < upper }
+            .sorted { $0.date < $1.date }.filter { seen.insert($0.date).inserted }.prefix(24))
     }
     func upcomingDays(now: Date = Date()) -> [CachedWeatherDay] {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier ?? "UTC") ?? .gmt
         let start = calendar.startOfDay(for: now)
-        return Array((daily ?? []).filter { $0.date >= start }.sorted { $0.date < $1.date }.prefix(7))
+        guard let end = calendar.date(byAdding: .day, value: 8, to: start) else { return [] }
+        var seen = Set<Date>()
+        // Reject corrupt/out-of-range dates before asking Calendar to interpret them.
+        return Array((daily ?? []).filter { $0.date >= start && $0.date < end }
+            .sorted { $0.date < $1.date }
+            .filter { seen.insert(calendar.startOfDay(for: $0.date)).inserted }.prefix(7))
+    }
+    func forecastDays(for period: WeatherForecastPeriod, now: Date = Date()) -> [CachedWeatherDay] {
+        let days = upcomingDays(now: now)
+        switch period {
+        case .hourly: return []
+        case .fiveDays: return Array(days.prefix(5))
+        case .week: return days
+        case .tomorrow:
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: timeZoneIdentifier ?? "UTC") ?? .gmt
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) else { return [] }
+            return Array(days.filter { calendar.isDate($0.date, inSameDayAs: tomorrow) }.prefix(1))
+        }
     }
     func temperatures(_ value: Double) -> String {
         guard let fahrenheit = Int(exactly: (value * 9 / 5 + 32).rounded()),

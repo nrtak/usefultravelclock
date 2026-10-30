@@ -34,9 +34,9 @@ struct SaveConversionView: View {
                     LabeledContent("Original", value: Amount.format(draft.amount, currency: .named(draft.source)) + " " + draft.source)
                     LabeledContent("Converted", value: Amount.format(draft.convertedAmount, currency: .named(draft.target)) + " " + draft.target)
                     if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text(note).font(.subheadline).textSelection(.enabled) }
-                    Text("This amount and rate will stay as saved.").font(.caption).foregroundStyle(.secondary)
+                    Text("This amount and rate will stay as saved.").font(.subheadline).foregroundStyle(.secondary)
                     if !draft.rateDates.isEmpty {
-                        Text("Rates dated \(draft.rateDates.joined(separator: " / "))").font(.caption).foregroundStyle(.secondary)
+                        Text("Rates dated \(draft.rateDates.joined(separator: " / "))").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
                 Section("Note (optional)") {
@@ -57,7 +57,7 @@ struct SaveConversionView: View {
                         Label("Choose from Photos", systemImage: "photo.on.rectangle")
                     }.disabled(loadingPhoto)
                 }
-                Section { Text("Saved on this iPhone. Available offline after saving.").font(.caption).foregroundStyle(.secondary) }
+                Section { Text("Saved on this iPhone. Available offline after saving.").font(.subheadline).foregroundStyle(.secondary) }
             }
             .onAppear { visible = true; if !loadedInitialPhoto { photo = initialPhoto; loadedInitialPhoto = true } }
             .onDisappear { visible = false; photoLoadID = UUID(); loadingPhoto = false }
@@ -138,7 +138,7 @@ struct SavedConversionsView: View {
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(item.summary).font(.subheadline.weight(.semibold))
                                     if !item.note.isEmpty { Text(item.note).font(.subheadline).lineLimit(2) }
-                                    Text(item.savedAt, format: .dateTime.month().day().year()).font(.caption).foregroundStyle(.secondary)
+                                    Text(item.savedAt, format: .dateTime.month().day().year()).font(.subheadline).foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -148,7 +148,7 @@ struct SavedConversionsView: View {
             }.safeAreaInset(edge: .bottom) {
                 if saved.canUndo || saved.actionError != nil {
                     VStack(alignment: .leading) {
-                        if let error = saved.actionError { Text(error).font(.caption).foregroundStyle(.red) }
+                        if let error = saved.actionError { Text(error).font(.subheadline).foregroundStyle(.red) }
                         if saved.canUndo {
                             HStack { Text("Conversion deleted").font(.subheadline); Spacer(); Button("Undo") { saved.undoDelete() }.tripButtonStyle() }
                         }
@@ -167,14 +167,14 @@ private struct SavedConversionDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text(item.summary).font(.title2.weight(.semibold)).textSelection(.enabled)
-                Text("Saved \(item.savedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
+                Text("Saved \(item.savedAt.formatted(date: .abbreviated, time: .shortened))").font(.subheadline).foregroundStyle(.secondary)
                 if let photoURL, let image = UIImage(contentsOfFile: photoURL.path) {
                     Image(uiImage: image).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 18)).accessibilityLabel("Saved item photo")
                 } else if item.photoFilename != nil { Label("Photo unavailable", systemImage: "photo") }
                 if !item.note.isEmpty { Text(item.note).textSelection(.enabled) }
-                if !item.rateDates.isEmpty { Text("Rates dated \(item.rateDates.joined(separator: " / "))").font(.caption).foregroundStyle(.secondary) }
-                if let checked = item.ratesCheckedAt { Text("Rates checked \(checked.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
-                Text("Original saved estimate. Bank and card rates may differ.").font(.caption).foregroundStyle(.secondary)
+                if !item.rateDates.isEmpty { Text("Rates dated \(item.rateDates.joined(separator: " / "))").font(.subheadline).foregroundStyle(.secondary) }
+                if let checked = item.ratesCheckedAt { Text("Rates checked \(checked.formatted(date: .abbreviated, time: .shortened))").font(.subheadline).foregroundStyle(.secondary) }
+                Text("Original saved estimate. Bank and card rates may differ.").font(.subheadline).foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
         }.navigationTitle("Saved conversion").navigationBarTitleDisplayMode(.inline)
     }

@@ -16,7 +16,7 @@ struct ClockRootView: View {
                         .accessibilityLabel("Undo last change")
                     Spacer()
                     if store.isEditingCities {
-                        Text("Drag cities to reorder").font(.caption).foregroundStyle(.secondary)
+                        Text("Drag cities to reorder").font(.subheadline).foregroundStyle(.secondary)
                         Button("Done") { store.finishEditingCities() }.buttonStyle(.borderedProminent)
                     }
                 }.font(.headline).padding(.horizontal, 16).padding(.vertical, 12).background(Design.secondary(scheme))
@@ -54,7 +54,7 @@ struct ClockRootView: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: systemImage).font(.system(size: 19, weight: .medium))
-                Text(label).font(.system(size: 10, weight: .medium))
+                Text(label).font(.footnote.weight(.medium))
             }
             .frame(maxWidth: .infinity)
             .foregroundStyle(

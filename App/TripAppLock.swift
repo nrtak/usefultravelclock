@@ -67,8 +67,8 @@ struct TripAppLockGate<Content: View>: View {
                     Button { Task { await lock.authenticate() } } label: {
                         Label("Unlock", systemImage: "lock.open").frame(minWidth: 120, minHeight: 44)
                     }.buttonStyle(.borderedProminent).disabled(lock.authenticating)
-                    Text("Face ID, Touch ID or iPhone passcode").font(.caption).foregroundStyle(.secondary)
-                    if !lock.error.isEmpty { Text(lock.error).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center) }
+                    Text("Face ID, Touch ID or iPhone passcode").font(.subheadline).foregroundStyle(.secondary)
+                    if !lock.error.isEmpty { Text(lock.error).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center) }
                 }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(.systemBackground).ignoresSafeArea())
             }

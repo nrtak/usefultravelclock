@@ -30,9 +30,9 @@ struct CurrencyPairControl: View {
         let currency = Currency.named(code)
         return Button { selection = side } label: {
             VStack(alignment: .leading, spacing: 3) {
-                HStack { Text(label).font(.caption).foregroundStyle(.secondary); Spacer(); Image(systemName: "magnifyingglass").font(.caption) }
+                HStack { Text(label).font(.subheadline).foregroundStyle(.secondary); Spacer(); Image(systemName: "magnifyingglass").font(.subheadline) }
                 Text("\(currency.symbol) \(code)").font(.headline)
-                Text(currency.countryLabel).font(.caption).lineLimit(1).minimumScaleFactor(0.7)
+                Text(currency.countryLabel).font(.subheadline).lineLimit(1).minimumScaleFactor(0.9)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).accessibilityLabel("\(label): \(currency.name), \(currency.countryLabel). Change currency")

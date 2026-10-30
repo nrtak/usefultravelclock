@@ -45,7 +45,7 @@ struct TranslationLanguagePicker: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(name(code)).foregroundStyle(.primary)
-                                Text(name(code, locale: Locale(identifier: code))).font(.caption).foregroundStyle(.secondary)
+                                Text(name(code, locale: Locale(identifier: code))).font(.subheadline).foregroundStyle(.secondary)
                             }
                             Spacer()
                             if Locale.Language(identifier: code).isEquivalent(to: Locale.Language(identifier: selection)) {
@@ -58,7 +58,7 @@ struct TranslationLanguagePicker: View {
                     Text(languages.isEmpty ? "No translation languages are available on this device." : "No matching language. Try its name or language code.")
                         .foregroundStyle(.secondary)
                 }
-                if !loading { Text("English (General) has no country specified. Languages are provided by Apple; a download may be needed.").font(.caption).foregroundStyle(.secondary) }
+                if !loading { Text("English (General) has no country specified. Languages are provided by Apple; a download may be needed.").font(.subheadline).foregroundStyle(.secondary) }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search languages")
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)

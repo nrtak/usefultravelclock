@@ -34,7 +34,7 @@ struct TripWeatherCard: View {
                 NavigationLink { TripWeatherSearchView(home: home, destination: destination) } label: {
                     HStack(spacing: 4) {
                         Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor).font(.headline)
-                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
                     }
                 }.buttonStyle(.plain).accessibilityLabel("More weather")
                 Spacer(minLength: 4)
@@ -48,11 +48,11 @@ struct TripWeatherCard: View {
     private func column(_ role: String, city: City?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
-                Text(city?.name ?? "Choose city").font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                Text(city?.name ?? "Choose city").font(.headline).lineLimit(1).minimumScaleFactor(0.9)
                 Spacer(minLength: 0)
                 if let city {
                     Button { Task { await weather.load(city: city, force: true) } } label: {
-                        Image(systemName: "arrow.clockwise").font(.caption).frame(width: 44, height: 44).contentShape(Rectangle())
+                        Image(systemName: "arrow.clockwise").font(.subheadline).frame(width: 44, height: 44).contentShape(Rectangle())
                     }.disabled(weather.loading.contains(city.id)).accessibilityLabel("Refresh \(role) weather")
                 }
             }
@@ -60,14 +60,14 @@ struct TripWeatherCard: View {
                 let place = weather.locations[city.id]
                 if let place, let result = weather.cache[place.id] {
                     HStack(spacing: 6) { TripWeatherSymbol(symbol: result.symbol); Text(result.temperatures(result.celsius)) }.font(.subheadline)
-                    Text(result.condition).font(.caption)
-                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption2)
+                    Text(result.condition).font(.subheadline)
+                    TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .shortened))").font(.footnote)
                     TripVisibleTimeline(interval: 60) { context in
-                        Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.caption2).foregroundStyle(.secondary)
+                        Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary)
                     }
                 } else if weather.loading.contains(city.id) { ProgressView() }
-                else { Text(connection.isOffline ? "Offline · no saved weather" : "Unavailable · tap refresh").font(.caption).foregroundStyle(.secondary) }
-            } else { Text("Select your home city above.").font(.caption) }
+                else { Text(connection.isOffline ? "Offline · no saved weather" : "Unavailable · tap refresh").font(.subheadline).foregroundStyle(.secondary) }
+            } else { Text("Select your home city above.").font(.subheadline) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -82,8 +82,8 @@ struct WeatherCreditView: View {
     var body: some View {
         Link(destination: weather.credit.legalURL) {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { brand; Text("Weather data sources").font(.caption) }
-                VStack(alignment: .leading, spacing: 4) { brand; Text("Weather data sources").font(.caption) }
+                HStack(spacing: 8) { brand; Text("Weather data sources").font(.subheadline) }
+                VStack(alignment: .leading, spacing: 4) { brand; Text("Weather data sources").font(.subheadline) }
             }.frame(minHeight: 44, alignment: .leading)
         }
         .accessibilityLabel("Apple Weather. Weather data sources")
@@ -98,7 +98,7 @@ struct WeatherCreditView: View {
         if let mark {
             Image(uiImage: mark).resizable().scaledToFit().frame(width: 90, height: 20).accessibilityHidden(true)
         } else {
-            Text("Apple Weather").font(.caption.weight(.medium)).foregroundStyle(.primary)
+            Text("Apple Weather").font(.subheadline.weight(.medium)).foregroundStyle(.primary)
         }
     }
 }
@@ -116,16 +116,16 @@ struct CompactHomeWeather: View {
         VStack(alignment: .leading, spacing: 4) {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack { Label("Weather", systemImage: "cloud.sun").font(.headline); Spacer(); Image(systemName: "chevron.right").font(.caption) }
+                    HStack { Label("Weather", systemImage: "cloud.sun").font(.headline); Spacer(); Image(systemName: "chevron.right").font(.subheadline) }
                     if let city, let place = weather.locations[city.id], let forecast = weather.cache[place.id] {
                         HStack {
                             Text(city.name).lineLimit(1)
                             TripWeatherSymbol(symbol: forecast.symbol)
                             Text(forecast.temperatures(forecast.celsius)).monospacedDigit().lineLimit(1)
                         }.font(.subheadline)
-                        Text("Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        Text("Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                         TripVisibleTimeline(interval: 60, enabled: active) { context in
-                            Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                         }
                     } else {
                         Text(city == nil ? "Choose a city" : (connection.isOffline ? "No saved forecast" : "Open forecast")).font(.subheadline)
@@ -137,10 +137,6 @@ struct CompactHomeWeather: View {
     }
 }
 
-private enum WeatherPeriod: String, CaseIterable, Identifiable {
-    case hourly = "Hourly", week = "7 days"
-    var id: String { rawValue }
-}
 struct TripWeatherSearchView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject private var weather: TripWeatherStore
@@ -152,8 +148,7 @@ struct TripWeatherSearchView: View {
     @State private var selected: WeatherLocation?
     @State private var message = ""
     @State private var busy = false
-    @State private var period: WeatherPeriod = .hourly
-    @State private var hourPage = 0
+    @State private var period: WeatherForecastPeriod = .hourly
     @StateObject private var request = TripRequestScope()
     var body: some View {
         ScrollView {
@@ -180,26 +175,25 @@ struct TripWeatherSearchView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
+                if !message.isEmpty { Text(message).font(.subheadline).foregroundStyle(.secondary) }
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationTitle("Weather").navigationBarTitleDisplayMode(.inline)
         .task {
             if selected == nil, matches.isEmpty, query.isEmpty, let city = destination ?? home { loadCity(city) }
         }
         .onDisappear { request.cancel(); busy = false }
-        .onChange(of: selected?.id) { _, _ in hourPage = 0 }
     }
     private func cityButton(_ city: City) -> some View {
         Button { loadCity(city) } label: {
-            Text(city.name).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36)
+            Text(city.name).lineLimit(1).minimumScaleFactor(0.9).frame(maxWidth: .infinity, minHeight: 36)
         }.buttonStyle(.bordered).tint(selected?.id == weather.locations[city.id]?.id ? .blue : .gray)
     }
     private func forecast(_ place: WeatherLocation, now: Date) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(place.name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(place.name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.9)
                 Spacer()
-                Button { Task { await weather.refresh(place, force: true); message = weather.errors[place.id] ?? "" } } label: {
+                Button { refreshSelected(place) } label: {
                     if weather.loading.contains(place.id) { ProgressView().frame(width: 44, height: 44) }
                     else { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }
                 }.disabled(weather.loading.contains(place.id)).accessibilityLabel("Refresh weather")
@@ -210,7 +204,7 @@ struct TripWeatherSearchView: View {
                     TripWeatherSymbol(symbol: result.symbol, size: 32)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(result.temperatures(result.celsius)).font(.title2.weight(.semibold))
-                        Text(result.condition).font(.caption)
+                        Text(result.condition).font(.subheadline)
                     }
                     Spacer()
                 }
@@ -218,66 +212,95 @@ struct TripWeatherSearchView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         TripRefreshStamp(success: weather.lastManualRefresh[place.id], fallback: "Last fetched " + result.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         TripVisibleTimeline(interval: 60) { context in Text(weather.status(for: place, now: context.date, offline: connection.isOffline)) }
-                    }.font(.caption2).foregroundStyle(.secondary)
+                    }.font(.footnote).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
                 }
-                Picker("Forecast period", selection: $period) { ForEach(WeatherPeriod.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-                Text(result.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)).map { "Local time · " + $0.identifier.replacingOccurrences(of: "_", with: " ") } ?? "Forecast times shown in UTC").font(.caption2).foregroundStyle(.secondary)
-                if period == .hourly { hourly(result, now: now) } else { weekly(result, now: now) }
+                forecastPicker
+                Text(result.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)).map { "Local time · " + $0.identifier.replacingOccurrences(of: "_", with: " ") } ?? "Forecast times shown in UTC").font(.footnote).foregroundStyle(.secondary)
+                if period == .hourly { hourly(result, now: now) } else { daily(result, now: now) }
             } else if weather.loading.contains(place.id) { ProgressView("Loading forecast…") }
             else { Text(connection.isOffline ? "Offline · no saved forecast for this city" : "Forecast unavailable. Try refresh.").font(.subheadline) }
         }.tripPanel()
     }
-    private func hourly(_ result: CachedWeather, now: Date) -> some View {
-        let hours = result.upcomingHours(now: now)
-        let pageSize = 4
-        let pages = max(1, (hours.count + pageSize - 1) / pageSize)
-        return VStack(spacing: 6) {
-            ForEach(Array(hours.dropFirst(hourPage * pageSize).prefix(pageSize))) { hour in
-                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 10))) {
-                    Text(stamp(hour.date, format: "EEE h a", result: result)).font(.subheadline).frame(minWidth: 75, alignment: .leading)
-                    TripWeatherSymbol(symbol: hour.symbol).frame(width: 30)
-                    Text(result.temperatures(hour.celsius)).font(.subheadline).monospacedDigit()
-                    Spacer(minLength: 2)
-                    Text(CachedWeather.precipitationPercent(hour.precipitationChance).map { "\($0)%" } ?? "—").font(.caption).foregroundStyle(.secondary)
-                        .accessibilityLabel(CachedWeather.precipitationPercent(hour.precipitationChance).map { "Chance of precipitation \($0) percent" } ?? "Chance of precipitation unavailable")
-                }.frame(minHeight: 36).accessibilityElement(children: .combine)
+    @ViewBuilder
+    private var forecastPicker: some View {
+        if typeSize >= .xxxLarge {
+            Picker("Forecast period", selection: $period) {
+                ForEach(WeatherForecastPeriod.allCases) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.menu).font(.body)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                Picker("Forecast period", selection: $period) {
+                    ForEach(WeatherForecastPeriod.allCases) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).fixedSize(horizontal: true, vertical: false)
+                Picker("Forecast period", selection: $period) {
+                    ForEach(WeatherForecastPeriod.allCases) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.menu).font(.body)
             }
-            if hours.isEmpty { Text("No upcoming hourly forecast saved. Refresh when connected.").font(.caption).foregroundStyle(.secondary) }
-            else {
-                HStack {
-                    Button("Earlier") { hourPage -= 1 }.disabled(hourPage == 0)
-                    Spacer()
-                    Text("\(hourPage + 1) / \(pages)").font(.caption)
-                    Spacer()
-                    Button("Later") { hourPage += 1 }.disabled(hourPage + 1 >= pages)
-                }.font(.subheadline).frame(minHeight: 44)
-                Text("Rain chance %").font(.caption2).foregroundStyle(.secondary)
-            }
-        }.onChange(of: pages) { _, _ in hourPage = min(hourPage, pages - 1) }
-    }
-    private func weekly(_ result: CachedWeather, now: Date) -> some View {
-        let days = result.upcomingDays(now: now)
-        return VStack(spacing: 2) {
-            ForEach(days) { day in dailyRow(day, result: result) }
-            if days.isEmpty { Text("No upcoming daily forecast saved. Refresh when connected.").font(.caption).foregroundStyle(.secondary) }
-            else { Text("High / low · rain %").font(.caption2).foregroundStyle(.secondary) }
         }
     }
-    private func dailyRow(_ day: CachedWeatherDay, result: CachedWeather) -> some View {
+    private func hourly(_ result: CachedWeather, now: Date) -> some View {
+        let hours = result.upcomingHours(now: now)
+        return LazyVStack(spacing: 10) {
+            ForEach(hours) { hour in
+                Group {
+                    if typeSize.isAccessibilitySize { hourlyRow(hour, result: result, stacked: true) }
+                    else {
+                        ViewThatFits(in: .horizontal) {
+                            hourlyRow(hour, result: result, stacked: false).fixedSize(horizontal: true, vertical: true)
+                            hourlyRow(hour, result: result, stacked: true)
+                        }
+                    }
+                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+            }
+            if hours.isEmpty { Text("No upcoming hourly forecast saved. Refresh when connected.").font(.subheadline).foregroundStyle(.secondary) }
+            else {
+                Text("Rain chance %").font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+    private func hourlyRow(_ hour: CachedWeatherHour, result: CachedWeather, stacked: Bool) -> some View {
+        (stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 10))) {
+            Text(stamp(hour.date, format: "EEE h a", result: result)).font(.body).frame(minWidth: 75, alignment: .leading)
+            TripWeatherSymbol(symbol: hour.symbol).frame(width: 30)
+            Text(result.temperatures(hour.celsius)).font(.body).monospacedDigit()
+            Text(CachedWeather.precipitationPercent(hour.precipitationChance).map { "Rain \($0)%" } ?? "Rain —")
+                .font(.subheadline).foregroundStyle(.secondary)
+                .accessibilityLabel(CachedWeather.precipitationPercent(hour.precipitationChance).map { "Chance of precipitation \($0) percent" } ?? "Chance of precipitation unavailable")
+        }
+    }
+    private func daily(_ result: CachedWeather, now: Date) -> some View {
+        let days = result.forecastDays(for: period, now: now)
+        return VStack(spacing: 2) {
+            ForEach(days) { day in
+                Group {
+                    if typeSize.isAccessibilitySize { dailyRow(day, result: result, stacked: true) }
+                    else {
+                        ViewThatFits(in: .horizontal) {
+                            dailyRow(day, result: result, stacked: false).fixedSize(horizontal: true, vertical: true)
+                            dailyRow(day, result: result, stacked: true)
+                        }
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if days.isEmpty { Text("No forecast saved for this period. Refresh when connected.").font(.subheadline).foregroundStyle(.secondary) }
+            else { Text("High / low · rain %").font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+    private func dailyRow(_ day: CachedWeatherDay, result: CachedWeather, stacked: Bool) -> some View {
         let chance = CachedWeather.precipitationPercent(day.precipitationChance)
         let label = [stamp(day.date, format: "EEEE MMMM d", result: result), day.condition,
                      "high " + result.temperatures(day.high), "low " + result.temperatures(day.low),
                      chance.map { "precipitation chance \($0) percent" } ?? "precipitation chance unavailable"].joined(separator: ", ")
-        return (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 8))) {
-                    Text(stamp(day.date, format: "EEE d", result: result)).font(.caption).frame(minWidth: 55, alignment: .leading)
+        return (stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 8))) {
+                    Text(stamp(day.date, format: "EEE d", result: result)).font(.subheadline).frame(minWidth: 55, alignment: .leading)
                     TripWeatherSymbol(symbol: day.symbol).frame(width: 26)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("H " + result.temperatures(day.high))
                         Text("L " + result.temperatures(day.low)).foregroundStyle(.secondary)
-                    }.font(.caption).monospacedDigit()
-                    Spacer(minLength: 2)
-                    Text(chance.map { "\($0)%" } ?? "—").font(.caption).foregroundStyle(.secondary)
+                    }.font(.subheadline).monospacedDigit()
+                    Text(chance.map { "\($0)%" } ?? "—").font(.subheadline).foregroundStyle(.secondary)
                 }.frame(minHeight: 32).accessibilityElement(children: .combine)
                     .accessibilityLabel(label)
     }
@@ -287,6 +310,15 @@ struct TripWeatherSearchView: View {
         formatter.locale = .current
         formatter.dateFormat = format
         return formatter.string(from: date)
+    }
+    private func refreshSelected(_ place: WeatherLocation) {
+        guard !weather.loading.contains(place.id) else { return }
+        message = ""
+        request.run { revision in
+            await weather.refresh(place, force: true)
+            guard request.accepts(revision), selected?.id == place.id else { return }
+            message = weather.errors[place.id] ?? ""
+        }
     }
     private func loadCity(_ city: City) {
         selected = nil; matches = []; message = ""; busy = true
@@ -299,7 +331,7 @@ struct TripWeatherSearchView: View {
         }
     }
     private func choose(_ place: WeatherLocation) {
-        selected = place; message = ""; hourPage = 0; busy = false
+        selected = place; message = ""; busy = false
         request.run { revision in
             await weather.refresh(place)
             guard request.accepts(revision) else { return }

@@ -89,9 +89,9 @@ struct TripDocumentRow: View {
             Image(systemName: document.kind == .boardingPass ? "airplane" : document.fileExtension == "pdf" ? "doc.richtext" : "photo").foregroundStyle(.blue).font(.title2).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(document.name).font(.headline)
-                Text([document.kind.rawValue, record?.name ?? "Unassigned", document.traveler].filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                Text([document.kind.rawValue, record?.name ?? "Unassigned", document.traveler].filter { !$0.isEmpty }.joined(separator: " · ")).font(.subheadline).foregroundStyle(.secondary)
                 Label(available ? "Available offline" : "Import again", systemImage: available ? "checkmark.circle" : "exclamationmark.circle")
-                    .font(.caption).foregroundStyle(available ? Color.secondary : Color.orange)
+                    .font(.subheadline).foregroundStyle(available ? Color.secondary : Color.orange)
             }
         }.padding(.vertical, 3).accessibilityElement(children: .combine)
     }
@@ -132,13 +132,13 @@ struct TripDocumentDetail: View {
                     Section {
                         Button { open(document, sharing: false) } label: { Label("Open original", systemImage: "doc.viewfinder") }
                             .disabled(!trip.documentAvailable(document))
-                        Label(trip.documentAvailable(document) ? "Available offline" : "Original copy missing — replace this document", systemImage: trip.documentAvailable(document) ? "checkmark.circle" : "exclamationmark.circle").font(.caption).foregroundStyle(.secondary)
+                        Label(trip.documentAvailable(document) ? "Available offline" : "Original copy missing — replace this document", systemImage: trip.documentAvailable(document) ? "checkmark.circle" : "exclamationmark.circle").font(.subheadline).foregroundStyle(.secondary)
                         LabeledContent("Type", value: document.kind.rawValue)
                         LabeledContent("Traveler", value: document.traveler.isEmpty ? "Not labeled" : document.traveler)
                         LabeledContent("Trip", value: trip.records.first { $0.id == document.recordID }?.name ?? "Unassigned")
                         LabeledContent("Original file", value: document.originalFilename)
                         LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: Int64(document.byteCount), countStyle: .file))
-                        Text("Added or replaced \(document.updatedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
+                        Text("Added or replaced \(document.updatedAt.formatted(date: .abbreviated, time: .shortened))").font(.subheadline).foregroundStyle(.secondary)
                         if !document.note.isEmpty { Text(document.note).textSelection(.enabled) }
                     }
                     Section {
@@ -180,7 +180,7 @@ struct TripDocumentLabels: View {
         NavigationStack {
             Form {
                 TripDocumentFields(name: $document.name, kind: $document.kind, traveler: $document.traveler, note: $document.note, recordID: $document.recordID)
-                if let error { Text(error).foregroundStyle(.red).font(.caption) }
+                if let error { Text(error).foregroundStyle(.red).font(.subheadline) }
             }.navigationTitle("Document details").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -256,17 +256,17 @@ struct TripDocumentImport: View {
                     PhotosPicker(selection: $photo, matching: .images, preferredItemEncoding: .current) { Label("Choose from Photos", systemImage: "photo") }
                     if let payload {
                         Text(payload.filename).font(.subheadline)
-                        Label(savedDocumentID != nil ? "Document saved · booking reference needs attention" : (trip.importDraft?.storageID == storageID ? "Import draft encrypted on this iPhone" : "Import draft not saved yet"), systemImage: "iphone").font(.caption).foregroundStyle(.secondary)
-                    } else { Text("PDFs and images · up to 25 MB per document").font(.caption).foregroundStyle(.secondary) }
+                        Label(savedDocumentID != nil ? "Document saved · booking reference needs attention" : (trip.importDraft?.storageID == storageID ? "Import draft encrypted on this iPhone" : "Import draft not saved yet"), systemImage: "iphone").font(.subheadline).foregroundStyle(.secondary)
+                    } else { Text("PDFs and images · up to 25 MB per document").font(.subheadline).foregroundStyle(.secondary) }
                     if busy { ProgressView("Preparing document…") }
                 }.disabled(busy)
                 if payload != nil {
                     TripDocumentFields(name: $name, kind: $kind, traveler: $traveler, note: $note, recordID: $recordID)
                     Section("Read details") {
                         Button { recognize() } label: { Label("Read text on this iPhone", systemImage: "text.viewfinder") }.disabled(busy)
-                        Text("Review recognized text before using it. Nothing is filled in automatically.").font(.caption).foregroundStyle(.secondary)
+                        Text("Review recognized text before using it. Nothing is filled in automatically.").font(.subheadline).foregroundStyle(.secondary)
                         if recognitionDone {
-                            if recognized.isEmpty { Text("No readable text found. You can still save the original.").font(.caption) }
+                            if recognized.isEmpty { Text("No readable text found. You can still save the original.").font(.subheadline) }
                             else {
                                 TextEditor(text: $recognized).frame(minHeight: 140).accessibilityLabel("Recognized document text")
                                 Button("Use text as note") { note = recognized }
@@ -276,7 +276,7 @@ struct TripDocumentImport: View {
                     }
                 }
                 if let error { Section {
-                    Text(error).foregroundStyle(.red).font(.caption)
+                    Text(error).foregroundStyle(.red).font(.subheadline)
                     if savedDocumentID != nil { Button("Retry booking reference") { save() }; Button("Keep document and finish") { finish() } }
                     else if let payload { Button("Retry preserving import draft") {
                         busy = true

@@ -95,17 +95,17 @@ struct PriceImageView: View {
             }
             if let data, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 160)
-                Label("Photo captured", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                Label("Photo captured", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(.secondary)
             }
             if live {
                 HStack {
-                    Text(capturingPhoto ? "Capturing photo…" : scanningPaused ? "Paused" : pricesHeld ? "Prices held" : "Scanning for prices…").font(.caption).foregroundStyle(.secondary)
+                    Text(capturingPhoto ? "Capturing photo…" : scanningPaused ? "Paused" : pricesHeld ? "Prices held" : "Scanning for prices…").font(.subheadline).foregroundStyle(.secondary)
                     Spacer()
                     Button {
                         scanningPaused.toggle()
                         if !scanningPaused { prices = []; page = 0; pricesHeld = false; captureID = nil; scanID = UUID() }
                     } label: { Label(scanningPaused ? "Resume" : "Pause", systemImage: scanningPaused ? "play.fill" : "pause.fill") }
-                        .font(.caption).frame(minHeight: 44).disabled(capturingPhoto)
+                        .font(.subheadline).frame(minHeight: 44).disabled(capturingPhoto)
                     Button { prices = []; page = 0; pricesHeld = false; scanningPaused = false; captureID = nil; capturingPhoto = false; referencePhoto = nil; scanID = UUID() } label: {
                         Label("Scan again", systemImage: "arrow.clockwise")
                     }.disabled(!pricesHeld)
@@ -125,7 +125,7 @@ struct PriceImageView: View {
                         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                 }.buttonStyle(.plain).accessibilityLabel("Edit recognized price " + Amount.format(price.value, currency: .named(store.source)))
             }
-            if !prices.isEmpty { Text("Tap a price to correct it.").font(.caption2).foregroundStyle(.secondary) }
+            if !prices.isEmpty { Text("Tap a price to correct it.").font(.footnote).foregroundStyle(.secondary) }
             if prices.count > pageSize { HStack { Button("Previous") { page -= 1 }.disabled(page == 0); Spacer(); Button("Next") { page += 1 }.disabled((page+1)*pageSize >= prices.count) } }
             if !prices.isEmpty {
                 ForEach(Array(prices.dropFirst(page * pageSize).prefix(pageSize))) { price in
@@ -135,12 +135,12 @@ struct PriceImageView: View {
                 }
             }
             if live && prices.isEmpty && noPriceFound && !scanningPaused {
-                Text("No prices found yet. Move closer to a currency symbol or choose Photo.").font(.caption).foregroundStyle(.secondary)
+                Text("No prices found yet. Move closer to a currency symbol or choose Photo.").font(.subheadline).foregroundStyle(.secondary)
             }
-            TripRateStatus(store: store).font(.caption2).foregroundStyle(.secondary)
-            if let checked = store.lastChecked { Text(checked).font(.caption2).foregroundStyle(.secondary) }
-            Text(error).font(.caption).foregroundStyle(.red)
-            Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.caption).foregroundStyle(.secondary)
+            TripRateStatus(store: store).font(.footnote).foregroundStyle(.secondary)
+            if let checked = store.lastChecked { Text(checked).font(.footnote).foregroundStyle(.secondary) }
+            Text(error).font(.subheadline).foregroundStyle(.red)
+            Text(includeUnmarked ? "Unmarked numbers use the From currency. Check for product IDs or quantities. Prices stay until you scan again." : "Only marked prices are read. Prices stay until you scan again. Check the currency and values.").font(.subheadline).foregroundStyle(.secondary)
             Spacer()
         }.padding().navigationTitle("Photo prices").navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsSavedPrices) { SavedConversionsView(saved: savedPrices) }
@@ -170,7 +170,7 @@ struct PriceImageView: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 Image(systemName: icon).font(.title2)
-                Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.9)
             }
             .frame(maxWidth: .infinity, minHeight: 58)
             .foregroundStyle(selected ? Color.white : Color.blue)
@@ -179,7 +179,7 @@ struct PriceImageView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .overlay(alignment: .topTrailing) { if selected { Image(systemName: "checkmark.circle.fill").font(.caption).padding(5).accessibilityHidden(true) } }
+        .overlay(alignment: .topTrailing) { if selected { Image(systemName: "checkmark.circle.fill").font(.subheadline).padding(5).accessibilityHidden(true) } }
             .accessibilityAddTraits(selected ? .isSelected : [])
     }
     private func captureLivePrices(_ text: String) {
@@ -277,11 +277,11 @@ struct TripTranslateView: View {
                             .buttonStyle(.plain).accessibilityLabel("Swap languages")
                         languageButton("To", selection: $target, side: .target)
                     }
-                    Text(languageStatus).font(.caption).foregroundStyle(.secondary)
+                    Text(languageStatus).font(.subheadline).foregroundStyle(.secondary)
                     Button("Prepare for offline use", systemImage: "arrow.down.circle") {
                         let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
                         if preparationConfig == next { preparationConfig?.invalidate() } else { preparationConfig = next }
-                    }.font(.caption).disabled(connection.isOffline || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
+                    }.font(.subheadline).disabled(connection.isOffline || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
                 }.tripPanel()
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -291,7 +291,7 @@ struct TripTranslateView: View {
                         Button { choosingTranslationPhoto = true } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "photo")
-                                Text("Photo").font(.caption)
+                                Text("Photo").font(.subheadline)
                                 if !liveTranslation && image != nil { Image(systemName: "checkmark.circle.fill").accessibilityHidden(true) }
                             }.frame(minWidth: 72, minHeight: 48).contentShape(Rectangle())
                         }
@@ -324,15 +324,15 @@ struct TripTranslateView: View {
                                 }.buttonStyle(.plain).padding(8).disabled(keepingPhoto).accessibilityLabel("Capture translation photo")
                             }
                         HStack {
-                            Text(keepingPhoto ? "Keeping photo…" : livePaused ? "Paused · results held" : noTextFound && liveText.isEmpty ? "No text found · move closer" : "Scanning for text…").font(.caption).foregroundStyle(.secondary)
+                            Text(keepingPhoto ? "Keeping photo…" : livePaused ? "Paused · results held" : noTextFound && liveText.isEmpty ? "No text found · move closer" : "Scanning for text…").font(.subheadline).foregroundStyle(.secondary)
                             Spacer()
                             Button(livePaused ? "Resume" : "Pause", systemImage: livePaused ? "play.fill" : "pause.fill") {
                                 if livePaused { resetTranslationScan() }
                                 else { keepingPhoto = true; liveCaptureID = UUID(); livePaused = true }
-                            }.font(.caption).frame(minHeight: 44).disabled(keepingPhoto)
-                            Button("Scan again", systemImage: "arrow.clockwise") { resetTranslationScan() }.font(.caption).frame(minHeight: 44).disabled(keepingPhoto)
+                            }.font(.subheadline).frame(minHeight: 44).disabled(keepingPhoto)
+                            Button("Scan again", systemImage: "arrow.clockwise") { resetTranslationScan() }.font(.subheadline).frame(minHeight: 44).disabled(keepingPhoto)
                         }
-                        Text("Translates as you point the camera at text.").font(.caption).foregroundStyle(.secondary)
+                        Text("Translates as you point the camera at text.").font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let image, let ui = UIImage(data: image) { Image(uiImage: ui).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 100) }
                     TextField("Enter text, or choose a photo to read it", text: $input, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder).accessibilityLabel("Text to translate")
@@ -348,7 +348,7 @@ struct TripTranslateView: View {
                     TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder).accessibilityLabel("Translation result, editable")
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 }.tripPanel()
-                if !message.isEmpty { Text(message).font(.caption).accessibilityAddTraits(.updatesFrequently) }
+                if !message.isEmpty { Text(message).font(.subheadline).accessibilityAddTraits(.updatesFrequently) }
                 if !liveTranslation { TripArtwork(symbol: "character.bubble") }
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
@@ -467,7 +467,7 @@ struct TripTranslateView: View {
     private func translationModeButton(_ title: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.9)
                 .padding(.horizontal, 12).frame(minHeight: 48)
                 .foregroundStyle(selected ? Color.white : Color.blue)
                 .background(selected ? Color.blue : Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
@@ -480,10 +480,10 @@ struct TripTranslateView: View {
     private func languageButton(_ role: String, selection: Binding<String>, side: TranslationLanguageSide) -> some View {
         Button { languageSide = side } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(role).font(.caption).foregroundStyle(.secondary)
+                Text(role).font(.subheadline).foregroundStyle(.secondary)
                 HStack(spacing: 6) {
                     Text(TranslationLanguageLabel.name(selection.wrappedValue))
-                        .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.65)
+                        .font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.9)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "magnifyingglass").font(.body)
                 }

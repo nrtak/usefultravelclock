@@ -24,8 +24,8 @@ struct PriceCorrectionView: View {
                         TextField("Amount", text: $amount).font(.title2).keyboardType(.decimalPad).focused($focused)
                             .accessibilityLabel("Correct price in " + currency.name)
                     }
-                    Text("Enter the amount shown on the original menu or tag. Its conversion updates after saving.").font(.caption).foregroundStyle(.secondary)
-                    if error { Text("Enter a positive amount or zero using your decimal separator.").foregroundStyle(.red).font(.caption) }
+                    Text("Enter the amount shown on the original menu or tag. Its conversion updates after saving.").font(.subheadline).foregroundStyle(.secondary)
+                    if error { Text("Enter a positive amount or zero using your decimal separator.").foregroundStyle(.red).font(.subheadline) }
                 }
             }.navigationTitle("Correct price").navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -47,7 +47,7 @@ struct CurrencyConverterView: View {
                             SavedConversionNotice(saved: saved) { showsSaved = true }
                             VStack(spacing: 0) {
                                 Text("Rates: Frankfurter · Bank rates may differ.")
-                                    .font(.caption2).foregroundStyle(.secondary)
+                                    .font(.footnote).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
                             }
                         }
@@ -94,7 +94,7 @@ struct CurrencyConverterView: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 26, weight: .regular)).foregroundStyle(.blue)
-                Text(title).font(.caption.weight(.semibold)).lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.75)
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(2).minimumScaleFactor(0.9)
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
@@ -146,10 +146,10 @@ struct CurrencyConverterView: View {
                 if let checked = store.lastChecked { TripRefreshStamp(success: store.lastManualRefresh, fallback: checked) }
                 TripRateStatus(store: store)
                 if store.cacheWriteFailed { Text("Couldn’t save rates.") }
-            }.font(.caption2).foregroundStyle(.secondary)
+            }.font(.footnote).foregroundStyle(.secondary)
             Spacer(minLength: 0)
             Button("Clear") { store.edit("", side: editingSide ?? store.inputSide) }
-                .font(.caption).frame(minHeight: 44).accessibilityLabel("Clear amount")
+                .font(.subheadline).frame(minHeight: 44).accessibilityLabel("Clear amount")
             Button { Task { await store.refresh(force: true) } } label: {
                 Group {
                     if store.isLoading { ProgressView() }
@@ -190,9 +190,9 @@ struct CurrencyConverterView: View {
                                 Spacer(minLength: 0)
                                 Text("\(Currency.named(code).symbol) \(store.result(for: code))")
                                     .font(.subheadline.weight(.medium)).monospacedDigit()
-                                    .lineLimit(1).minimumScaleFactor(0.65)
+                                    .lineLimit(1).minimumScaleFactor(0.9)
                               }
-                                Text(Currency.named(code).countryLabel).font(.caption2)
+                                Text(Currency.named(code).countryLabel).font(.footnote)
                                     .foregroundStyle(.secondary).lineLimit(1)
                             }.frame(maxWidth: .infinity, minHeight: 36, alignment: .leading).padding(8)
                                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
@@ -204,7 +204,7 @@ struct CurrencyConverterView: View {
                     }
                 }.padding(2)
             if store.favorites.isEmpty {
-                Text("Star currencies in Search to keep them here.").font(.caption).foregroundStyle(.secondary)
+                Text("Star currencies in Search to keep them here.").font(.subheadline).foregroundStyle(.secondary)
             }
         }
     }
@@ -214,9 +214,9 @@ struct CurrencyConverterView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(side == .source ? "From" : "To").font(.caption).foregroundStyle(.secondary)
+                        Text(side == .source ? "From" : "To").font(.subheadline).foregroundStyle(.secondary)
                         (Text(code).fontWeight(.semibold) + Text(" (\(Currency.named(code).name))"))
-                            .font(.headline).lineLimit(1).minimumScaleFactor(0.65)
+                            .font(.headline).lineLimit(1).minimumScaleFactor(0.9)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "magnifyingglass")

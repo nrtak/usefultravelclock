@@ -33,6 +33,13 @@ enum HomeSection: String, CaseIterable, Identifiable {
     }
     static func encode(_ items: [Self]) -> String { items.map(\.rawValue).joined(separator: ",") }
 
+    static func moving(_ item: Self, to target: Self, in saved: String) -> String {
+        var items = decode(saved)
+        guard let from = items.firstIndex(of: item), let to = items.firstIndex(of: target), from != to else { return saved }
+        items.remove(at: from); items.insert(item, at: to)
+        return encode(items)
+    }
+
     static func selecting(_ item: Self, in saved: String, capacity: Int, replacing old: Self? = nil) -> String {
         guard capacity > 0 else { return saved }
         var items = decode(saved)
@@ -103,7 +110,7 @@ struct HomeCustomizationView: View {
                             .accessibilityHint(visible.count >= capacity ? "Choose a Home card to replace" : "Add to Home")
                     }
                     if capacity == 0 {
-                        Text("No cards fit at the current screen and text size. Your choices stay saved.").font(.caption).foregroundStyle(.secondary)
+                        Text("No cards fit at the current screen and text size. Your choices stay saved.").font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
                 Section {

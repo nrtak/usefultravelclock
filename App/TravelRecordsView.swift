@@ -36,7 +36,7 @@ struct TravelRecordsView: View {
                         Section("Trip essentials") {
                             NavigationLink { TripDocumentsView() } label: { Label("Documents", systemImage: "folder") }
                             if inbox.url != nil, trip.importDraft != nil {
-                                Text("Finish or discard your current document draft in Documents before importing the next file.").font(.caption).foregroundStyle(.secondary)
+                                Text("Finish or discard your current document draft in Documents before importing the next file.").font(.subheadline).foregroundStyle(.secondary)
                             }
                             if let currency {
                                 NavigationLink { TripReadinessView(currency: currency, cities: cities) } label: { Label("Before you leave", systemImage: "checklist") }
@@ -62,7 +62,7 @@ struct TravelRecordsView: View {
                                 }
                             }
                             if next == nil && today.isEmpty { Text("No upcoming bookings. Add your next trip when you’re ready.").foregroundStyle(.secondary) }
-                            Text("Today follows your iPhone’s calendar date. Booking times show each location’s time zone.").font(.caption).foregroundStyle(.secondary)
+                            Text("Today follows your iPhone’s calendar date. Booking times show each location’s time zone.").font(.subheadline).foregroundStyle(.secondary)
                         }
                     }
                     if !trip.drafts.isEmpty {
@@ -71,13 +71,13 @@ struct TravelRecordsView: View {
                                 Button { draft = saved } label: {
                                     VStack(alignment: .leading, spacing: 5) {
                                         Label("Resume " + (saved.name.isEmpty ? saved.kind : saved.name), systemImage: "square.and.pencil")
-                                        if let date = saved.draftSavedAt { Text("Saved " + date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary) }
+                                        if let date = saved.draftSavedAt { Text("Saved " + date.formatted(date: .abbreviated, time: .shortened)).font(.subheadline).foregroundStyle(.secondary) }
                                     }
                                 }.accessibilityHint("Continue editing this saved draft")
                                     .swipeActions { Button("Discard", role: .destructive) { discard = saved } }
                                     .accessibilityAction(named: "Discard draft") { discard = saved }
                             }
-                            Text("Drafts are encrypted on this iPhone. Swipe a draft to discard it.").font(.caption).foregroundStyle(.secondary)
+                            Text("Drafts are encrypted on this iPhone. Swipe a draft to discard it.").font(.subheadline).foregroundStyle(.secondary)
                         }
                     }
                     if let document = nextDocument {
@@ -104,9 +104,9 @@ struct TravelRecordsView: View {
                                     Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
                                     Text(record.timingLabel(at: Date())).font(.subheadline).foregroundStyle(.secondary)
                                     Text((record.kind == "Hotel" ? "Check-in · " : "Departure · ") + record.timeLabel(start: true)).font(.subheadline)
-                                    Text((record.kind == "Hotel" ? "Check-out · " : "Arrival · ") + record.timeLabel(start: false)).font(.caption).foregroundStyle(.secondary)
-                                    if !record.reference.isEmpty { Text(record.reference).font(.caption) }
-                                    if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.caption).lineLimit(2) }
+                                    Text((record.kind == "Hotel" ? "Check-out · " : "Arrival · ") + record.timeLabel(start: false)).font(.subheadline).foregroundStyle(.secondary)
+                                    if !record.reference.isEmpty { Text(record.reference).font(.subheadline) }
+                                    if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.subheadline).lineLimit(2) }
                                 }
                             }.foregroundStyle(Color.primary).padding(.vertical, 4)
                         }.buttonStyle(.plain).accessibilityElement(children: .combine).accessibilityHint("Edit travel details and view attached documents")
@@ -208,31 +208,31 @@ struct RecordForm: View {
                 DatePicker(record.kind == "Hotel" ? "Check-out" : "Arrival / return", selection: $record.end)
                     .environment(\.timeZone, record.zone(start: false))
                 timeZoneButton(start: false)
-                Text("Choose each location to enter its local time. Changing a time zone preserves the scheduled instant; review the displayed dates and times.").font(.caption).foregroundStyle(.secondary)
+                Text("Choose each location to enter its local time. Changing a time zone preserves the scheduled instant; review the displayed dates and times.").font(.subheadline).foregroundStyle(.secondary)
                 if let warning = record.dateWarning { Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.subheadline) }
             }
             Section("Notes") {
                 TextEditor(text: $record.note).frame(minHeight: 180).accessibilityLabel("Travel notes")
-                if !draftStatus.isEmpty { Text(draftStatus).font(.caption).foregroundStyle(.secondary) }
+                if !draftStatus.isEmpty { Text(draftStatus).font(.subheadline).foregroundStyle(.secondary) }
             }
             Section("Reminder") {
                 Picker(record.kind == "Hotel" ? "Before check-in" : "Before departure", selection: Binding(get: { record.reminderMinutes ?? 0 }, set: { record.reminderMinutes = $0 == 0 ? nil : $0 })) {
                     Text("Off").tag(0)
                     Text("15 minutes").tag(15); Text("30 minutes").tag(30); Text("1 hour").tag(60); Text("2 hours").tag(120); Text("1 day").tag(1440)
                 }
-                Text("Scheduled for the booking’s actual time, even if your phone changes time zones. Notification text keeps booking details private.").font(.caption).foregroundStyle(.secondary)
-                if let fire = TripReminderStore.fireDate(for: record), fire <= Date() { Text("This reminder time has passed. Choose a shorter lead time or update the departure/check-in date.").font(.caption).foregroundStyle(.orange) }
+                Text("Scheduled for the booking’s actual time, even if your phone changes time zones. Notification text keeps booking details private.").font(.subheadline).foregroundStyle(.secondary)
+                if let fire = TripReminderStore.fireDate(for: record), fire <= Date() { Text("This reminder time has passed. Choose a shorter lead time or update the departure/check-in date.").font(.subheadline).foregroundStyle(.orange) }
                 TripReminderStatus(store: trip.reminders)
             }
             if trip.records.contains(where: { $0.id == record.id }) {
                 TripRecordDocuments(recordID: record.id)
                 Section { Button("Delete travel entry", role: .destructive) { deleting = true } }
             } else {
-                Section("Documents") { Text("Save these travel details, then add PDFs or images.").font(.caption).foregroundStyle(.secondary) }
+                Section("Documents") { Text("Save these travel details, then add PDFs or images.").font(.subheadline).foregroundStyle(.secondary) }
             }
             Section {
                 if let error = trip.error {
-                    Text(error).font(.caption).foregroundStyle(.red)
+                    Text(error).font(.subheadline).foregroundStyle(.red)
                     Button("Retry save") { save() }.disabled(saving || !trip.unlocked || !hasDetails || record.dateWarning != nil)
                 }
             }
@@ -284,7 +284,7 @@ struct RecordForm: View {
                     }
                 }
                 if let url = TripBookingLink.url(record.bookingWebsite) { Link(destination: url) { Label("Open booking website", systemImage: "arrow.up.right.square") } }
-                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Trip Info does not sign in or sync bookings.").font(.caption).foregroundStyle(.secondary)
+                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Trip Info does not sign in or sync bookings.").font(.subheadline).foregroundStyle(.secondary)
             }
     }
     private func save() {
@@ -317,6 +317,6 @@ struct RecordForm: View {
 
 struct TripReminderStatus: View {
     @ObservedObject var store: TripReminderStore
-    var body: some View { if let message = store.message { Text(message).font(.caption).foregroundStyle(.orange) } }
+    var body: some View { if let message = store.message { Text(message).font(.subheadline).foregroundStyle(.orange) } }
 }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct TravelDashboard: View {
     @ObservedObject var currency: ConverterStore
@@ -13,9 +14,14 @@ struct TravelDashboard: View {
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
     @AppStorage("trip-navigation-tab-v2") private var tab = 0
     @AppStorage("trip-home-sections") private var savedHomeSections = HomeSection.defaults
+    @AppStorage("trip-tab-order") private var savedTabs = DashboardTab.defaults
+    @State private var editingHome = false
+    @State private var editingTabs = false
+    @ScaledMetric(relativeTo: .title) private var comparisonColumnWidth: CGFloat = 170
     @State private var editingCities = false
     @State private var cityEditFeedback = 0
     @State private var customizingHome = false
+    @State private var customizingTabs = false
     @State private var homeCapacity = 0
     @State private var tool: DashboardTool?
     @State private var homeRecord: TravelRecord?
@@ -26,40 +32,55 @@ struct TravelDashboard: View {
     private var destination: City? { clock.allCities.first { $0.id == destinationID } }
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack {
-                home.navigationTitle("Trip Info").toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Customize") { customizingHome = true }
-                            .tripToolbarButtonStyle().accessibilityLabel("Customize Home")
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { settings = true } label: { Image(systemName: "gearshape") }
-                            .tripToolbarButtonStyle().accessibilityLabel("Settings")
-                    }
-                }
-            }.tabItem { Label("Home", systemImage: "house") }.tag(0)
-            NavigationStack {
-                TravelRecordsView(currency: currency, cities: readinessCities, acceptsIncomingDocuments: tab == 1 && !hasModal).navigationTitle("My Trip")
-            }.tabItem { Label("My Trip", systemImage: "suitcase") }.tag(1)
-            NavigationStack { tools.navigationTitle("Tools") }
-                .tabItem { Label("Tools", systemImage: "square.grid.2x2") }.tag(2)
+            ForEach(DashboardTab.decode(savedTabs)) { item in
+                tabContent(item)
+                    .toolbar(editingTabs ? .hidden : .automatic, for: .tabBar)
+                    .tabItem { Label(item.title, systemImage: item.symbol) }.tag(item.rawValue)
+            }
+        }
+        .background {
+            TripTabBarHold(enabled: phase == .active && !hasModal && !editingTabs) {
+                guard phase == .active && !hasModal && !editingTabs else { return }
+                editingHome = false
+                if typeSize.isAccessibilitySize { customizingTabs = true }
+                else { editingTabs = true }
+            }.frame(width: 0, height: 0)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if editingTabs {
+                DashboardTabEditor(savedTabs: $savedTabs, selection: $tab) { editingTabs = false }
+            }
         }
         .tripNavigationAppearance()
         .tint(.blue)
         .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock").font(.title)) } }
         .sheet(isPresented: Binding(get: { picker != nil && tool == nil }, set: { if !$0 { picker = nil } }), onDismiss: routeInbox) { cityPicker }
         .sheet(isPresented: $customizingHome, onDismiss: routeInbox) { HomeCustomizationView(savedSections: $savedHomeSections, capacity: homeCapacity) }
+        .sheet(isPresented: $customizingTabs, onDismiss: routeInbox) {
+            NavigationStack {
+                DashboardTabSettings().toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Done") { customizingTabs = false } }
+                }
+            }
+        }
         .sheet(item: $tool, onDismiss: routeInbox) { selection in toolScreen(selection) }
         .sheet(item: $homeRecord, onDismiss: routeInbox) { RecordEditor(record: $0) }
         .sheet(isPresented: $settings, onDismiss: routeInbox) { TripSettingsView() }
         .sheet(item: $homeDocument, onDismiss: { trip.clearDocumentPreviews(); routeInbox() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
         .onChange(of: documentInbox.url) { _, _ in routeInbox() }
-        .onAppear { if !(0...2).contains(tab) { tab = 0 }; routeInbox() }
-        .onChange(of: tab) { _, _ in shift = 0; editingCities = false }
+        .onAppear { repairTabSelection(); routeInbox() }
+        .onChange(of: savedTabs) { _, _ in repairTabSelection() }
+        .onChange(of: typeSize) { _, size in
+            if size.isAccessibilitySize && editingTabs {
+                editingTabs = false
+                if phase == .active && !hasModal { customizingTabs = true }
+            }
+        }
+        .onChange(of: tab) { _, value in shift = 0; editingCities = false; if value != 0 { editingHome = false } }
         .onChange(of: tool) { _, value in if value == nil { shift = 0; editingCities = false; picker = nil } }
         .onChange(of: phase) { _, value in
-            if value == .background { homeDocument = nil; trip.lock(); homeRecord = nil; picker = nil; shift = 0; editingCities = false }
+            if value == .background { editingHome = false; editingTabs = false; homeDocument = nil; trip.lock(); homeRecord = nil; picker = nil; shift = 0; editingCities = false }
             if value == .active { Task { await trip.unlock(); if trip.unlocked { await trip.reminders.synchronize(records: trip.records) }; routeInbox() } }
         }
         .task { await trip.unlock(); await currency.refresh() }
@@ -68,10 +89,54 @@ struct TravelDashboard: View {
         .environmentObject(trip)
     }
 
-    private var hasModal: Bool { tool != nil || homeRecord != nil || homeDocument != nil || picker != nil || settings || customizingHome }
+    @ViewBuilder
+    private func tabContent(_ item: DashboardTab) -> some View {
+        switch item {
+        case .home:
+            NavigationStack {
+                home.navigationTitle("Trip Info").toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(editingHome ? "Done" : "Customize") {
+                            if editingHome { editingHome = false } else { customizingHome = true }
+                        }.tripToolbarButtonStyle().accessibilityLabel(editingHome ? "Finish editing Home" : "Customize Home")
+                    }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if editingHome { Button { customizingHome = true } label: { Image(systemName: "plus") }.accessibilityLabel("Add Home card") }
+                        settingsButton
+                    }
+                }
+            }
+        case .trip:
+            NavigationStack {
+                TravelRecordsView(currency: currency, cities: readinessCities, acceptsIncomingDocuments: tab == 1 && !hasModal)
+                    .navigationTitle("My Trip")
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { settingsButton } }
+            }
+        case .tools:
+            NavigationStack {
+                tools.navigationTitle("Tools")
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { settingsButton } }
+            }
+        }
+    }
+    private var settingsButton: some View {
+        Button { settings = true } label: { Image(systemName: "gearshape") }
+            .tripToolbarButtonStyle().accessibilityLabel("Settings")
+    }
+    private func openTrip() {
+        if DashboardTab.decode(savedTabs).contains(.trip) { tab = DashboardTab.trip.rawValue }
+        else { tool = .trip }
+    }
+    private func repairTabSelection() {
+        let visible = DashboardTab.decode(savedTabs)
+        if !visible.contains(where: { $0.rawValue == tab }) { tab = visible[0].rawValue }
+    }
+
+    private var hasModal: Bool { tool != nil || homeRecord != nil || homeDocument != nil || picker != nil || settings || customizingHome || customizingTabs }
     private func routeInbox() {
         guard phase == .active, documentInbox.url != nil, !hasModal else { return }
-        tab = 1
+        editingHome = false; editingTabs = false
+        openTrip()
     }
     private var cityPicker: some View {
         TripCityPicker { city in
@@ -87,7 +152,11 @@ struct TravelDashboard: View {
     }
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
-        DashboardHome(currency: currency, savedSections: $savedHomeSections, capacity: $homeCapacity, active: tab == 0 && tool == nil,
+        DashboardHome(currency: currency, savedSections: $savedHomeSections, capacity: $homeCapacity, active: phase == .active && tab == 0 && !hasModal && !editingHome && !editingTabs,
+            editingLayout: editingHome, beginEditing: {
+                guard phase == .active && !hasModal && tab == 0 else { return }
+                editingTabs = false; editingHome = true
+            },
             open: openHomeSection, chooseCity: { picker = $0 },
             openRecord: { homeRecord = $0 }, openDocument: { document in
                 do { homeDocument = TripPreviewFile(url: try trip.previewURL(document)) }
@@ -98,7 +167,7 @@ struct TravelDashboard: View {
         switch section {
         case .clocks: tool = .world
         case .currency: tool = .currency
-        case .trip: tab = 1
+        case .trip: openTrip()
         case .weather: tool = .weather
         case .documents: tool = .documents
         case .readiness: tool = .readiness
@@ -119,9 +188,9 @@ struct TravelDashboard: View {
         Button { tool = selection } label: {
             HStack(spacing: 12) {
                 Image(systemName: symbol).foregroundStyle(.blue).frame(width: 28)
-                VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(detail).font(.caption).foregroundStyle(.secondary) }
+                VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(detail).font(.subheadline).foregroundStyle(.secondary) }
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.subheadline).foregroundStyle(.secondary)
             }.foregroundStyle(.primary).padding(.vertical, 6)
         }.buttonStyle(.plain)
     }
@@ -141,6 +210,7 @@ struct TravelDashboard: View {
                     case .weather: TripWeatherSearchView(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
                     case .documents: TripDocumentsView()
                     case .readiness: TripReadinessView(currency: currency, cities: readinessCities)
+                    case .trip: TravelRecordsView(currency: currency, cities: readinessCities).navigationTitle("My Trip")
                     case .currency: EmptyView()
                     }
                 }.toolbar { if selection != .translate { ToolbarItem(placement: .confirmationAction) { Button("Done") { tool = nil } } } }
@@ -159,10 +229,10 @@ struct TravelDashboard: View {
                 if shift != 0 { Text("Comparing times").font(.headline) }
                 HStack {
                     Text(editingCities ? "Drag cities to reorder · Tap pencil to change" : "Hold a city to edit or reorder")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(.secondary)
                     if editingCities {
                         Spacer()
-                        Button("Done") { editingCities = false }.font(.caption).frame(minHeight: 44)
+                        Button("Done") { editingCities = false }.font(.subheadline).frame(minHeight: 44)
                     }
                 }
                 clocks(at: date, selectable: false)
@@ -175,7 +245,7 @@ struct TravelDashboard: View {
                             .offset(y: 4).allowsHitTesting(false).accessibilityHidden(true)
                     }
                     .accessibilityLabel("Compare city times")
-                    .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now"); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.caption).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now"); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.subheadline).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 if !typeSize.isAccessibilitySize && !editingCities { TripArtwork(symbol: "globe") }
             Spacer(minLength: 0)
             }.padding(12)
@@ -215,7 +285,7 @@ struct TravelDashboard: View {
         }
     }
     private func comparisonCityRow(_ city: City, at date: Date) -> some View {
-        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
+        (typeSize >= .xxLarge ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
             if editingCities {
                 Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
                 Button { picker = "city:" + city.id } label: {
@@ -223,14 +293,14 @@ struct TravelDashboard: View {
                 }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
             }
             VStack(alignment: .leading) {
-                Text(city.name).font(.headline).lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7)
-                Text(city.country).font(.caption).lineLimit(1).foregroundStyle(.secondary)
+                Text(city.name).font(.headline).lineLimit(2)
+                Text(city.country).font(.subheadline).lineLimit(1).foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                Text(time(date, zone: city.timeZoneID)).font(.title3).monospacedDigit()
+                Text(time(date, zone: city.timeZoneID)).font(.title2.weight(.semibold)).monospacedDigit()
                 if let day = comparisonDay(date, zone: city.timeZoneID) {
-                    Text(day).font(.caption).foregroundStyle(.secondary)
+                    Text(day).font(.subheadline).foregroundStyle(.secondary)
                 }
             }
         }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
@@ -249,40 +319,68 @@ struct TravelDashboard: View {
         order.swapAt(from, to)
         clock.edit { clock.cityIDs = order; clock.sortOrder = .custom }
     }
-    private func clocks(at date: Date, selectable: Bool, compact: Bool = false) -> some View {
-        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .top, spacing: 10))) {
-            clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, color: .green, selectable: selectable, compact: compact)
-            clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID ?? "UTC", date: date, color: .blue, selectable: selectable, compact: compact)
+    @ViewBuilder
+    private func clocks(at date: Date, selectable: Bool) -> some View {
+        let font = UIFont.monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
+        let strings = [time(date, zone: clock.homeTimeZoneID), destination.map { time(date, zone: $0.timeZoneID) } ?? "—"]
+        let measured = strings.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        let columnWidth = max(comparisonColumnWidth, (measured * comparisonColumnWidth / 170).rounded(.up) + 24)
+        if typeSize.isAccessibilitySize {
+            stackedClocks(at: date, selectable: selectable)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 10) {
+                    homeComparisonClock(at: date, selectable: selectable).frame(width: columnWidth)
+                    destinationComparisonClock(at: date, selectable: selectable).frame(width: columnWidth)
+                }
+                stackedClocks(at: date, selectable: selectable)
+            }
         }
     }
-    private func clockBox(role: String, name: String, zone: String, date: Date, color: Color, selectable: Bool, compact: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(role).font(.caption).frame(maxWidth: .infinity)
+    private func stackedClocks(at date: Date, selectable: Bool) -> some View {
+        VStack(spacing: 12) {
+            homeComparisonClock(at: date, selectable: selectable)
+            destinationComparisonClock(at: date, selectable: selectable)
+        }
+    }
+    private func homeComparisonClock(at date: Date, selectable: Bool) -> some View {
+        clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, selectable: selectable)
+    }
+    private func destinationComparisonClock(at date: Date, selectable: Bool) -> some View {
+        clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID, date: date, selectable: selectable)
+    }
+    private func clockBox(role: String, name: String, zone: String?, date: Date, selectable: Bool) -> some View {
+        let displayedTime = zone.map { time(date, zone: $0) } ?? "—"
+        return VStack(spacing: 8) {
+            Text(role).font(.subheadline).frame(maxWidth: .infinity)
             if selectable {
                 Button { picker = role == "Home" ? "home" : "destination" } label: {
-                    HStack { Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75); Image(systemName: "pencil").font(.caption) }
+                    Label(name, systemImage: "pencil").font(.title3.weight(.bold)).lineLimit(2, reservesSpace: true)
                 }.frame(maxWidth: .infinity).buttonStyle(.plain)
             } else {
-                Text(name).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.75).frame(maxWidth: .infinity)
+                Text(name).font(.title3.weight(.bold)).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
-            Text(time(date, zone: zone)).frame(maxWidth: .infinity).font(.title2.weight(.semibold)).monospacedDigit().minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.7).lineLimit(1)
-                .accessibilityLabel(role + " time " + time(date, zone: zone))
-            if compact {
-                HStack(spacing: 6) {
-                    if clock.showAnalog { TripAnalogClock(date: date, zone: zone) }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(TimeEngine.compactDate(date, timeZoneID: zone)).font(.caption).lineLimit(1).minimumScaleFactor(0.75)
-                        if role == "Destination" { Text(difference(zone: zone, date: date)).font(.caption2).lineLimit(1) }
-                    }
+            ViewThatFits(in: .horizontal) {
+                Text(displayedTime).fixedSize(horizontal: true, vertical: false)
+                Text(displayedTime).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }.font(.title.weight(.semibold)).monospacedDigit()
+                .frame(maxWidth: .infinity).accessibilityLabel(role + " time " + displayedTime)
+            if clock.showAnalog {
+                Group {
+                    if let zone { TripAnalogClock(date: date, zone: zone) }
+                    else { Color.clear.frame(width: 54, height: 54).accessibilityHidden(true) }
                 }.frame(maxWidth: .infinity)
-            } else {
-                if clock.showAnalog { TripAnalogClock(date: date, zone: zone).frame(maxWidth: .infinity) }
-                Text(comparisonDate(date, zone: zone)).font(.caption).frame(maxWidth: .infinity)
-                Text(role == "Destination" ? difference(zone: zone, date: date) : "")
-                    .font(.caption2).multilineTextAlignment(.center).lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 16, alignment: .top)
             }
-        }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor)).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
+            Text(zone.map { comparisonDate(date, zone: $0) } ?? "Choose a city")
+                .font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+            Text(role == "Destination" ? zone.map { difference(zone: $0, date: date) } ?? "" : "")
+                .font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor))
+            .frame(maxWidth: .infinity, alignment: .top).padding(12)
+            .background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
             .modifier(TripCityLongPress(enabled: !selectable) { picker = role == "Home" ? "home" : "destination" })
     }
 
@@ -364,6 +462,6 @@ extension TravelDashboard {
 
 
 enum DashboardTool: String, Identifiable {
-    case currency, translate, world, units, weather, documents, readiness
+    case currency, translate, world, units, weather, documents, readiness, trip
     var id: String { rawValue }
 }

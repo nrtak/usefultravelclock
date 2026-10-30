@@ -48,7 +48,7 @@ struct ClocksView: View {
 
     private func sectionHeading(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
-            .font(.caption.weight(.semibold))
+            .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8).padding(.vertical, 6)
             .background {
@@ -69,7 +69,7 @@ struct ClocksView: View {
             if store.pendingRemovalIDs.contains(city.id) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(city.name).font(.subheadline.weight(.semibold)).strikethrough()
-                    Text("Removed · tap Restore or Undo before Done").font(.caption)
+                    Text("Removed · tap Restore or Undo before Done").font(.subheadline)
                 }.foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 Button("Restore") { store.restorePendingCity(city.id) }
                     .font(.subheadline.weight(.bold)).padding(.leading, 8)
@@ -77,12 +77,12 @@ struct ClocksView: View {
             if editing {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(store.nicknames[city.id]?.isEmpty == false ? store.nicknames[city.id]! : city.name)
-                        .font(.headline).lineLimit(1).minimumScaleFactor(0.7)
-                    if store.nicknames[city.id]?.isEmpty == false { Text(city.name).font(.caption) }
+                        .font(.headline).lineLimit(1).minimumScaleFactor(0.9)
+                    if store.nicknames[city.id]?.isEmpty == false { Text(city.name).font(.subheadline) }
                     let time = TimeEngine.zonedTime(store.displayDate(from: now), timeZoneID: city.timeZoneID)
                     Text(store.use24 ? String(format: "%02d:%02d", time.hour24, time.minute) : time.hm + " " + time.period.uppercased())
                         .font(.title3.weight(.semibold).monospacedDigit())
-                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)) }
+                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.subheadline.weight(.semibold)) }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
                     .onDrag {
                         draggedID = city.id
@@ -209,7 +209,7 @@ struct CityRowView: View {
                         Text(name).font(.headline)
                         Text(city.name).font(.subheadline)
                     } else { Text(city.name).font(.headline) }
-                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.caption.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 3).background(Color.blue.opacity(0.15), in: Capsule()) }
+                    if store.favoriteIDs.contains(city.id) { Label("Pinned", systemImage: "pin.fill").font(.subheadline.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 3).background(Color.blue.opacity(0.15), in: Capsule()) }
                     Text(subtitle).font(.subheadline)
                 }
                 .fixedSize(horizontal: false, vertical: true)

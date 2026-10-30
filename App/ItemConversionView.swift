@@ -67,7 +67,7 @@ struct ItemConversionView: View {
         VStack(spacing: 10) {
             CurrencyPairControl(store: store)
             Divider().padding(.vertical, 4)
-            TripRateStatus(store: store).font(.caption2).foregroundStyle(.secondary)
+            TripRateStatus(store: store).font(.footnote).foregroundStyle(.secondary)
             ForEach(Array(items.enumerated()).filter { $0.offset / pageSize == page }, id: \.element.id) { pair in
                 HStack {
                     Text("Item \(pair.offset + 1)").font(.subheadline)
@@ -92,7 +92,7 @@ struct ItemConversionView: View {
             }
             HStack {
                 Button { page -= 1 } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(page == 0).accessibilityLabel("Previous items")
-                Text("\(page + 1) / \(pages)").font(.caption)
+                Text("\(page + 1) / \(pages)").font(.subheadline)
                 Button { page += 1 } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(page + 1 == pages).accessibilityLabel("Next items")
                 Spacer()
                 Button("Add item", systemImage: "plus") {
@@ -104,7 +104,7 @@ struct ItemConversionView: View {
                 totalColumn("Total · \(store.source)", value: total, code: store.source)
                 totalColumn("Converted · \(store.target)", value: converted, code: store.target)
             }.padding(.top, 4)
-            Text(total == nil ? "Check the selected amount." : (total! < 0 ? "Subtractions exceed the prices. Adjust an item to use the total." : rateMessage)).font(.caption2).foregroundStyle(.secondary)
+            Text(total == nil ? "Check the selected amount." : (total! < 0 ? "Subtractions exceed the prices. Adjust an item to use the total." : rateMessage)).font(.footnote).foregroundStyle(.secondary)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 6) {
                 ForEach(["1","2","3","4","5","6","7","8","9",Locale.current.decimalSeparator ?? ".","0","⌫"], id: \.self) { key in
                     Button { enter(key) } label: { Text(key).font(.title3).frame(maxWidth: .infinity, minHeight: 44) }
@@ -127,9 +127,9 @@ struct ItemConversionView: View {
     }
     private func totalColumn(_ label: String, value: Decimal?, code: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption)
+            Text(label).font(.subheadline)
             Text(value.map { Currency.named(code).symbol + " " + Amount.format($0, currency: .named(code)) } ?? "—")
-                .font(.title2.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                .font(.title2.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.9)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
             .background(Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.blue.opacity(0.25)))
