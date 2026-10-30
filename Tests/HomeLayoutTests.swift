@@ -91,12 +91,19 @@ final class HomeLayoutTests: XCTestCase {
             let attachment = XCTAttachment(image: image); attachment.lifetime = .keepAlways; add(attachment)
         }
         let field = try XCTUnwrap(inputs.first, "The compact card must retain an editable amount instead of its fallback title")
+        XCTAssertEqual(inputs.count, 2, "Both currencies must be editable directly on Home")
         XCTAssertGreaterThan(field.bounds.height, 0)
         field.text = "25"
         field.sendActions(for: .editingChanged)
         XCTAssertEqual(converter.value(for: "EUR"), 20)
+        let reverse = try XCTUnwrap(inputs.dropFirst().first)
+        reverse.text = "40"
+        reverse.sendActions(for: .editingChanged)
+        XCTAssertEqual(converter.value(for: "USD"), 50)
+        XCTAssertEqual(converter.inputSide, .target)
         let reopened = ConverterStore(preferences: defaults, cacheURL: ratesURL, isOffline: { true })
-        XCTAssertEqual(reopened.value(for: "USD"), 25)
+        XCTAssertEqual(reopened.value(for: "USD"), 50)
+        XCTAssertEqual(reopened.value(for: "EUR"), 40)
     }
     @MainActor
     func testHomeHasNoScrollViewAtSmallAndLargeTextSizes() throws {

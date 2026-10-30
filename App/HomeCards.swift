@@ -140,7 +140,8 @@ struct HomeCurrencyCard: View {
     let active: Bool
     let editingChanged: (Bool) -> Void
     let openConverter: () -> Void
-    @FocusState private var editing: Bool
+    @FocusState private var editingSide: AmountSide?
+    private var editing: Bool { editingSide != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -153,37 +154,44 @@ struct HomeCurrencyCard: View {
                 fullConverterButton
             }
             HStack(spacing: 8) {
-                Text(store.source).font(.subheadline.weight(.semibold)).fixedSize()
-                TextField("Amount", text: Binding(
-                    get: { store.fieldText(for: .source, focused: editing) },
-                    set: { store.edit($0, side: .source) }
-                ))
-                .textFieldStyle(.plain).keyboardType(.decimalPad).monospacedDigit()
-                .font(.title3.weight(.semibold)).focused($editing)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .padding(.horizontal, 6)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityLabel("Amount in \(Currency.named(store.source).name)")
-                .accessibilityIdentifier("home-currency-amount")
-                Image(systemName: "arrow.right").font(.caption).accessibilityHidden(true)
-                Text("\(store.result(for: store.target)) \(store.target)")
-                    .font(.headline).monospacedDigit().lineLimit(1)
-                    .accessibilityLabel("Converted amount, \(store.result(for: store.target)) \(store.target)")
+                amountField(.source)
+                Button { editingSide = nil; store.swap() } label: {
+                    Image(systemName: "arrow.left.arrow.right").frame(width: 44, height: 44)
+                }.buttonStyle(.plain).foregroundStyle(.blue).accessibilityLabel("Swap currencies")
+                amountField(.target)
             }
             if !editing {
-                Text("Estimate · " + store.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                Text("Estimate · " + store.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
         .toolbar {
-            ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { editing = false } }
+            ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { editingSide = nil } }
         }
-        .onDisappear { editing = false }
+        .onDisappear { editingSide = nil }
         .onChange(of: editing) { _, value in editingChanged(value) }
-        .onChange(of: active) { _, value in if !value { editing = false } }
+        .onChange(of: active) { _, value in if !value { editingSide = nil } }
+    }
+
+    private func amountField(_ side: AmountSide) -> some View {
+        let code = side == .source ? store.source : store.target
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(code).font(.caption2.weight(.semibold)).lineLimit(1)
+            TextField("Amount", text: Binding(
+                get: { store.fieldText(for: side, focused: editingSide == side) },
+                set: { store.edit($0, side: side) }
+            ))
+            .textFieldStyle(.plain).keyboardType(.decimalPad).monospacedDigit()
+            .font(.title3.weight(.semibold)).focused($editingSide, equals: side)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .accessibilityLabel("\(side == .source ? "From" : "To") amount in \(Currency.named(code).name)")
+            .accessibilityIdentifier(side == .source ? "home-currency-amount" : "home-currency-target")
+        }.padding(.horizontal, 6)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            .frame(maxWidth: .infinity)
     }
 
     private var fullConverterButton: some View {
-        Button { editing = false; openConverter() } label: {
+        Button { editingSide = nil; openConverter() } label: {
             Label("Full converter", systemImage: "arrow.up.right").font(.caption)
                 .frame(minHeight: 44)
         }.buttonStyle(.plain).foregroundStyle(.blue)
