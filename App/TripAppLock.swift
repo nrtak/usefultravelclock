@@ -37,12 +37,12 @@ final class TripAppLock: ObservableObject {
             return false
         }
         do {
-            let accepted = try await auth.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock Trip Info")
+            let accepted = try await auth.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock Pockaway")
             guard generation == request else { return false }
             unlocked = accepted
             return accepted
         } catch {
-            if generation == request { self.error = "Trip Info is locked. Tap Unlock to try again." }
+            if generation == request { self.error = "Pockaway is locked. Tap Unlock to try again." }
             return false
         }
     }
@@ -63,7 +63,7 @@ struct TripAppLockGate<Content: View>: View {
             } else {
                 VStack(spacing: 18) {
                     Image(systemName: "lock.fill").font(.largeTitle).foregroundStyle(.blue)
-                    Text("Trip Info is locked").font(.title2.weight(.semibold))
+                    Text("Pockaway is locked").font(.title2.weight(.semibold))
                     Button { Task { await lock.authenticate() } } label: {
                         Label("Unlock", systemImage: "lock.open").frame(minWidth: 120, minHeight: 44)
                     }.buttonStyle(.borderedProminent).disabled(lock.authenticating)
@@ -75,7 +75,7 @@ struct TripAppLockGate<Content: View>: View {
         }
         .overlay {
             if lock.enabled && phase != .active {
-                Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock.fill").font(.title2))
+                Color(.systemBackground).ignoresSafeArea().overlay(Label("Pockaway", systemImage: "lock.fill").font(.title2))
             }
         }
         .task { if lock.enabled && !lock.unlocked && phase == .active { await lock.authenticate() } }

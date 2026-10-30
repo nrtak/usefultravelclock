@@ -36,11 +36,11 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_CFBundleDisplayName: Trip Info
+        INFOPLIST_KEY_CFBundleDisplayName: Pockaway
         CODE_SIGN_ENTITLEMENTS: UsefulTravelClock/UsefulTravelClock.entitlements
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
-        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Trip Info and private hotel and travel details.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Pockaway and private hotel and travel details.
     info:
       path: UsefulTravelClock/Info.plist
       properties:
@@ -76,7 +76,7 @@ targets:
     info:
       path: UsefulTravelClockWidget/Info.plist
       properties:
-        CFBundleDisplayName: Useful Travel Clock Widgets
+        CFBundleDisplayName: Pockaway Widgets
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         NSExtension:

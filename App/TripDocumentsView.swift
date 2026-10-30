@@ -70,12 +70,12 @@ struct TripDocumentsView: View {
         .sheet(isPresented: $adding) { TripDocumentImport(recordID: nil) }
         .confirmationDialog("Discard the unfinished document import?", isPresented: $discardDraft, titleVisibility: .visible) {
             Button("Discard draft", role: .destructive) { do { try trip.discardImportDraft() } catch { self.error = TripSaveError.message(error) } }
-        } message: { Text("Documents already saved in Trip Info stay available.") }
+        } message: { Text("Documents already saved in Pockaway stay available.") }
         .confirmationDialog("Remove \(completed.count) documents from completed trips?", isPresented: $cleanup, titleVisibility: .visible) {
             Button("Remove documents", role: .destructive) {
                 do { try trip.removeDocuments(Set(completed.map(\.id))) } catch { self.error = TripSaveError.message(error) }
             }
-        } message: { Text("This removes the copies in Trip Info. Your original files and trip details stay unchanged.") }
+        } message: { Text("This removes the copies in Pockaway. Your original files and trip details stay unchanged.") }
         .alert("Couldn’t update documents", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK") { error = nil } } message: { Text(error ?? "") }
     }
 }
@@ -158,7 +158,7 @@ struct TripDocumentDetail: View {
             Button("Delete document", role: .destructive) {
                 do { try trip.removeDocuments([documentID]); dismiss() } catch { self.error = TripSaveError.message(error) }
             }
-        } message: { Text("Only the copy in Trip Info is removed.") }
+        } message: { Text("Only the copy in Pockaway is removed.") }
         .alert("Couldn’t open document", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK") { error = nil } } message: { Text(error ?? "") }
         .onChange(of: phase) { _, value in if value == .background { preview = nil; share = nil; trip.clearDocumentPreviews() } }
         .onChange(of: trip.unlocked) { _, value in if !value { preview = nil; share = nil; dismiss() } }
@@ -452,7 +452,7 @@ struct TripDocumentPrivacyMask: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay {
             if phase != .active {
-                Color(.systemBackground).ignoresSafeArea().overlay(Label("Trip Info", systemImage: "lock.fill").font(.title2))
+                Color(.systemBackground).ignoresSafeArea().overlay(Label("Pockaway", systemImage: "lock.fill").font(.title2))
             }
         }
     }
