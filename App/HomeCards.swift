@@ -22,12 +22,19 @@ struct DashboardHome: View {
             let displayed = editingCurrency ? [.currency] : Array(sections.prefix(slots))
             VStack(spacing: HomeLayout.spacing) {
                 ForEach(displayed) { section in
-                    ViewThatFits(in: .vertical) {
-                        detail(section).fixedSize(horizontal: false, vertical: true)
-                        Button { open(section) } label: {
-                            Label(section.title, systemImage: section.symbol).font(.headline)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        }.buttonStyle(.plain)
+                    Group {
+                        if section == .currency {
+                            // Interactive fields must not disappear into the summary fallback.
+                            detail(section)
+                        } else {
+                            ViewThatFits(in: .vertical) {
+                                detail(section).fixedSize(horizontal: false, vertical: true)
+                                Button { open(section) } label: {
+                                    Label(section.title, systemImage: section.symbol).font(.headline)
+                                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                }.buttonStyle(.plain)
+                            }
+                        }
                     }
                     .padding(12).frame(maxWidth: .infinity)
                     .frame(height: editingCurrency ? min(cardHeight, max(0, geometry.size.height - 2 * HomeLayout.padding)) : cardHeight)

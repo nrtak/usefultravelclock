@@ -85,7 +85,12 @@ final class HomeLayoutTests: XCTestCase {
             if let field = view as? UITextField { return [field] }
             return view.subviews.flatMap(fields)
         }
-        let field = try XCTUnwrap(fields(controller.view).first, "The compact card must retain an editable amount instead of its fallback title")
+        let inputs = fields(controller.view)
+        if inputs.isEmpty {
+            let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+            let attachment = XCTAttachment(image: image); attachment.lifetime = .keepAlways; add(attachment)
+        }
+        let field = try XCTUnwrap(inputs.first, "The compact card must retain an editable amount instead of its fallback title")
         XCTAssertGreaterThan(field.bounds.height, 0)
         field.text = "25"
         field.sendActions(for: .editingChanged)

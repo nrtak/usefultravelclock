@@ -20,6 +20,7 @@ final class DashboardPresentationTests: XCTestCase {
         defaults.set(tokyo.id, forKey: "travel-destination")
         let currency = ConverterStore(preferences: defaults, cacheURL: directory.appendingPathComponent("rates.json"), isOffline: { true })
         let trip = TripStore(directory: directory.appendingPathComponent("trip"))
+        trip.unlocked = true
         let weather = TripWeatherStore(directory: directory.appendingPathComponent("weather"))
         weather.installTutorialWeather(for: tokyo, celsius: 20)
         let dashboard = TravelDashboard(tutorialCurrency: currency, trip: trip, weather: weather, initialTool: .weather)
