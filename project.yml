@@ -44,6 +44,8 @@ targets:
     info:
       path: UsefulTravelClock/Info.plist
       properties:
+        # Encryption is provided by iOS (CryptoKit, Keychain and HTTPS).
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDocumentTypes:
         - CFBundleTypeName: Travel documents
           CFBundleTypeRole: Viewer

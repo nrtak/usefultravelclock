@@ -21,7 +21,8 @@ struct TripPrivacySupportView: View {
             }
             Section("Support") {
                 Text("Trip Info is maintained by Irvine Dynamics. Our support and privacy website is irvineapps.wordpress.com. This information page stays inside the app and does not open a website.")
-                Text("Email support: irvineapps@mail.com")
+                Text(verbatim: "Email support: irvineapps[@]mail[.]com")
+                    .foregroundStyle(.primary)
                 Text("When reporting a problem, include the version and build from About Trip Info, your iPhone model and iOS version, what you did, and what you expected. Remove private booking references and traveler information from screenshots.")
                 Text("For battery reports, include the screen in use, whether live camera or translation was active, and approximate duration. iPhone Settings → Battery can help identify the period of use.")
             }

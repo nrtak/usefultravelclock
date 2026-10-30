@@ -62,6 +62,9 @@ jobs:
             -archivePath "$RUNNER_TEMP/UsefulTravelClock.xcarchive" \
             CURRENT_PROJECT_VERSION="$((1000 + GITHUB_RUN_NUMBER))" \
             archive | tee archive.log
+      - name: Check encryption declaration
+        run: |
+          test "$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$RUNNER_TEMP/UsefulTravelClock.xcarchive/Products/Applications/UsefulTravelClock.app/Info.plist")" = "false"
       - name: Export IPA
         run: |
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/UsefulTravelClock.xcarchive" \
