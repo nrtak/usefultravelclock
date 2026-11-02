@@ -95,7 +95,7 @@ private enum TripAppInformation {
 private struct TripCreditsView: View {
     var body: some View {
         List {
-            Section("Installed app") { LabeledContent("App", value: "Pockaway"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.subheadline) }
+            Section("Installed app") { LabeledContent("App", value: "Pockaway Trip Notes"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.subheadline) }
             Section("Project foundations") { Text("Clock and currency tools build on UsefulTravelClock and SimpleCurrency. Original contributor and license notices are retained in the source repository.") }
             Section("Services & frameworks") {
                 LabeledContent("Reference rates", value: "Frankfurter")

@@ -1,0 +1,62 @@
+Pockaway Trip Notes — English (U.S.) listing copy
+Local branding draft for version 1.2. Short app name: Pockaway.
+
+NAME
+Pockaway Trip Notes
+
+SUBTITLE
+Clocks, currency & trip notes
+
+PROMOTIONAL TEXT
+Keep clocks, currency, bookings and documents together. Translate useful text and check what is saved before you head offline.
+
+DESCRIPTION
+Keep the details of your journey close at hand.
+
+Pockaway brings world clocks, currency conversions, travel notes, documents and translation into one place on your iPhone. From checking the time back home to finding a saved confirmation, your everyday travel tools are easy to reach.
+
+COMPARE TIMES
+See Home and Destination clocks together, compare cities, and check booking times in their departure and arrival time zones.
+
+MAKE SENSE OF PRICES
+Convert currencies, total multiple prices, and read marked prices from a supported live camera or a selected photo. Save conversions with notes and reference photos. Convert useful measurements, too.
+
+KEEP YOUR TRIP ORGANIZED
+Save flights, hotel stays and transport details, including routes, booking references and notes. Add optional departure or check-in reminders and see today's and upcoming travel entries.
+
+KEEP DOCUMENTS HANDY
+Import PDFs and images, label them, assign them to a booking, and search by trip or traveler. Saved readable documents remain available offline. Travel entries, drafts and imported documents are encrypted locally.
+
+TRANSLATE AND SAVE
+Translate entered text or text recognized from a camera or photo using supported Apple language pairs. Save useful translations with a title, notes and a reference image. Prepare supported languages while connected for offline translation.
+
+CHECK BEFORE YOU LEAVE
+Review saved travel details, documents, reference rates, weather and language availability before departure. Freshness labels help distinguish current information from older saved data.
+
+No app account is required. Pockaway does not provide its own cloud synchronization. Optional app lock uses your iPhone's authentication; widgets are outside app lock.
+
+Currency conversions are estimates based on dated reference rates. Bank rates and fees may differ. Fresh rates, weather, new weather-location searches and language downloads require internet. Camera scanning depends on device support and permission. Reminder delivery depends on iPhone notification and Focus settings. Encrypted travel information uses a device-specific key, so restoring files to a different device may not restore access.
+
+Support: irvineapps[@]mail[.]com
+
+KEYWORDS
+world,time zone,converter,exchange,flight,hotel,tickets,documents,translate,offline,weather,trip
+
+WHAT'S NEW — use if Apple requests update notes
+A refreshed suitcase icon, simpler app guidance and built-in privacy and support information. Improved camera interruption handling, photo processing, document validation and weather retries.
+
+SUPPORT URL
+https://irvineapps.wordpress.com/feedback/
+
+PRIVACY POLICY URL
+https://irvineapps.wordpress.com/privacy-policy/
+
+REVIEW NOTES
+No app account or login is required. Version 1.1 (1048).
+Home compares clocks and includes a currency converter. Conversions supports multiple prices, measurements and camera/photo text recognition. My Trip supports manual booking entries and optional reminders; the folder button opens Documents for PDF/image imports. Translate supports entered text and camera/photo recognition with Apple's supported language pairs. Language preparation may download Apple language assets. Settings contains App guide, built-in Privacy & support, and About Pockaway.
+Optional app lock uses device authentication. Widgets are not protected by app lock. Reminder notifications omit private booking references and destinations. No booking-service credentials are needed. Use your own sample PDF or image to test document import. The store screenshots contain example travel data; the installed app begins with the user's own data.
+
+UPLOAD NOTES — not listing text
+Recommended category: Travel. Final name availability, copyright owner, review contact, privacy answers and public website currency must be checked in App Store Connect. Public privacy/support pages still need current Pockaway coverage. Do not submit these notes as the public description.
+Screenshots originate from the successful Mac simulator build #283, commit ffc91bb, corresponding to the source uploaded as TestFlight 1048. The captured translation result is a tutorial fixture; no universal language availability or live-data claim is made.
+
