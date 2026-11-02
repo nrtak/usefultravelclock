@@ -14,7 +14,8 @@ struct TravelDashboard: View {
     @AppStorage("trip-destination-color") private var destinationColor = "EAF1FC"
     @AppStorage("trip-navigation-tab-v2") private var tab = 0
     @AppStorage("trip-home-sections") private var savedHomeSections = HomeSection.defaults
-    @AppStorage("trip-tab-order") private var savedTabs = DashboardTab.defaults
+    @AppStorage("trip-tab-order") private var legacySavedTabs = "0,1,2"
+    @AppStorage("trip-tab-order-v2") private var savedTabs = ""
     @State private var editingHome = false
     @State private var editingTabs = false
     @ScaledMetric(relativeTo: .title) private var comparisonColumnWidth: CGFloat = 170
@@ -69,7 +70,13 @@ struct TravelDashboard: View {
         .sheet(item: $homeDocument, onDismiss: { trip.clearDocumentPreviews(); routeInbox() }) { file in TripDocumentPreviewSheet(url: file.url) }
         .alert("Couldn’t complete action", isPresented: Binding(get: { trip.error != nil }, set: { if !$0 { trip.error = nil } })) { Button("OK") { trip.error = nil } } message: { Text(trip.error ?? "") }
         .onChange(of: documentInbox.url) { _, _ in routeInbox() }
-        .onAppear { repairTabSelection(); routeInbox() }
+        .onAppear {
+            if savedTabs.isEmpty {
+                savedTabs = DashboardTab.migratingLegacy(legacySavedTabs)
+                if tab == 2 { tab = DashboardTab.time.rawValue }
+            }
+            repairTabSelection(); routeInbox()
+        }
         .onChange(of: savedTabs) { _, _ in repairTabSelection() }
         .onChange(of: typeSize) { _, size in
             if size.isAccessibilitySize && editingTabs {
@@ -94,7 +101,7 @@ struct TravelDashboard: View {
         switch item {
         case .home:
             NavigationStack {
-                home.navigationTitle("Pockaway").toolbar {
+                home.navigationTitle("Home").toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(editingHome ? "Done" : "Customize") {
                             if editingHome { editingHome = false } else { customizingHome = true }
@@ -102,7 +109,7 @@ struct TravelDashboard: View {
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         if editingHome { Button { customizingHome = true } label: { Image(systemName: "plus") }.accessibilityLabel("Add Home card") }
-                        settingsButton
+                        homeMenu
                     }
                 }
             }
@@ -112,9 +119,15 @@ struct TravelDashboard: View {
                     .navigationTitle("My Trip")
                     .toolbar { ToolbarItem(placement: .topBarTrailing) { settingsButton } }
             }
-        case .tools:
+        case .time:
             NavigationStack {
-                tools.navigationTitle("Tools")
+                world.navigationTitle("Time")
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { settingsButton } }
+            }
+        case .translate:
+            NavigationStack {
+                TripTranslateView(active: phase == .active && tab == DashboardTab.translate.rawValue && !hasModal && !editingTabs)
+                    .navigationTitle("Translate")
                     .toolbar { ToolbarItem(placement: .topBarTrailing) { settingsButton } }
             }
         }
@@ -122,6 +135,17 @@ struct TravelDashboard: View {
     private var settingsButton: some View {
         Button { settings = true } label: { Image(systemName: "gearshape") }
             .tripToolbarButtonStyle().accessibilityLabel("Settings")
+    }
+    private var homeMenu: some View {
+        Menu {
+            Button { tool = .currency } label: { Label("Currency", systemImage: "banknote") }
+            Button { tool = .weather } label: { Label("Weather", systemImage: "cloud.sun") }
+            Button { tool = .documents } label: { Label("Documents", systemImage: "folder") }
+            Button { tool = .readiness } label: { Label("Before you leave", systemImage: "checklist") }
+            Divider()
+            Button { settings = true } label: { Label("Settings", systemImage: "gearshape") }
+        } label: { Image(systemName: "ellipsis") }
+            .tripToolbarButtonStyle().accessibilityLabel("More Home actions")
     }
     private func openTrip() {
         if DashboardTab.decode(savedTabs).contains(.trip) { tab = DashboardTab.trip.rawValue }
@@ -165,34 +189,15 @@ struct TravelDashboard: View {
     }
     private func openHomeSection(_ section: HomeSection) {
         switch section {
-        case .clocks: tool = .world
+        case .clocks:
+            if DashboardTab.decode(savedTabs).contains(.time) { tab = DashboardTab.time.rawValue }
+            else { tool = .world }
         case .currency: tool = .currency
         case .trip: openTrip()
         case .weather: tool = .weather
         case .documents: tool = .documents
         case .readiness: tool = .readiness
         }
-    }
-    private var tools: some View {
-        List {
-            Section("Travel tools") {
-                toolButton(.currency, title: "Currency", detail: "Amounts, multiple prices and saved conversions", symbol: "banknote")
-                toolButton(.translate, title: "Translate", detail: "Text, camera and photos", symbol: "character.bubble")
-                toolButton(.world, title: "World Time", detail: "Cities and time comparison", symbol: "clock")
-                toolButton(.units, title: "Measurements", detail: "Distance, temperature, volume and weight", symbol: "ruler")
-                toolButton(.weather, title: "Weather", detail: "Search cities and view forecasts", symbol: "cloud.sun")
-            }
-        }.navigationBarTitleDisplayMode(.inline)
-    }
-    private func toolButton(_ selection: DashboardTool, title: String, detail: String, symbol: String) -> some View {
-        Button { tool = selection } label: {
-            HStack(spacing: 12) {
-                TripFeatureIcon(symbol: symbol, color: selection.accent, size: 44)
-                VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(detail).font(.subheadline).foregroundStyle(.secondary) }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(selection.accent)
-            }.foregroundStyle(.primary).padding(.vertical, 10)
-        }.buttonStyle(.plain)
     }
     @ViewBuilder
     private func toolScreen(_ selection: DashboardTool) -> some View {
@@ -203,17 +208,15 @@ struct TravelDashboard: View {
                 Group {
                     switch selection {
                     case .world:
-                        world.navigationTitle("World Time")
+                        world.navigationTitle("Time")
                             .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) { cityPicker }
-                    case .translate: TripTranslateView(onClose: { tool = nil }).navigationTitle("Translate")
-                    case .units: TripUnitsView()
                     case .weather: TripWeatherSearchView(home: clock.homeMode == .manual ? clock.homeCity : nil, destination: destination)
                     case .documents: TripDocumentsView()
                     case .readiness: TripReadinessView(currency: currency, cities: readinessCities)
                     case .trip: TravelRecordsView(currency: currency, cities: readinessCities).navigationTitle("My Trip")
                     case .currency: EmptyView()
                     }
-                }.toolbar { if selection != .translate { ToolbarItem(placement: .confirmationAction) { Button("Done") { tool = nil } } } }
+                }.toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { tool = nil } } }
             }
         }
     }
@@ -222,7 +225,7 @@ struct TravelDashboard: View {
         return [clock.homeMode == .manual ? clock.homeCity : nil, destination].compactMap { $0 }.filter { seen.insert($0.id).inserted }
     }
     private var world: some View {
-        TripVisibleTimeline(interval: 30, enabled: tool == .world) { context in
+        TripVisibleTimeline(interval: 30, enabled: phase == .active && ((tab == DashboardTab.time.rawValue && !hasModal && !editingTabs) || tool == .world)) { context in
             let date = context.date.addingTimeInterval(shift * 3600)
             ScrollView {
             VStack(spacing: 10) {
@@ -466,14 +469,14 @@ extension TravelDashboard {
 
 
 enum DashboardTool: String, Identifiable {
-    case currency, translate, world, units, weather, documents, readiness, trip
+    case currency, world, weather, documents, readiness, trip
     var id: String { rawValue }
     var accent: Color {
         switch self {
         case .currency: return .blue
-        case .translate, .trip: return .teal
+        case .trip: return .teal
         case .world: return .indigo
-        case .units, .weather: return .orange
+        case .weather: return .orange
         case .documents: return .purple
         case .readiness: return .green
         }

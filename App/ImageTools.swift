@@ -220,9 +220,10 @@ struct PriceImageView: View {
 }
 struct TripTranslateView: View {
     var onClose: (() -> Void)? = nil
+    var active = true
     @State private var choosingTranslationPhoto = false
     @State private var leavingTranslation = false
-    private var translationCovered: Bool { choosingTranslationPhoto || saved || languageSide != nil || leavingTranslation }
+    private var translationCovered: Bool { !active || choosingTranslationPhoto || saved || languageSide != nil || leavingTranslation }
     @State private var savedTranslationID: UUID?
     private var hasUnsavedTranslation: Bool {
         (!input.isEmpty || !output.isEmpty || !note.isEmpty || image != nil) && savedTranslationID != translationSaveID
@@ -381,6 +382,7 @@ struct TripTranslateView: View {
     var body: some View {
         translationContent
         .task(id: liveScanID) {
+            guard active else { return }
             noTextFound = false
             do { try await Task.sleep(for: .seconds(6)) } catch { return }
             if liveTranslation && liveText.isEmpty { noTextFound = true }
@@ -426,7 +428,10 @@ struct TripTranslateView: View {
                 message = input.isEmpty ? "No text found. Choose a clearer photo or enter text." : "Photo ready · tap Translate"
             } catch { if !Task.isCancelled && generation == liveScanID { message = error.localizedDescription } }
         }
-        .onDisappear { liveScanID = UUID(); keepingPhoto = false }
+        .onChange(of: active) { _, active in
+            if !active { config = nil; preparationConfig = nil; liveCaptureID = nil; liveScanID = UUID(); keepingPhoto = false; livePaused = true }
+        }
+        .onDisappear { config = nil; preparationConfig = nil; liveCaptureID = nil; liveScanID = UUID(); keepingPhoto = false }
         .sheet(isPresented: $saved) { SavedTranslationsView() }
     }
     private func translate(using session: TranslationSession) async {

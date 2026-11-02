@@ -104,6 +104,7 @@ struct WeatherCreditView: View {
 }
 
 struct CompactHomeWeather: View {
+    @ScaledMetric(relativeTo: .largeTitle) private var temperatureSize: CGFloat = 38
     @EnvironmentObject private var weather: TripWeatherStore
     @ObservedObject private var connection = TripConnectionStore.shared
     var active = true
@@ -118,16 +119,21 @@ struct CompactHomeWeather: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack { Label("Weather", systemImage: "cloud.sun").font(.headline); Spacer(); Image(systemName: "chevron.right").font(.subheadline) }
                     if let city, let place = weather.locations[city.id], let forecast = weather.cache[place.id] {
-                        HStack {
-                            Text(city.name).lineLimit(1)
-                            TripWeatherSymbol(symbol: forecast.symbol)
-                            Text(forecast.temperatures(forecast.celsius)).monospacedDigit().lineLimit(1)
-                        }.font(.subheadline)
-                        Text("Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                        HStack(spacing: 8) {
+                            Text(city.name).font(.title2.weight(.bold)).lineLimit(2)
+                            Spacer(minLength: 0)
+                            TripWeatherSymbol(symbol: forecast.symbol, size: 28)
+                        }
+                        ViewThatFits(in: .horizontal) {
+                            Text(forecast.temperatures(forecast.celsius)).fixedSize(horizontal: true, vertical: false)
+                            Text(forecast.temperatures(forecast.celsius)).fixedSize(horizontal: false, vertical: true)
+                        }.font(.system(size: temperatureSize, weight: .bold)).monospacedDigit()
                         TripVisibleTimeline(interval: 60, enabled: active) { context in
                             Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                                .accessibilityLabel(weather.status(for: place, now: context.date, offline: connection.isOffline) + ". Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         }
                     } else {
+                        if let city { Text(city.name).font(.title2.weight(.bold)).lineLimit(2) }
                         Text(city == nil ? "Choose a city" : (connection.isOffline ? "No saved forecast" : "Open forecast")).font(.subheadline)
                     }
                 }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)

@@ -76,7 +76,7 @@ struct DashboardHome: View {
                     ViewThatFits(in: .vertical) {
                         VStack(spacing: 12) {
                             Text(sections.isEmpty ? "Make Home your own" : "Your tools are always available").font(.headline)
-                            Text("Choose your Home cards using Customize. Every feature is available in My Trip or Tools.").font(.subheadline)
+                            Text("Choose your Home cards using Customize. Time, Translate and My Trip have their own tabs. More opens Currency, Weather and other Home actions.").font(.subheadline)
                         }.multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                         Color.clear.frame(height: 0)
                     }
@@ -253,11 +253,22 @@ struct HomeCurrencyCard: View {
     private var editing: Bool { editingSide != nil }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label { Text("Currency") } icon: {
-                Image(systemName: "banknote").foregroundStyle(.blue)
-            }.font(.headline)
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            if editing { currencyHeading }
+            else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        currencyHeading.fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 8)
+                        fullConverterButton.fixedSize(horizontal: true, vertical: false)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        currencyHeading
+                        fullConverterButton.frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+            }
+            HStack(spacing: 12) {
                 amountField(.source)
                 Button { editingSide = nil; store.swap() } label: {
                     Image(systemName: "arrow.left.arrow.right").font(.body.weight(.semibold))
@@ -267,7 +278,6 @@ struct HomeCurrencyCard: View {
                 amountField(.target)
             }
             if !editing {
-                fullConverterButton
                 Text("Estimate · " + store.detail).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -284,10 +294,14 @@ struct HomeCurrencyCard: View {
         .onChange(of: active) { _, value in if !value { editingSide = nil } }
     }
 
+    private var currencyHeading: some View {
+        Text("Currency").font(.headline)
+    }
+
     private func amountField(_ side: AmountSide) -> some View {
         let code = side == .source ? store.source : store.target
-        return VStack(alignment: .leading, spacing: 0) {
-            Text(code).font(.footnote.weight(.semibold)).lineLimit(1)
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(code).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
             TextField("Amount", text: Binding(
                 get: { store.fieldText(for: side, focused: editingSide == side) },
                 set: { store.edit($0, side: side) }
@@ -297,7 +311,7 @@ struct HomeCurrencyCard: View {
             .frame(maxWidth: .infinity, minHeight: 44)
             .accessibilityLabel("\(side == .source ? "From" : "To") amount in \(Currency.named(code).name)")
             .accessibilityIdentifier(side == .source ? "home-currency-amount" : "home-currency-target")
-        }.padding(.horizontal, 8)
+        }.padding(.horizontal, 12).padding(.vertical, 8)
             .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 12))
             .frame(maxWidth: .infinity)
     }
@@ -309,7 +323,7 @@ struct HomeCurrencyCard: View {
                 Image(systemName: "arrow.right").font(.body.weight(.semibold))
             }.frame(minHeight: 32)
         }.tripButtonStyle(primary: true).controlSize(.regular)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
+            .frame(minHeight: 44)
             .accessibilityHint("Open all currency conversion tools")
             .accessibilityIdentifier("home-full-converter")
     }

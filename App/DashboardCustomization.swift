@@ -2,14 +2,28 @@ import SwiftUI
 import UIKit
 
 enum DashboardTab: Int, CaseIterable, Identifiable {
-    case home = 0, trip = 1, tools = 2
+    // Retire the old Tools ID (2); saved My Trip selections retain ID 1.
+    case home = 0, time = 3, translate = 4, trip = 1
     var id: Int { rawValue }
-    static let defaults = "0,1,2"
+    static let defaults = "0,3,4,1"
     var title: String {
-        switch self { case .home: return "Home"; case .trip: return "My Trip"; case .tools: return "Tools" }
+        switch self { case .home: return "Home"; case .time: return "Time"; case .translate: return "Translate"; case .trip: return "My Trip" }
     }
     var symbol: String {
-        switch self { case .home: return "house"; case .trip: return "suitcase"; case .tools: return "square.grid.2x2" }
+        switch self { case .home: return "house"; case .time: return "clock"; case .translate: return "character.bubble"; case .trip: return "suitcase" }
+    }
+    static func migratingLegacy(_ saved: String) -> String {
+        var seen = Set<Int>()
+        let old = saved.split(separator: ",").compactMap { Int($0) }
+            .filter { (0...2).contains($0) && seen.insert($0).inserted }
+        guard !old.isEmpty, old != [0, 1, 2] else { return defaults }
+        var items = old.flatMap { id -> [Self] in
+            switch id { case 0: return [.home]; case 1: return [.trip]; default: return [.time, .translate] }
+        }
+        if !old.contains(2) {
+            items.insert(contentsOf: [.time, .translate], at: items.firstIndex(of: .trip) ?? items.endIndex)
+        }
+        return encode(items)
     }
     static func decode(_ saved: String) -> [Self] {
         var seen = Set<Self>()
@@ -136,7 +150,7 @@ struct DashboardTabEditor: View {
 }
 
 struct DashboardTabSettings: View {
-    @AppStorage("trip-tab-order") private var savedTabs = DashboardTab.defaults
+    @AppStorage("trip-tab-order-v2") private var savedTabs = DashboardTab.defaults
     @AppStorage("trip-navigation-tab-v2") private var selection = 0
     private var tabs: [DashboardTab] { DashboardTab.decode(savedTabs) }
     var body: some View {

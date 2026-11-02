@@ -11,7 +11,7 @@ final class TutorialCaptureTests: XCTestCase {
         let suite = "TutorialCaptures-\(UUID().uuidString)"
         let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
         let standard = UserDefaults.standard
-        let keys = ["travel-destination", "trip-navigation-tab-v2", "trip-tab-order", "trip-home-sections", "trip-translation-source", "trip-translation-target", "trip-unit-category", "trip-unit-source", "trip-unit-target"]
+        let keys = ["travel-destination", "trip-navigation-tab-v2", "trip-tab-order", "trip-tab-order-v2", "trip-home-sections", "trip-translation-source", "trip-translation-target"]
         let old = keys.map { standard.object(forKey: $0) }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
@@ -25,7 +25,6 @@ final class TutorialCaptureTests: XCTestCase {
         let bundle = Bundle(for: Self.self)
         let menu = try Data(contentsOf: XCTUnwrap(bundle.url(forResource: "cafe-menu", withExtension: "jpg")))
         let sign = try Data(contentsOf: XCTUnwrap(bundle.url(forResource: "station-sign", withExtension: "jpg")))
-        let luggage = try Data(contentsOf: XCTUnwrap(bundle.url(forResource: "luggage-scale", withExtension: "jpg")))
         let now = Date()
         let rates = RateSnapshot(fetchedAt: now, rows: [Rate(date: "2026-10-05", base: "USD", quote: "JPY", rate: 150)])
         let ratesURL = temporary.appendingPathComponent("rates.json")
@@ -46,12 +45,9 @@ final class TutorialCaptureTests: XCTestCase {
         clock.cityIDs = [la.id, tokyo.id] + ["London", "Melbourne", "Paris"].compactMap { name in clock.allCities.first { $0.name == name }?.id }
         standard.set(tokyo.id, forKey: "travel-destination")
         standard.set(HomeSection.defaults, forKey: "trip-home-sections")
-        standard.set(DashboardTab.defaults, forKey: "trip-tab-order")
+        standard.set(DashboardTab.defaults, forKey: "trip-tab-order-v2")
         standard.set("ja", forKey: "trip-translation-source")
         standard.set("en", forKey: "trip-translation-target")
-        standard.set("Weight", forKey: "trip-unit-category")
-        standard.set("kg", forKey: "trip-unit-source")
-        standard.set("lb", forKey: "trip-unit-target")
         let trip = TripStore(directory: temporary.appendingPathComponent("Trip")); trip.unlocked = true
         let weather = TripWeatherStore()
         weather.installTutorialWeather(for: la, celsius: 25)
@@ -62,8 +58,8 @@ final class TutorialCaptureTests: XCTestCase {
             try await capture(name, view: view.environmentObject(clock).environmentObject(trip).environmentObject(weather).environmentObject(lock).environmentObject(TripDocumentInbox()).environment(\.scenePhase, .active).preferredColorScheme(.light), bottom: bottom)
         }
         func dashboard(tab: Int, shift: Double = 0, reorder: Bool = false) -> TravelDashboard {
-            standard.set(tab == 3 ? 1 : (tab == 0 ? 0 : 2), forKey: "trip-navigation-tab-v2")
-            return TravelDashboard(tutorialCurrency: converter, trip: trip, weather: weather, shift: shift, reordering: reorder, initialTool: tab == 1 ? .currency : (tab == 2 ? .world : nil))
+            standard.set(tab == 3 ? DashboardTab.trip.rawValue : (tab == 2 ? DashboardTab.time.rawValue : (tab == 4 ? DashboardTab.translate.rawValue : DashboardTab.home.rawValue)), forKey: "trip-navigation-tab-v2")
+            return TravelDashboard(tutorialCurrency: converter, trip: trip, weather: weather, shift: shift, reordering: reorder, initialTool: tab == 1 ? .currency : nil)
         }
         try await screen("00-home", dashboard(tab: 0))
         try await screen("01-currency", dashboard(tab: 1))
@@ -76,7 +72,6 @@ final class TutorialCaptureTests: XCTestCase {
         try await screen("05-save-note", SaveConversionView(tutorialDraft: draft, photo: menu, saved: saved), bottom: true)
         try await screen("06-saved", SavedConversionsView(saved: saved))
         try await screen("06-saved-detail", TutorialSavedViews.detail(savedItem, photoURL: saved.photoURL(for: savedItem)))
-        try await screen("07-units", NavigationStack { TripUnitsView(tutorialPhoto: luggage) })
         try await screen("08-world-now", dashboard(tab: 2))
         try await screen("08-world-compare", dashboard(tab: 2, shift: 3))
         try await screen("09-translate", NavigationStack { TripTranslateView(tutorialPhoto: sign, completed: false).navigationTitle("Translate") })
@@ -110,6 +105,9 @@ final class TutorialCaptureTests: XCTestCase {
         try await screen("24-app-guide", NavigationStack { TripGettingStartedView() })
         try await screen("25-privacy-support", NavigationStack { TripPrivacySupportView() })
         try await screen("26-guide-largest-text", NavigationStack { TripGettingStartedView() }.environment(\.dynamicTypeSize, .accessibility5))
+        standard.set("clocks,currency,weather", forKey: "trip-home-sections")
+        try await screen("27-home-weather", dashboard(tab: 0))
+        try await screen("28-translate-tab", dashboard(tab: 4))
 
     }
     @MainActor

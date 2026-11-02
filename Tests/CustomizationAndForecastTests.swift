@@ -3,15 +3,27 @@ import XCTest
 
 final class CustomizationAndForecastTests: XCTestCase {
     func testTabsKeepStableIdentitiesAndAlwaysOfferAVisibleTab() {
-        XCTAssertEqual(DashboardTab.decode("2,0,2,99,1"), [.tools, .home, .trip])
+        XCTAssertEqual(DashboardTab.decode("4,0,4,99,1"), [.translate, .home, .trip])
         XCTAssertEqual(DashboardTab.decode("obsolete"), DashboardTab.allCases)
-        let moved = DashboardTab.moving(.home, to: .tools, in: DashboardTab.defaults)
-        XCTAssertEqual(DashboardTab.decode(moved), [.trip, .tools, .home])
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.defaults), [.home, .time, .translate, .trip])
+        let moved = DashboardTab.moving(.home, to: .translate, in: DashboardTab.defaults)
+        XCTAssertEqual(DashboardTab.decode(moved), [.time, .translate, .home, .trip])
         let hidden = DashboardTab.removing(.trip, from: moved)
-        XCTAssertEqual(DashboardTab.decode(hidden), [.tools, .home])
-        XCTAssertEqual(DashboardTab.decode(DashboardTab.showing(.trip, in: hidden)), [.tools, .home, .trip])
-        XCTAssertEqual(DashboardTab.removing(.tools, from: "2"), "2")
-        XCTAssertEqual(DashboardTab.showing(.tools, in: "2"), "2")
+        XCTAssertEqual(DashboardTab.decode(hidden), [.time, .translate, .home])
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.showing(.trip, in: hidden)), [.time, .translate, .home, .trip])
+        XCTAssertEqual(DashboardTab.removing(.time, from: "3"), "3")
+        XCTAssertEqual(DashboardTab.showing(.time, in: "3"), "3")
+        XCTAssertFalse(DashboardTab.allCases.contains { $0.rawValue == 2 }, "Retired Tools selections must not open a different feature")
+    }
+
+    func testNewNavigationMigratesExistingHiddenAndReorderedTabs() {
+        XCTAssertEqual(DashboardTab.migratingLegacy("0,1,2"), DashboardTab.defaults)
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.migratingLegacy("2,0,1")), [.time, .translate, .home, .trip])
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.migratingLegacy("2,0")), [.time, .translate, .home])
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.migratingLegacy("0,1")), [.home, .time, .translate, .trip])
+        XCTAssertEqual(DashboardTab.decode(DashboardTab.migratingLegacy("1")), [.time, .translate, .trip])
+        XCTAssertEqual(DashboardTab.migratingLegacy("obsolete"), DashboardTab.defaults)
+        XCTAssertEqual(DashboardTab.trip.rawValue, 1, "Existing My Trip selections keep their identity")
     }
 
     func testDraggingHomeCardsPreservesHiddenChoicesAndAllowsAnEmptyHome() {

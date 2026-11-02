@@ -83,7 +83,7 @@ struct HomeCustomizationView: View {
             List {
                 Section {
                     Text("Choose what appears on Home. Up to \(capacity) cards fit with your current screen and text size. Tap a card below to add it or replace one already shown. Use Reorder to change their order.")
-                    Text("Home never scrolls. If less space becomes available, the first cards stay visible and the rest remain saved here. Every feature is also available in My Trip or Tools.").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Home never scrolls. If less space becomes available, the first cards stay visible and the rest remain saved here. Time, Translate and My Trip have their own tabs. Home’s More menu keeps Currency, Weather, Documents and Before you leave available even when their cards are hidden.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Section("Your cards · \(min(capacity, sections.count)) shown") {
                     ForEach(Array(sections.enumerated()), id: \.element.id) { index, item in
