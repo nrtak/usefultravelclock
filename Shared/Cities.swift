@@ -23,6 +23,16 @@ struct City: Identifiable, Hashable, Codable {
         return parts.joined(separator: ", ")
     }
 
+    // Always include the country in clock displays, including city-states.
+    var clockLocationLabel: String {
+        let isUS = ["USA", "US", "UNITED STATES", "UNITED STATES OF AMERICA"].contains(country.uppercased())
+        if isUS, let region {
+            let state = CitySearch.usStateName(for: region)
+            if !state.isEmpty { return state + ", " + country }
+        }
+        return country
+    }
+
     private var shortCountry: String {
         switch country {
         case "United Kingdom": return "UK"

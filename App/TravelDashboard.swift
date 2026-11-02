@@ -187,11 +187,11 @@ struct TravelDashboard: View {
     private func toolButton(_ selection: DashboardTool, title: String, detail: String, symbol: String) -> some View {
         Button { tool = selection } label: {
             HStack(spacing: 12) {
-                Image(systemName: symbol).foregroundStyle(.blue).frame(width: 28)
+                TripFeatureIcon(symbol: symbol, color: selection.accent, size: 44)
                 VStack(alignment: .leading, spacing: 4) { Text(title).font(.headline); Text(detail).font(.subheadline).foregroundStyle(.secondary) }
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.right").font(.subheadline).foregroundStyle(.secondary)
-            }.foregroundStyle(.primary).padding(.vertical, 6)
+                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(selection.accent)
+            }.foregroundStyle(.primary).padding(.vertical, 10)
         }.buttonStyle(.plain)
     }
     @ViewBuilder
@@ -293,8 +293,8 @@ struct TravelDashboard: View {
                 }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
             }
             VStack(alignment: .leading) {
-                Text(city.name).font(.headline).lineLimit(2)
-                Text(city.country).font(.subheadline).lineLimit(1).foregroundStyle(.secondary)
+                Text(city.name).font(.title2.weight(.bold)).lineLimit(2)
+                Text(city.clockLocationLabel).font(.subheadline).lineLimit(2).foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
@@ -344,23 +344,27 @@ struct TravelDashboard: View {
         }
     }
     private func homeComparisonClock(at date: Date, selectable: Bool) -> some View {
-        clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time", zone: clock.homeTimeZoneID, date: date, selectable: selectable)
+        clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time",
+                 location: clock.homeMode == .manual ? clock.homeCity?.clockLocationLabel ?? "Choose a city" : "Device time zone",
+                 zone: clock.homeTimeZoneID, date: date, selectable: selectable)
     }
     private func destinationComparisonClock(at date: Date, selectable: Bool) -> some View {
-        clockBox(role: "Destination", name: destination?.name ?? "Choose city", zone: destination?.timeZoneID, date: date, selectable: selectable)
+        clockBox(role: "Destination", name: destination?.name ?? "Choose city", location: destination?.clockLocationLabel ?? "Choose a city", zone: destination?.timeZoneID, date: date, selectable: selectable)
     }
-    private func clockBox(role: String, name: String, zone: String?, date: Date, selectable: Bool) -> some View {
+    private func clockBox(role: String, name: String, location: String, zone: String?, date: Date, selectable: Bool) -> some View {
         let displayedTime = zone.map { time(date, zone: $0) } ?? "—"
         return VStack(spacing: 8) {
             Text(role).font(.subheadline).frame(maxWidth: .infinity)
             if selectable {
                 Button { picker = role == "Home" ? "home" : "destination" } label: {
-                    Label(name, systemImage: "pencil").font(.title3.weight(.bold)).lineLimit(2, reservesSpace: true)
+                    Label(name, systemImage: "pencil").font(.title2.weight(.bold)).lineLimit(2, reservesSpace: true)
                 }.frame(maxWidth: .infinity).buttonStyle(.plain)
             } else {
-                Text(name).font(.title3.weight(.bold)).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
+                Text(name).font(.title2.weight(.bold)).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
+            Text(location).font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             ViewThatFits(in: .horizontal) {
                 Text(displayedTime).fixedSize(horizontal: true, vertical: false)
                 Text(displayedTime).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -464,4 +468,14 @@ extension TravelDashboard {
 enum DashboardTool: String, Identifiable {
     case currency, translate, world, units, weather, documents, readiness, trip
     var id: String { rawValue }
+    var accent: Color {
+        switch self {
+        case .currency: return .blue
+        case .translate, .trip: return .teal
+        case .world: return .indigo
+        case .units, .weather: return .orange
+        case .documents: return .purple
+        case .readiness: return .green
+        }
+    }
 }

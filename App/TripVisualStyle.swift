@@ -1,5 +1,39 @@
 import SwiftUI
 
+// Static accents give content depth without running animations or changing layout.
+struct TripCardBackground: View {
+    var accent: Color = .blue
+    var cornerRadius: CGFloat = 22
+    var surface: Color = Color(.secondarySystemBackground)
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        shape.fill(surface)
+            .overlay {
+                shape.fill(LinearGradient(colors: [accent.opacity(scheme == .dark ? 0.16 : 0.09), .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            .overlay {
+                shape.strokeBorder(contrast == .increased ? Color.primary.opacity(0.45) : accent.opacity(0.16), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.04), radius: 6, y: 3)
+            .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+struct TripFeatureIcon: View {
+    let symbol: String
+    var color: Color = .blue
+    var size: CGFloat = 32
+    var body: some View {
+        Image(systemName: symbol).font(.system(size: size * 0.48, weight: .semibold))
+            .symbolRenderingMode(.hierarchical).foregroundStyle(color)
+            .frame(width: size, height: size)
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
 extension ToolbarContent {
     @ToolbarContentBuilder
     func tripToolbarBackground() -> some ToolbarContent {
@@ -32,7 +66,7 @@ struct TripSectionLabel: View {
     var color: Color = .blue
     var body: some View {
         Label { Text(title) } icon: {
-            Image(systemName: symbol).foregroundStyle(color)
+            TripFeatureIcon(symbol: symbol, color: color, size: 28)
         }.font(.headline)
     }
 }
@@ -72,9 +106,10 @@ extension View {
         }
     }
 
-    func tripPanel() -> some View {
-        padding(12).background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+    func tripPanel(accent: Color = .blue) -> some View {
+        padding(12).background {
+            TripCardBackground(accent: accent, cornerRadius: 18, surface: Color(.systemBackground))
+        }
     }
 }
 struct TripArtwork: View {
@@ -94,6 +129,7 @@ struct TripArtwork: View {
 struct TripAnalogClock: View {
     let date: Date
     let zone: String
+    var size: CGFloat = 54
     var body: some View {
         let calendar = Calendar.current
         let timeZone = TimeZone(identifier: zone) ?? .gmt
@@ -102,10 +138,14 @@ struct TripAnalogClock: View {
         let hour = Double((components.hour ?? 0) % 12)
         ZStack {
             Circle().stroke(Color.secondary.opacity(0.45), lineWidth: 1)
-            Capsule().frame(width: 2, height: 16).offset(y: -8).rotationEffect(.degrees(hour * 30 + minute / 2))
-            Capsule().frame(width: 1.5, height: 23).offset(y: -11.5).rotationEffect(.degrees(minute * 6))
-            Circle().frame(width: 4, height: 4)
-        }.frame(width: 54, height: 54).accessibilityHidden(true)
+            ForEach(0..<4) { mark in
+                Capsule().frame(width: 1, height: max(2, size / 18)).offset(y: -size * 0.42)
+                    .rotationEffect(.degrees(Double(mark) * 90)).foregroundStyle(.secondary)
+            }
+            Capsule().frame(width: max(1.5, size / 27), height: size * 16 / 54).offset(y: -size * 8 / 54).rotationEffect(.degrees(hour * 30 + minute / 2))
+            Capsule().frame(width: max(1, size / 36), height: size * 23 / 54).offset(y: -size * 11.5 / 54).rotationEffect(.degrees(minute * 6))
+            Circle().frame(width: max(3, size * 4 / 54), height: max(3, size * 4 / 54))
+        }.frame(width: size, height: size).accessibilityHidden(true)
     }
 }
 

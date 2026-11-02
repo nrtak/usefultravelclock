@@ -19,6 +19,11 @@ enum CitySearch {
         "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia"
     ]
 
+    static func usStateName(for region: String) -> String {
+        let value = region.trimmingCharacters(in: .whitespacesAndNewlines)
+        return usStates[value.uppercased()] ?? value
+    }
+
     private static func normalize(_ value: String) -> String {
         value.folding(options: .diacriticInsensitive, locale: .current)
             .lowercased()

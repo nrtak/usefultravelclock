@@ -93,11 +93,10 @@ struct CurrencyConverterView: View {
     private func featureTile(_ title: String, detail: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 26, weight: .regular)).foregroundStyle(.blue)
+                TripFeatureIcon(symbol: icon, color: icon == "camera.viewfinder" ? .teal : .blue, size: 40)
                 Text(title).font(.subheadline.weight(.semibold)).lineLimit(2).minimumScaleFactor(0.9)
             }.padding(8).frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.blue.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.blue.opacity(0.15)))
+                .background { TripCardBackground(accent: icon == "camera.viewfinder" ? .teal : .blue, cornerRadius: 16) }
         }.buttonStyle(.plain).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     private func amountCard(source: Bool) -> some View {
