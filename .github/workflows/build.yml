@@ -57,6 +57,21 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a') as f:
               f.write('SIMULATOR_ID=' + devices[0]['udid'] + '\n')
           PY
+      - name: Start iPhone simulator before testing
+        timeout-minutes: 7
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          simulator = os.environ['SIMULATOR_ID']
+          print('Starting simulator ' + simulator, flush=True)
+          try:
+              subprocess.run(['xcrun', 'simctl', 'boot', simulator], check=False, timeout=60)
+              subprocess.run(['xcrun', 'simctl', 'bootstatus', simulator, '-b'], check=True, timeout=300)
+          except subprocess.TimeoutExpired:
+              subprocess.run(['xcrun', 'simctl', 'list', 'devices', 'available'], check=False, timeout=30)
+              raise SystemExit('Simulator startup timed out. Retry on a fresh Mac runner.')
+          print('Simulator is ready for tests.', flush=True)
+          PY
       - name: Test settings persistence and time calculations
         run: |
           set -o pipefail
