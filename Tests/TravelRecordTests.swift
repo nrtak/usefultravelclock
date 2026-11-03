@@ -3,6 +3,17 @@ import CryptoKit
 @testable import UsefulTravelClock
 
 final class TravelRecordTests: XCTestCase {
+    func testUnifiedTripListKeepsCurrentAndUpcomingBookingsAheadOfHistory() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let old = TravelRecord(start: now.addingTimeInterval(-400), end: now.addingTimeInterval(-300))
+        let recent = TravelRecord(start: now.addingTimeInterval(-200), end: now)
+        let active = TravelRecord(start: now.addingTimeInterval(-50), end: now.addingTimeInterval(50))
+        let soon = TravelRecord(start: now.addingTimeInterval(100), end: now.addingTimeInterval(200))
+        let later = TravelRecord(start: now.addingTimeInterval(300), end: now.addingTimeInterval(400))
+        XCTAssertEqual(TripSummary.orderedRecords(in: [old, later, recent, soon, active], at: now).map(\.id), [active.id, soon.id, later.id, recent.id, old.id])
+        XCTAssertTrue(TripSummary.orderedRecords(in: [], at: now).isEmpty)
+    }
+
     func testSummaryPrefersOngoingJourneyAndSkipsCompletedRecords() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let past = TravelRecord(start: now.addingTimeInterval(-200), end: now.addingTimeInterval(-100))

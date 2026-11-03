@@ -57,7 +57,7 @@ struct TripSettingsView: View {
                     NavigationLink { TripGettingStartedView() } label: { Label("App guide", systemImage: "questionmark.circle") }
                     NavigationLink { TripPrivacySupportView() } label: { Label("Privacy & support", systemImage: "hand.raised") }
                     NavigationLink { TripCreditsView() } label: {
-                        HStack { Label("About Tama World Clock", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.subheadline) }
+                        HStack { Label("About Timi Clock", systemImage: "info.circle"); Spacer(); Text(TripAppInformation.version).foregroundStyle(.secondary).font(.subheadline) }
                     }
                 }
             }.navigationTitle("Settings")
@@ -95,7 +95,7 @@ private enum TripAppInformation {
 private struct TripCreditsView: View {
     var body: some View {
         List {
-            Section("Installed app") { LabeledContent("App", value: "Tama World Clock"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.subheadline) }
+            Section("Installed app") { LabeledContent("App", value: "Timi World Clock & Utilities"); LabeledContent("Version", value: TripAppInformation.version); LabeledContent("Build", value: TripAppInformation.build); LabeledContent("Developer", value: "Irvine Dynamics"); Text("© 2026 Irvine Dynamics").font(.subheadline) }
             Section("Project foundations") { Text("Clock and currency tools build on UsefulTravelClock and SimpleCurrency. Original contributor and license notices are retained in the source repository.") }
             Section("Services & frameworks") {
                 LabeledContent("Reference rates", value: "Frankfurter")
@@ -105,6 +105,6 @@ private struct TripCreditsView: View {
                 LabeledContent("Translation", value: "Apple Translation")
                 Text("Weather source links appear beside Apple Weather credits in the weather views.").font(.subheadline).foregroundStyle(.secondary)
             }
-        }.navigationTitle("About Tama World Clock").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle("About Timi Clock").navigationBarTitleDisplayMode(.inline)
     }
 }

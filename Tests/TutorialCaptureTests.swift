@@ -120,6 +120,12 @@ final class TutorialCaptureTests: XCTestCase {
         clock.cityIDs = Array(clock.allCities.prefix(10).map(\.id))
         clock.homeMode = .automatic
         try await screen("35-time-all-cities", dashboard(tab: 2), bottom: true)
+        try await screen("36-trip-documents-inline", dashboard(tab: 3))
+        try await screen("37-trip-documents-inline-bottom", dashboard(tab: 3), bottom: true)
+        try await screen("38-home-customize", dashboard(tab: 0).sheet(isPresented: .constant(true)) {
+            HomeCustomizationView(savedSections: Binding(get: { standard.string(forKey: "trip-home-sections") ?? HomeSection.defaults }, set: { standard.set($0, forKey: "trip-home-sections") }), capacity: 3)
+        })
+
 
 
     }

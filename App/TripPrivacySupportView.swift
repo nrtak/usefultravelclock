@@ -4,7 +4,7 @@ struct TripPrivacySupportView: View {
     var body: some View {
         List {
             Section("Privacy") {
-                Text("Tama World Clock stores travel entries, documents, translations, conversions, notes and selected reference photos on your iPhone. It does not operate its own cloud sync and includes no advertising or analytics SDK.")
+                Text("Timi World Clock & Utilities stores travel entries, documents, translations, conversions, notes and selected reference photos on your iPhone. It does not operate its own cloud sync and includes no advertising or analytics SDK.")
                 Text("Travel entries, travel drafts and imported documents are encrypted locally. Saved translations and conversions use iOS file protection. Some files may be included in device backups. The travel encryption key is specific to this device, so restoring files to another device may not restore access to encrypted travel information.")
             }
             Section("Camera & photos") {
@@ -20,10 +20,10 @@ struct TripPrivacySupportView: View {
                 Text("Delete saved entries within their screens. Saved translations and conversions offer Undo for the most recent deletion during the app session. Deleting a travel entry keeps its documents available to reassign or delete. Removing the app removes its local files; backups follow your iPhone's backup settings.")
             }
             Section("Support") {
-                Text("Tama World Clock is maintained by Irvine Dynamics. Our support and privacy website is irvineapps.wordpress.com. This information page stays inside the app and does not open a website.")
+                Text("Timi World Clock & Utilities is maintained by Irvine Dynamics. Our support and privacy website is irvineapps.wordpress.com. This information page stays inside the app and does not open a website.")
                 Text(verbatim: "Email support: irvineapps[@]mail[.]com")
                     .foregroundStyle(.primary)
-                Text("When reporting a problem, include the version and build from About Tama World Clock, your iPhone model and iOS version, what you did, and what you expected. Remove private booking references and traveler information from screenshots.")
+                Text("When reporting a problem, include the version and build from About Timi Clock, your iPhone model and iOS version, what you did, and what you expected. Remove private booking references and traveler information from screenshots.")
                 Text("For battery reports, include the screen in use, whether live camera or translation was active, and approximate duration. iPhone Settings → Battery can help identify the period of use.")
             }
         }.navigationTitle("Privacy & support").navigationBarTitleDisplayMode(.inline)

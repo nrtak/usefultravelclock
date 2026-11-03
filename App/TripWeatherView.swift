@@ -33,8 +33,8 @@ struct TripWeatherCard: View {
             HStack(spacing: 8) {
                 NavigationLink { TripWeatherSearchView(home: home, destination: destination) } label: {
                     HStack(spacing: 4) {
-                        Label("Weather", systemImage: "cloud.sun.fill").symbolRenderingMode(.multicolor).font(.headline)
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
+                        Text("Weather").font(.headline)
+                        Text("View forecast").font(.subheadline.weight(.semibold)).foregroundStyle(.blue)
                     }
                 }.buttonStyle(.plain).accessibilityLabel("More weather")
                 Spacer(minLength: 4)
@@ -117,7 +117,11 @@ struct CompactHomeWeather: View {
         VStack(alignment: .leading, spacing: 4) {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack { Label("Weather", systemImage: "cloud.sun").font(.headline); Spacer(); Image(systemName: "chevron.right").font(.subheadline) }
+                    HStack {
+                        Text("Weather").font(.headline)
+                        Spacer(minLength: 8)
+                        Text("View forecast").font(.subheadline.weight(.semibold)).foregroundStyle(.blue)
+                    }
                     if let city, let place = weather.locations[city.id], let forecast = weather.cache[place.id] {
                         HStack(spacing: 8) {
                             Text(city.name).font(.title2.weight(.bold)).lineLimit(2)
@@ -129,15 +133,15 @@ struct CompactHomeWeather: View {
                             Text(forecast.temperatures(forecast.celsius)).fixedSize(horizontal: false, vertical: true)
                         }.font(.system(size: temperatureSize, weight: .bold)).monospacedDigit()
                         TripVisibleTimeline(interval: 60, enabled: active) { context in
-                            Text(weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-                                .accessibilityLabel(weather.status(for: place, now: context.date, offline: connection.isOffline) + ". Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened))
+                            Text(forecast.condition + " · " + weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                                .accessibilityLabel(forecast.condition + ". " + weather.status(for: place, now: context.date, offline: connection.isOffline) + ". Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         }
                     } else {
                         if let city { Text(city.name).font(.title2.weight(.bold)).lineLimit(2) }
                         Text(city == nil ? "Choose a city" : (connection.isOffline ? "No saved forecast" : "Open forecast")).font(.subheadline)
                     }
                 }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).accessibilityHint("View hourly and daily forecasts")
             WeatherCreditView()
         }.task(id: city?.id) { if let city { await weather.load(city: city) } }
     }

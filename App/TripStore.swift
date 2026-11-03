@@ -64,6 +64,14 @@ struct TranslationRecord: Codable, Identifiable {
     }
 }
 enum TripSummary {
+    static func orderedRecords(in records: [TravelRecord], at now: Date) -> [TravelRecord] {
+        records.sorted {
+            let firstCompleted = $0.end <= now, secondCompleted = $1.end <= now
+            if firstCompleted != secondCompleted { return !firstCompleted }
+            if $0.start != $1.start { return firstCompleted ? $0.start > $1.start : $0.start < $1.start }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
     static func record(in records: [TravelRecord], at now: Date) -> TravelRecord? {
         // Surface an ongoing stay or journey before later bookings.
         let active = records.filter { $0.start <= now && $0.end > now }

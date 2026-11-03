@@ -37,7 +37,7 @@ struct SystemTripNotifications: TripNotificationClient {
     func requestAccess() async -> Bool {
         do {
             let allowed = try await client.requestAccess()
-            accessIssue = allowed ? nil : "Travel details can still be saved. Notifications are off; enable Tama World Clock notifications in iPhone Settings to receive reminders."
+            accessIssue = allowed ? nil : "Travel details can still be saved. Notifications are off; enable Timi Clock notifications in iPhone Settings to receive reminders."
             message = accessIssue
             return allowed
         } catch { accessIssue = "Travel details can still be saved. Could not enable reminders: " + error.localizedDescription; message = accessIssue; return false }
@@ -52,8 +52,8 @@ struct SystemTripNotifications: TripNotificationClient {
         guard let date = fireDate(for: record), date > now else { return nil }
         let content = UNMutableNotificationContent()
         // Keep private booking references and destinations off the lock screen.
-        content.title = "Tama World Clock reminder"
-        content.body = "Your \(record.kind == "Hotel" ? "check-in" : "departure") is coming up. Open Tama World Clock to review the local time and travel details."
+        content.title = "Timi Clock reminder"
+        content.body = "Your \(record.kind == "Hotel" ? "check-in" : "departure") is coming up. Open Timi Clock to review the local time and travel details."
         content.sound = .default
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = .gmt
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
@@ -76,7 +76,7 @@ struct SystemTripNotifications: TripNotificationClient {
         let authorization = await client.authorizationStatus()
         if generation != revision { continue }
         switch authorization {
-        case .denied: accessIssue = "Notifications are off; enable Tama World Clock notifications in iPhone Settings to receive reminders."
+        case .denied: accessIssue = "Notifications are off; enable Timi Clock notifications in iPhone Settings to receive reminders."
         case .notDetermined: accessIssue = "Reminder permission is needed. Save a travel entry with a reminder to enable notifications."
         default: accessIssue = nil
         }
@@ -96,7 +96,7 @@ struct SystemTripNotifications: TripNotificationClient {
                 }
                 try await client.add(request)
             }
-            if generation == revision { message = !desired.isEmpty && accessIssue != nil ? accessIssue : (desired.count > 50 ? "The next 50 reminders are scheduled. Open Tama World Clock during your travels to schedule later ones." : nil) }
+            if generation == revision { message = !desired.isEmpty && accessIssue != nil ? accessIssue : (desired.count > 50 ? "The next 50 reminders are scheduled. Open Timi Clock during your travels to schedule later ones." : nil) }
         } catch { if generation == revision { message = "Travel details saved, but a reminder could not be scheduled. Retry from the travel entry: " + error.localizedDescription } }
         if generation == revision { break }
         } while true

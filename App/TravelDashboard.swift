@@ -54,7 +54,7 @@ struct TravelDashboard: View {
         }
         .tripNavigationAppearance()
         .tint(.blue)
-        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Tama World Clock", systemImage: "lock").font(.title)) } }
+        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Timi Clock", systemImage: "lock").font(.title)) } }
         .sheet(isPresented: Binding(get: { picker != nil && tool == nil }, set: { if !$0 { picker = nil } }), onDismiss: routeInbox) { cityPicker }
         .sheet(isPresented: $customizingHome, onDismiss: routeInbox) { HomeCustomizationView(savedSections: $savedHomeSections, capacity: homeCapacity) }
         .sheet(isPresented: $customizingTabs, onDismiss: routeInbox) {

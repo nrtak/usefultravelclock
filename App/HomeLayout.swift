@@ -76,15 +76,18 @@ struct HomeCustomizationView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var replacement: HomeSection?
     @State private var editMode = EditMode.inactive
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var rowBackground: Color { Color(.secondarySystemGroupedBackground).opacity(reduceTransparency ? 1 : 0.65) }
     private var sections: [HomeSection] { HomeSection.decode(savedSections) }
     private var visible: [HomeSection] { Array(sections.prefix(capacity)) }
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Text("Choose what appears on Home. Up to \(capacity) cards fit with your current screen and text size. Tap a card below to add it or replace one already shown. Use Reorder to change their order.")
-                    Text("Home never scrolls. If less space becomes available, the first cards stay visible and the rest remain saved here. Time, Translate and My Trip have their own tabs. Home’s More menu keeps Currency, Weather, Documents and Before you leave available even when their cards are hidden.").font(.subheadline).foregroundStyle(.secondary)
-                }
+                    Text("Add, replace or reorder Home cards. Changes appear on Home as you make them.")
+                    Text("Up to \(capacity) cards fit with your current screen and text size. Home stays on one screen; cards that do not fit remain saved here." + (typeSize.isAccessibilitySize ? "" : " Drag this sheet up for more room.")).font(.subheadline).foregroundStyle(.secondary)
+                }.listRowBackground(rowBackground)
                 Section("Your cards · \(min(capacity, sections.count)) shown") {
                     ForEach(Array(sections.enumerated()), id: \.element.id) { index, item in
                         Label(item.title, systemImage: item.symbol)
@@ -99,7 +102,7 @@ struct HomeCustomizationView: View {
                         var items = sections; items.remove(atOffsets: offsets)
                         savedSections = HomeSection.encode(items)
                     }
-                }
+                }.listRowBackground(rowBackground)
                 Section("Available cards") {
                     ForEach(HomeSection.allCases.filter { !visible.contains($0) }) { item in
                         Button {
@@ -112,13 +115,15 @@ struct HomeCustomizationView: View {
                     if capacity == 0 {
                         Text("No cards fit at the current screen and text size. Your choices stay saved.").font(.subheadline).foregroundStyle(.secondary)
                     }
-                }
+                }.listRowBackground(rowBackground)
                 Section {
                     Button("Restore default cards") { savedSections = HomeSection.defaults }
-                }
+                }.listRowBackground(rowBackground)
             }
+            .scrollContentBackground(.hidden)
             .environment(\.editMode, $editMode)
             .navigationTitle("Customize Home").navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(editMode == .active ? "Finish reordering" : "Reorder") {
@@ -140,6 +145,23 @@ struct HomeCustomizationView: View {
             } message: {
                 if let replacement { Text("Choose where to show \(replacement.title). Home stays on one screen.") }
             }
+        }
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
+        .modifier(HomeCustomizationSurface(reduceTransparency: reduceTransparency))
+    }
+}
+
+private struct HomeCustomizationSurface: ViewModifier {
+    let reduceTransparency: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if reduceTransparency {
+            content.presentationBackground(Color(.systemBackground))
+        } else if #available(iOS 26.0, *) {
+            // Native partial-height sheets provide Liquid Glass on iOS 26.
+            content
+        } else {
+            content.presentationBackground(.thinMaterial)
         }
     }
 }

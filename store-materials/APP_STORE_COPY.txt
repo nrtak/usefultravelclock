@@ -1,11 +1,11 @@
-Tama World Clock — English (U.S.) listing copy
-Local branding draft for version 1.2. Short app name: Tama Clock.
+Timi World Clock & Utilities — English (U.S.) listing copy
+Local branding draft for version 1.2. Short app name: Timi Clock.
 
 NAME
-Tama World Clock
+Timi World Clock & Utilities
 
 SUBTITLE
-Clocks, currency & trip notes
+Travel Utilities
 
 PROMOTIONAL TEXT
 Keep clocks, currency, bookings and documents together. Translate useful text and check what is saved before you head offline.
@@ -13,7 +13,7 @@ Keep clocks, currency, bookings and documents together. Translate useful text an
 DESCRIPTION
 Keep the details of your journey close at hand.
 
-Tama World Clock brings world clocks, currency conversions, travel notes, documents and translation into one place on your iPhone. From checking the time back home to finding a saved confirmation, your everyday travel tools are easy to reach.
+Timi World Clock & Utilities brings world clocks, currency conversions, travel notes, documents and translation into one place on your iPhone. From checking the time back home to finding a saved confirmation, your everyday travel tools are easy to reach.
 
 COMPARE TIMES
 See Home and Destination clocks together, compare cities, and check booking times in their departure and arrival time zones.
@@ -33,7 +33,7 @@ Translate entered text or text recognized from a camera or photo using supported
 CHECK BEFORE YOU LEAVE
 Review saved travel details, documents, reference rates, weather and language availability before departure. Freshness labels help distinguish current information from older saved data.
 
-No app account is required. Tama World Clock does not provide its own cloud synchronization. Optional app lock uses your iPhone's authentication; widgets are outside app lock.
+No app account is required. Timi Clock does not provide its own cloud synchronization. Optional app lock uses your iPhone's authentication; widgets are outside app lock.
 
 Currency conversions are estimates based on dated reference rates. Bank rates and fees may differ. Fresh rates, weather, new weather-location searches and language downloads require internet. Camera scanning depends on device support and permission. Reminder delivery depends on iPhone notification and Focus settings. Encrypted travel information uses a device-specific key, so restoring files to a different device may not restore access.
 
@@ -52,11 +52,11 @@ PRIVACY POLICY URL
 https://irvineapps.wordpress.com/privacy-policy/
 
 REVIEW NOTES
-No app account or login is required. Version 1.1 (1048).
-Home compares clocks and includes a currency converter. Bottom tabs open Home, Time, Translate and My Trip. Full converter opens multiple prices and camera/photo price recognition. Home’s More menu opens Weather, Currency, Documents, Before you leave and Settings. My Trip supports manual booking entries and optional reminders; the folder button opens Documents for PDF/image imports. Translate supports entered text and camera/photo recognition with Apple's supported language pairs. Language preparation may download Apple language assets. Settings contains App guide, built-in Privacy & support, and About Tama World Clock.
+No app account or login is required. iPhone app.
+Home compares clocks and includes a currency converter. Bottom tabs open Home, Time, Translate and My Trip. Full converter opens multiple prices and camera/photo price recognition. Home’s More menu opens Weather, Currency, Documents, Before you leave and Settings. My Trip shows bookings and saved documents on one page, supports optional reminders, and imports PDFs/images using Add document. Its More menu opens Manage documents and Check offline readiness. Translate supports entered text and camera/photo recognition with Apple's supported language pairs. Language preparation may download Apple language assets. Settings contains App guide, built-in Privacy & support, and About Timi Clock.
 Optional app lock uses device authentication. Widgets are not protected by app lock. Reminder notifications omit private booking references and destinations. No booking-service credentials are needed. Use your own sample PDF or image to test document import. The store screenshots contain example travel data; the installed app begins with the user's own data.
 
 UPLOAD NOTES — not listing text
-Recommended category: Travel. Final name availability, copyright owner, review contact, privacy answers and public website currency must be checked in App Store Connect. Public privacy/support pages still need current Tama World Clock coverage. Do not submit these notes as the public description.
+Recommended category: Travel. Final name availability, copyright owner, review contact, privacy answers and public website currency must be checked in App Store Connect. Public privacy/support pages still need current Timi Clock coverage. Do not submit these notes as the public description.
 Screenshots originate from the successful Mac simulator build #283, commit ffc91bb, corresponding to the source uploaded as TestFlight 1048. The captured translation result is a tutorial fixture; no universal language availability or live-data claim is made.
 
