@@ -78,7 +78,7 @@ struct HomeCustomizationView: View {
     @State private var editMode = EditMode.inactive
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.dynamicTypeSize) private var typeSize
-    private var rowBackground: Color { Color(.secondarySystemGroupedBackground).opacity(reduceTransparency ? 1 : 0.65) }
+    private var rowBackground: Color { Color(.secondarySystemGroupedBackground).opacity(reduceTransparency ? 1 : 0.88) }
     private var sections: [HomeSection] { HomeSection.decode(savedSections) }
     private var visible: [HomeSection] { Array(sections.prefix(capacity)) }
     var body: some View {
@@ -157,11 +157,9 @@ private struct HomeCustomizationSurface: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if reduceTransparency {
             content.presentationBackground(Color(.systemBackground))
-        } else if #available(iOS 26.0, *) {
-            // Native partial-height sheets provide Liquid Glass on iOS 26.
-            content
         } else {
-            content.presentationBackground(.thinMaterial)
+            // Frost the layout underneath so its text cannot compete with this menu.
+            content.presentationBackground(.regularMaterial)
         }
     }
 }
