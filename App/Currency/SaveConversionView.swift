@@ -104,7 +104,7 @@ struct SaveConversionView: View {
         else { allowed = status == .authorized }
         guard visible, !saving, !didSave else { return }
         if allowed { showsCamera = true }
-        else { error = "Camera access is disabled. Enable it for Pockaway in Settings, or choose a photo from Photos." }
+        else { error = "Camera access is disabled. Enable it for Tama World Clock in Settings, or choose a photo from Photos." }
     }
 
     private func save() {

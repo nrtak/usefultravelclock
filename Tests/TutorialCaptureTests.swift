@@ -108,6 +108,19 @@ final class TutorialCaptureTests: XCTestCase {
         standard.set("clocks,currency,weather", forKey: "trip-home-sections")
         try await screen("27-home-weather", dashboard(tab: 0))
         try await screen("28-translate-tab", dashboard(tab: 4))
+        try await screen("29-time-large-text", dashboard(tab: 2).environment(\.dynamicTypeSize, .accessibility3))
+        try await screen("30-time-dark", dashboard(tab: 2).environment(\.colorScheme, .dark))
+        try await screen("31-time-largest-text", dashboard(tab: 2).environment(\.dynamicTypeSize, .accessibility5))
+        clock.showDate = false; clock.showWeekday = false
+        try await screen("32-time-dates-hidden", dashboard(tab: 2))
+        try await screen("33-home-dates-hidden", dashboard(tab: 0))
+        clock.showDate = true; clock.showWeekday = false
+        try await screen("34-time-date-only", dashboard(tab: 2))
+        clock.showWeekday = true
+        clock.cityIDs = Array(clock.allCities.prefix(10).map(\.id))
+        clock.homeMode = .automatic
+        try await screen("35-time-all-cities", dashboard(tab: 2), bottom: true)
+
 
     }
     @MainActor

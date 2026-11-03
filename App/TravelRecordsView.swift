@@ -284,7 +284,7 @@ struct RecordForm: View {
                     }
                 }
                 if let url = TripBookingLink.url(record.bookingWebsite) { Link(destination: url) { Label("Open booking website", systemImage: "arrow.up.right.square") } }
-                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Pockaway does not sign in or sync bookings.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Opens in your browser. Copy your reference above and enter it on the provider’s site. Tama World Clock does not sign in or sync bookings.").font(.subheadline).foregroundStyle(.secondary)
             }
     }
     private func save() {

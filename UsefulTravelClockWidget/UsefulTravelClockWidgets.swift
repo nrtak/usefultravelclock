@@ -80,7 +80,7 @@ struct UsefulTravelClockProvider: TimelineProvider {
 struct UsefulTravelClockSmallWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "UsefulTravelClockSmallWidget", intent: SmallClockConfiguration.self, provider: SmallClockProvider()) { entry in SmallWidgetView(entry: entry) }
-            .configurationDisplayName("Pockaway")
+            .configurationDisplayName("Tama World Clock")
             .description("Choose one or two cities. Touch and hold, then Edit Widget.")
             .supportedFamilies([.systemSmall])
     }

@@ -36,14 +36,15 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_CFBundleDisplayName: Pockaway
+        INFOPLIST_KEY_CFBundleDisplayName: Tama Clock
         CODE_SIGN_ENTITLEMENTS: UsefulTravelClock/UsefulTravelClock.entitlements
         INFOPLIST_KEY_NSCameraUsageDescription: Photograph menus, prices, and travel
           documents.
-        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Pockaway and private hotel and travel details.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock Tama World Clock and private hotel and travel details.
     info:
       path: UsefulTravelClock/Info.plist
       properties:
+        CFBundleName: Tama Clock
         # Encryption is provided by iOS (CryptoKit, Keychain and HTTPS).
         ITSAppUsesNonExemptEncryption: false
         CFBundleDocumentTypes:
@@ -76,7 +77,7 @@ targets:
     info:
       path: UsefulTravelClockWidget/Info.plist
       properties:
-        CFBundleDisplayName: Pockaway Widgets
+        CFBundleDisplayName: Tama World Clock Widgets
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         NSExtension:

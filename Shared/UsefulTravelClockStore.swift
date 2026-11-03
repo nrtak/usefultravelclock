@@ -127,7 +127,9 @@ final class UsefulTravelClockStore: ObservableObject {
         sortOrder = CitySort(rawValue: self.defaults.string(forKey: "city-sort") ?? "") ?? .custom
         favoriteIDs = self.defaults.stringArray(forKey: "city-favorites") ?? []
         nicknames = self.defaults.dictionary(forKey: "city-nicknames") as? [String: String] ?? [:]
-        cityIDs = Array(cityIDs.prefix(Self.maxCities))
+        var seen = Set<String>()
+        let knownIDs = Set(allCities.map(\.id))
+        cityIDs = Array(cityIDs.filter { knownIDs.contains($0) && seen.insert($0).inserted }.prefix(Self.maxCities))
         lastEditState = editState
     }
 
@@ -165,6 +167,34 @@ final class UsefulTravelClockStore: ObservableObject {
 
     var selectedCities: [City] {
         cityIDs.compactMap { id in allCities.first { $0.id == id } }
+    }
+
+    // Primary Home/Destination clocks are drawn separately by the dashboard.
+    func comparisonCities(destinationID: String) -> [City] {
+        var seen = Set<String>()
+        return selectedCities.filter {
+            $0.id != destinationID && (homeMode != .manual || $0.id != homeCityID) && seen.insert($0.id).inserted
+        }
+    }
+
+    @discardableResult
+    func replaceComparisonCity(_ id: String, with replacement: String, destinationID: String) -> Bool {
+        guard comparisonCities(destinationID: destinationID).contains(where: { $0.id == id }),
+              replacement != destinationID, homeMode != .manual || replacement != homeCityID else { return false }
+        return replaceCity(id, with: replacement)
+    }
+
+    @discardableResult
+    func moveComparisonCity(_ id: String, to target: String, destinationID: String) -> Bool {
+        var visible = comparisonCities(destinationID: destinationID).map(\.id)
+        guard let from = visible.firstIndex(of: id), let to = visible.firstIndex(of: target), from != to else { return false }
+        let movable = Set(visible)
+        visible.remove(at: from); visible.insert(id, at: to)
+        var replacement = visible.makeIterator()
+        // Preserve the underlying positions of the primary clocks.
+        let order = cityIDs.map { movable.contains($0) ? (replacement.next() ?? $0) : $0 }
+        edit { cityIDs = order; sortOrder = .custom }
+        return true
     }
 
     func orderedCities(at date: Date = Date()) -> [City] {

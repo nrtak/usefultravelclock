@@ -252,13 +252,7 @@ struct CityRowView: View {
     }
 
     private var compactDate: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: city.timeZoneID)
-        formatter.dateFormat = store.showDate
-            ? (store.showWeekday ? "EEE, MMM d" : "MMM d")
-            : (store.showWeekday ? "EEE" : "")
-        return formatter.string(from: at)
+        TimeEngine.compactDate(at, timeZoneID: city.timeZoneID, date: store.showDate, weekday: store.showWeekday)
     }
 }
 

@@ -96,11 +96,13 @@ enum TimeEngine {
         }
     }
 
-    static func compactDate(_ date: Date, timeZoneID: String) -> String {
+    static func compactDate(_ date: Date, timeZoneID: String, date showDate: Bool = true, weekday: Bool = true) -> String {
+        guard showDate || weekday else { return "" }
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.calendar = Calendar(identifier: .gregorian)
         fmt.timeZone = zone(timeZoneID)
-        fmt.dateFormat = "EEE, MMM d"
+        fmt.dateFormat = showDate ? (weekday ? "EEE, MMM d" : "MMM d") : "EEE"
         return fmt.string(from: date)
     }
 

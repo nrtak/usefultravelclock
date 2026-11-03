@@ -198,7 +198,7 @@ struct DashboardHome: View {
     }
     private func clockColumn(role: String, name: String, city: City?, zone: String?, date: Date, selection: String, showingDate: Bool) -> some View {
         let time = clockTime(at: date, zone: zone)
-        let localDate = zone.map { TimeEngine.compactDate(date, timeZoneID: $0) } ?? "Choose destination"
+        let localDate = zone.map { TimeEngine.compactDate(date, timeZoneID: $0, date: clock.showDate, weekday: clock.showWeekday) } ?? "Choose destination"
         let location = city?.clockLocationLabel ?? (selection == "home" ? "Device time zone" : "Choose destination")
         let compactLocation = city.map { city in
             guard location != city.country, let region = city.region else { return location }
@@ -208,7 +208,7 @@ struct DashboardHome: View {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 4) {
                     if showingDate {
-                        Text(role + " · " + localDate).font(.footnote).foregroundStyle(.secondary)
+                        Text([role, localDate].filter { !$0.isEmpty }.joined(separator: " · ")).font(.footnote).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Text(name).font(.title2.weight(.bold)).fixedSize(horizontal: false, vertical: true)
@@ -230,7 +230,7 @@ struct DashboardHome: View {
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(time).font(.title2.weight(.semibold)).monospacedDigit()
-                        Text(localDate).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                        if !localDate.isEmpty { Text(localDate).font(.footnote).foregroundStyle(.secondary).lineLimit(2) }
                     }.frame(width: alignedTimeWidth(at: date), alignment: .trailing)
                     if clock.showAnalog {
                         Group {
@@ -240,7 +240,7 @@ struct DashboardHome: View {
                     }
                 }.frame(maxWidth: .infinity, minHeight: clockRowHeight)
             }
-        }.buttonStyle(.plain).accessibilityLabel(role + ", " + name + ", " + location + ", " + time + ", " + localDate).accessibilityHint("Choose a city")
+        }.buttonStyle(.plain).accessibilityLabel([role, name, location, time, localDate].filter { !$0.isEmpty }.joined(separator: ", ")).accessibilityHint("Choose a city")
     }
 }
 

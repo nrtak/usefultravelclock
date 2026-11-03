@@ -46,4 +46,22 @@ final class ClockTests: XCTestCase {
         XCTAssertEqual(restored.homeCityID, "lon")
         XCTAssertEqual(restored.cityIDs, ["lon", "nyc"])
     }
+    func testCompactClockDatesRespectDisplaySettingsAndLocalDate() throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T00:37:00Z"))
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "America/Los_Angeles"), "Wed, Dec 31")
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "Asia/Tokyo"), "Thu, Jan 1")
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "Asia/Tokyo", date: true, weekday: false), "Jan 1")
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "Asia/Tokyo", date: false, weekday: true), "Thu")
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "Asia/Tokyo", date: false, weekday: false), "")
+    }
+
+    func testCompactClockDatesFollowSliderAcrossMidnightAndDateLine() throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-12-31T14:37:00Z"))
+        XCTAssertEqual(TimeEngine.compactDate(instant, timeZoneID: "Asia/Tokyo"), "Thu, Dec 31")
+        XCTAssertEqual(TimeEngine.compactDate(instant.addingTimeInterval(1800), timeZoneID: "Asia/Tokyo"), "Fri, Jan 1")
+        let dateLine = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T10:37:00Z"))
+        XCTAssertEqual(TimeEngine.compactDate(dateLine, timeZoneID: "Pacific/Kiritimati"), "Fri, Jan 2")
+        XCTAssertEqual(TimeEngine.compactDate(dateLine, timeZoneID: "Pacific/Honolulu"), "Thu, Jan 1")
+    }
+
 }

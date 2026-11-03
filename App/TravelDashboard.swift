@@ -18,7 +18,7 @@ struct TravelDashboard: View {
     @AppStorage("trip-tab-order-v2") private var savedTabs = ""
     @State private var editingHome = false
     @State private var editingTabs = false
-    @ScaledMetric(relativeTo: .title) private var comparisonColumnWidth: CGFloat = 170
+    @ScaledMetric(relativeTo: .title2) private var comparisonTimeWidth: CGFloat = 110
     @State private var editingCities = false
     @State private var cityEditFeedback = 0
     @State private var customizingHome = false
@@ -54,7 +54,7 @@ struct TravelDashboard: View {
         }
         .tripNavigationAppearance()
         .tint(.blue)
-        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Pockaway", systemImage: "lock").font(.title)) } }
+        .overlay { if phase != .active { Color(.systemBackground).ignoresSafeArea().overlay(Label("Tama World Clock", systemImage: "lock").font(.title)) } }
         .sheet(isPresented: Binding(get: { picker != nil && tool == nil }, set: { if !$0 { picker = nil } }), onDismiss: routeInbox) { cityPicker }
         .sheet(isPresented: $customizingHome, onDismiss: routeInbox) { HomeCustomizationView(savedSections: $savedHomeSections, capacity: homeCapacity) }
         .sheet(isPresented: $customizingTabs, onDismiss: routeInbox) {
@@ -164,16 +164,19 @@ struct TravelDashboard: View {
     }
     private var cityPicker: some View {
         TripCityPicker { city in
-            if picker == "home" { clock.homeMode = .manual; clock.homeCityID = city.id }
-            else if let selection = picker, selection.hasPrefix("city:") {
+            if picker == "home" {
+                clock.edit { clock.homeMode = .manual; clock.homeCityID = city.id }
+            } else if let selection = picker, selection.hasPrefix("city:") {
                 let previous = String(selection.dropFirst(5))
-                if city.id != previous && !clock.replaceCity(previous, with: city.id) {
-                    trip.error = "That city is already in your world clocks. Choose another city."
+                if city.id != previous && !clock.replaceComparisonCity(previous, with: city.id, destinationID: destinationID) {
+                    return "This city is already shown or is no longer available to change. Choose another city."
                 }
             } else { destinationID = city.id }
             picker = nil
+            return nil
         }
     }
+
     @Environment(\.dynamicTypeSize) private var typeSize
     private var home: some View {
         DashboardHome(currency: currency, savedSections: $savedHomeSections, capacity: $homeCapacity, active: phase == .active && tab == 0 && !hasModal && !editingHome && !editingTabs,
@@ -224,36 +227,74 @@ struct TravelDashboard: View {
         var seen = Set<String>()
         return [clock.homeMode == .manual ? clock.homeCity : nil, destination].compactMap { $0 }.filter { seen.insert($0.id).inserted }
     }
+    private var comparisonCities: [City] {
+        clock.comparisonCities(destinationID: destinationID)
+    }
     private var world: some View {
-        TripVisibleTimeline(interval: 30, enabled: phase == .active && ((tab == DashboardTab.time.rawValue && !hasModal && !editingTabs) || tool == .world)) { context in
+        TripVisibleTimeline(interval: 30, enabled: phase == .active && ((tab == DashboardTab.time.rawValue && !hasModal && !editingTabs) || (tool == .world && picker == nil && !editingTabs))) { context in
             let date = context.date.addingTimeInterval(shift * 3600)
             ScrollView {
-            VStack(spacing: 10) {
-                if shift != 0 { Text("Comparing times").font(.headline) }
-                HStack {
-                    Text(editingCities ? "Drag cities to reorder · Tap pencil to change" : "Hold a city to edit or reorder")
-                        .font(.footnote).foregroundStyle(.secondary)
-                    if editingCities {
-                        Spacer()
-                        Button("Done") { editingCities = false }.font(.subheadline).frame(minHeight: 44)
-                    }
-                }
-                clocks(at: date, selectable: false)
-                ForEach(Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))) { city in
-                    reorderableCity(city, at: date)
-                }
-                VStack { HStack { Text("Compare city times"); Spacer(); Button("Return to now") { shift = 0 }.disabled(shift == 0) }; Slider(value: $shift, in: -24...24, step: 0.5)
-                    .overlay(alignment: .bottom) {
-                        Capsule().fill(Color.secondary.opacity(0.6)).frame(width: 2, height: 7)
-                            .offset(y: 4).allowsHitTesting(false).accessibilityHidden(true)
-                    }
-                    .accessibilityLabel("Compare city times")
-                    .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now"); Text(shift == 0 ? "Now · 0 hours" : "\(shift > 0 ? "+" : "")\(shift.formatted()) hours from now").font(.subheadline).monospacedDigit() }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-                if !typeSize.isAccessibilitySize && !editingCities { TripArtwork(symbol: "globe") }
-            Spacer(minLength: 0)
-            }.padding(12)
+                VStack(spacing: 16) {
+                    comparisonControls
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            TripSectionLabel(title: "City clocks", symbol: "globe")
+                            Spacer(minLength: 8)
+                            if editingCities || !comparisonCities.isEmpty {
+                                Button(editingCities ? "Done" : "Edit") { editingCities.toggle() }
+                                    .tripButtonStyle()
+                                    .accessibilityLabel(editingCities ? "Finish editing cities" : "Edit and reorder cities")
+                            }
+                        }.padding(.bottom, 6)
+                        if editingCities && !comparisonCities.isEmpty {
+                            Text("Drag cities to reorder. Tap a pencil to change a city.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
+                        }
+                        primaryClock(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time",
+                                     location: clock.homeMode == .manual ? clock.homeCity?.clockLocationLabel ?? "Choose a city" : "Device time zone",
+                                     zone: clock.homeTimeZoneID, at: date, selection: "home")
+                        Divider()
+                        primaryClock(role: "Destination", name: destination?.name ?? "Choose city",
+                                     location: destination?.clockLocationLabel ?? "Choose a city", zone: destination?.timeZoneID,
+                                     at: date, selection: "destination")
+                        ForEach(comparisonCities) { city in
+                            Divider()
+                            reorderableCity(city, at: date)
+                        }
+                    }.tripPanel(accent: .gray)
+                }.padding(12)
             }.scrollBounceBehavior(.basedOnSize)
+                .background(Color(.systemGroupedBackground))
         }.navigationBarTitleDisplayMode(.inline)
+    }
+    private var comparisonControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text("Compare times").font(.headline).fixedSize()
+                    Spacer(minLength: 12)
+                    returnToNowButton.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Compare times").font(.headline)
+                    returnToNowButton
+                }
+            }
+            Slider(value: $shift, in: -24...24, step: 0.5)
+                .overlay(alignment: .bottom) {
+                    Capsule().fill(Color.secondary.opacity(0.6)).frame(width: 2, height: 7)
+                        .offset(y: 4).allowsHitTesting(false).accessibilityHidden(true)
+                }
+                .accessibilityLabel("Compare city times")
+                .accessibilityValue(shift == 0 ? "Now, zero hours" : "\(shift.formatted()) hours from now")
+            Text(shift == 0 ? "Live time" : "\(abs(shift).formatted()) \(abs(shift) == 1 ? "hour" : "hours") \(shift > 0 ? "later" : "earlier")")
+                .font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }.tripPanel()
+    }
+    private var returnToNowButton: some View {
+        Button("Return to now") { shift = 0 }.tripButtonStyle().disabled(shift == 0)
     }
 
     @ViewBuilder
@@ -262,15 +303,8 @@ struct TravelDashboard: View {
             comparisonCityRow(city, at: date)
                 .draggable(city.id)
                 .dropDestination(for: String.self) { items, _ in
-                    guard let moved = items.first, moved != city.id,
-                          let from = clock.cityIDs.firstIndex(of: moved),
-                          let to = clock.cityIDs.firstIndex(of: city.id),
-                          moved != destinationID, moved != clock.homeCityID else { return false }
-                    var order = clock.cityIDs
-                    order.remove(at: from)
-                    order.insert(moved, at: to)
-                    withAnimation { clock.edit { clock.cityIDs = order; clock.sortOrder = .custom } }
-                    return true
+                    guard items.count == 1, let moved = items.first else { return false }
+                    return withAnimation { clock.moveComparisonCity(moved, to: city.id, destinationID: destinationID) }
                 }
                 .accessibilityActions {
                     Button("Move up") { moveComparisonCity(city.id, by: -1) }
@@ -288,169 +322,139 @@ struct TravelDashboard: View {
         }
     }
     private func comparisonCityRow(_ city: City, at date: Date) -> some View {
-        (typeSize >= .xxLarge ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())) {
+        VStack(alignment: .leading, spacing: 0) {
             if editingCities {
-                Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
-                Button { picker = "city:" + city.id } label: {
-                    Image(systemName: "pencil").frame(width: 44, height: 44)
-                }.buttonStyle(.plain).accessibilityLabel("Change " + city.name)
-            }
-            VStack(alignment: .leading) {
-                Text(city.name).font(.title2.weight(.bold)).lineLimit(2)
-                Text(city.clockLocationLabel).font(.subheadline).lineLimit(2).foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(time(date, zone: city.timeZoneID)).font(.title2.weight(.semibold)).monospacedDigit()
-                if let day = comparisonDay(date, zone: city.timeZoneID) {
-                    Text(day).font(.subheadline).foregroundStyle(.secondary)
+                HStack {
+                    Image(systemName: "line.3.horizontal").foregroundStyle(.secondary).accessibilityHidden(true)
+                    Spacer()
+                    Button { picker = "city:" + city.id } label: {
+                        Image(systemName: "pencil").frame(minWidth: 44, minHeight: 44)
+                    }.tripButtonStyle().accessibilityLabel("Change " + city.name)
                 }
             }
-        }.padding(10).background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-            .rotationEffect(.degrees(editingCities && !reduceMotion ? 0.5 : 0))
-            .animation(editingCities && !reduceMotion ? .easeInOut(duration: 0.18).repeatForever(autoreverses: true) : .default, value: editingCities)
-            .sensoryFeedback(.impact(weight: .light), trigger: cityEditFeedback)
-            .accessibilityElement(children: editingCities ? .contain : .combine)
-            .accessibilityHint(editingCities ? "Use Move up or Move down actions to reorder" : "Use Reorder cities or Change city actions")
+            comparisonClockContent(name: city.name, location: city.clockLocationLabel, zone: city.timeZoneID, at: date)
+        }
+        .contentShape(Rectangle())
+        .rotationEffect(.degrees(editingCities && !reduceMotion ? 0.5 : 0))
+        .animation(editingCities && !reduceMotion ? .easeInOut(duration: 0.18).repeatForever(autoreverses: true) : .default, value: editingCities)
+        .sensoryFeedback(.impact(weight: .light), trigger: cityEditFeedback)
+        .accessibilityElement(children: editingCities ? .contain : .combine)
+        .accessibilityHint(editingCities ? "Use Move up or Move down actions to reorder" : "Use Reorder cities or Change city actions")
     }
     private func moveComparisonCity(_ id: String, by offset: Int) {
-        let cities = Array(clock.selectedCities.filter { $0.id != destinationID && $0.id != clock.homeCityID }.prefix(3))
-        guard let index = cities.firstIndex(where: { $0.id == id }), cities.indices.contains(index + offset),
-              let from = clock.cityIDs.firstIndex(of: id),
-              let to = clock.cityIDs.firstIndex(of: cities[index + offset].id) else { return }
-        var order = clock.cityIDs
-        order.swapAt(from, to)
-        clock.edit { clock.cityIDs = order; clock.sortOrder = .custom }
+        let cities = comparisonCities
+        guard let index = cities.firstIndex(where: { $0.id == id }), cities.indices.contains(index + offset) else { return }
+        clock.moveComparisonCity(id, to: cities[index + offset].id, destinationID: destinationID)
+    }
+    private func primaryClock(role: String, name: String, location: String, zone: String?, at date: Date, selection: String) -> some View {
+        Button { picker = selection } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        clockRole(role).fixedSize(horizontal: true, vertical: false)
+                        if role == "Destination", let zone, clock.showDifference {
+                            Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary).fixedSize()
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        clockRole(role)
+                        if role == "Destination", let zone, clock.showDifference {
+                            Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                comparisonClockContent(name: name, location: location, zone: zone, at: date)
+            }.padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in picker = selection })
+            .accessibilityElement(children: .combine)
+            .accessibilityHint("Choose \(role.lowercased()) city")
+    }
+    private func clockRole(_ role: String) -> some View {
+        Label(role, systemImage: "pencil")
+            .font(.subheadline.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor))
+            .background(Color(hex: role == "Home" ? homeColor : destinationColor), in: Capsule())
+    }
+    private func alignedComparisonTimeWidth(at date: Date) -> CGFloat {
+        let font = UIFont.monospacedDigitSystemFont(ofSize: 22 * comparisonTimeWidth / 110, weight: .semibold)
+        let zones = [clock.homeTimeZoneID, destination?.timeZoneID].compactMap { $0 } + comparisonCities.map(\.timeZoneID)
+        let measured = zones.map { (time(date, zone: $0) as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        return max(comparisonTimeWidth, measured.rounded(.up) + 4)
+    }
+    private func comparisonClockContent(name: String, location: String, zone: String?, at date: Date) -> some View {
+        ViewThatFits(in: .horizontal) {
+            if typeSize < .xxLarge {
+                HStack(spacing: 12) {
+                    comparisonCityHeading(name: name, location: location)
+                        .frame(minWidth: 100, maxWidth: .infinity, alignment: .leading)
+                    comparisonClockReading(zone: zone, at: date, alignment: .trailing)
+                        .frame(width: alignedComparisonTimeWidth(at: date), alignment: .trailing)
+                    comparisonAnalogClock(zone: zone, at: date)
+                }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                comparisonCityHeading(name: name, location: location)
+                HStack(alignment: .center, spacing: 12) {
+                    comparisonAnalogClock(zone: zone, at: date)
+                    comparisonClockReading(zone: zone, at: date, alignment: .leading)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(.vertical, 10)
+    }
+    private func comparisonCityHeading(name: String, location: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(name).font(.title2.weight(.bold)).fixedSize(horizontal: false, vertical: true)
+            Text(location).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    private func comparisonClockReading(zone: String?, at date: Date, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 4) {
+            Text(zone.map { time(date, zone: $0) } ?? "—")
+                .font(.title2.weight(.semibold)).monospacedDigit().fixedSize(horizontal: false, vertical: true)
+            if let zone, clock.showDate || clock.showWeekday {
+                Text(TimeEngine.compactDate(date, timeZoneID: zone, date: clock.showDate, weekday: clock.showWeekday))
+                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
     @ViewBuilder
-    private func clocks(at date: Date, selectable: Bool) -> some View {
-        let font = UIFont.monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
-        let strings = [time(date, zone: clock.homeTimeZoneID), destination.map { time(date, zone: $0.timeZoneID) } ?? "—"]
-        let measured = strings.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
-        let columnWidth = max(comparisonColumnWidth, (measured * comparisonColumnWidth / 170).rounded(.up) + 24)
-        if typeSize.isAccessibilitySize {
-            stackedClocks(at: date, selectable: selectable)
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 10) {
-                    homeComparisonClock(at: date, selectable: selectable).frame(width: columnWidth)
-                    destinationComparisonClock(at: date, selectable: selectable).frame(width: columnWidth)
-                }
-                stackedClocks(at: date, selectable: selectable)
-            }
+    private func comparisonAnalogClock(zone: String?, at date: Date) -> some View {
+        if clock.showAnalog {
+            if let zone { TripAnalogClock(date: date, zone: zone).foregroundStyle(.secondary) }
+            else { Color.clear.frame(width: 54, height: 54).accessibilityHidden(true) }
         }
-    }
-    private func stackedClocks(at date: Date, selectable: Bool) -> some View {
-        VStack(spacing: 12) {
-            homeComparisonClock(at: date, selectable: selectable)
-            destinationComparisonClock(at: date, selectable: selectable)
-        }
-    }
-    private func homeComparisonClock(at date: Date, selectable: Bool) -> some View {
-        clockBox(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time",
-                 location: clock.homeMode == .manual ? clock.homeCity?.clockLocationLabel ?? "Choose a city" : "Device time zone",
-                 zone: clock.homeTimeZoneID, date: date, selectable: selectable)
-    }
-    private func destinationComparisonClock(at date: Date, selectable: Bool) -> some View {
-        clockBox(role: "Destination", name: destination?.name ?? "Choose city", location: destination?.clockLocationLabel ?? "Choose a city", zone: destination?.timeZoneID, date: date, selectable: selectable)
-    }
-    private func clockBox(role: String, name: String, location: String, zone: String?, date: Date, selectable: Bool) -> some View {
-        let displayedTime = zone.map { time(date, zone: $0) } ?? "—"
-        return VStack(spacing: 8) {
-            Text(role).font(.subheadline).frame(maxWidth: .infinity)
-            if selectable {
-                Button { picker = role == "Home" ? "home" : "destination" } label: {
-                    Label(name, systemImage: "pencil").font(.title2.weight(.bold)).lineLimit(2, reservesSpace: true)
-                }.frame(maxWidth: .infinity).buttonStyle(.plain)
-            } else {
-                Text(name).font(.title2.weight(.bold)).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-            }
-            Text(location).font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-            ViewThatFits(in: .horizontal) {
-                Text(displayedTime).fixedSize(horizontal: true, vertical: false)
-                Text(displayedTime).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            }.font(.title.weight(.semibold)).monospacedDigit()
-                .frame(maxWidth: .infinity).accessibilityLabel(role + " time " + displayedTime)
-            if clock.showAnalog {
-                Group {
-                    if let zone { TripAnalogClock(date: date, zone: zone) }
-                    else { Color.clear.frame(width: 54, height: 54).accessibilityHidden(true) }
-                }.frame(maxWidth: .infinity)
-            }
-            Text(zone.map { comparisonDate(date, zone: $0) } ?? "Choose a city")
-                .font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-            Text(role == "Destination" ? zone.map { difference(zone: $0, date: date) } ?? "" : "")
-                .font(.subheadline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-        }.foregroundStyle(Color.readable(on: role == "Home" ? homeColor : destinationColor))
-            .frame(maxWidth: .infinity, alignment: .top).padding(12)
-            .background(Color(hex: role == "Home" ? homeColor : destinationColor), in: RoundedRectangle(cornerRadius: 14))
-            .modifier(TripCityLongPress(enabled: !selectable) { picker = role == "Home" ? "home" : "destination" })
-    }
-
-    // Compare each city's civil date with Home's civil date at the chosen instant.
-    private func comparisonDay(_ date: Date, zone: String) -> String? {
-        var homeCalendar = Calendar(identifier: .gregorian)
-        homeCalendar.timeZone = TimeZone(identifier: clock.homeTimeZoneID) ?? .gmt
-        var cityCalendar = homeCalendar
-        cityCalendar.timeZone = TimeZone(identifier: zone) ?? .gmt
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .gmt
-        guard let homeDay = calendar.date(from: homeCalendar.dateComponents([.year, .month, .day], from: date)),
-              let cityDay = calendar.date(from: cityCalendar.dateComponents([.year, .month, .day], from: date)),
-              let days = calendar.dateComponents([.day], from: homeDay, to: cityDay).day else { return nil }
-        switch days {
-        case 0: return nil
-        case 1: return "Tomorrow"
-        case -1: return "Yesterday"
-        default: return "\(abs(days)) days \(days > 0 ? "ahead" : "behind")"
-        }
-    }
-    private func comparisonDate(_ date: Date, zone: String) -> String {
-        let dateText = TimeEngine.compactDate(date, timeZoneID: zone)
-        return comparisonDay(date, zone: zone).map { $0 + " · " + dateText } ?? dateText
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }
     private func difference(zone: String, date: Date) -> String { let n = ((TimeZone(identifier: zone)?.secondsFromGMT(for: date) ?? 0) - (TimeZone(identifier: clock.homeTimeZoneID)?.secondsFromGMT(for: date) ?? 0)) / 60; return n == 0 ? "Same time" : "\(abs(n)/60)h\(abs(n)%60 == 0 ? "" : " \(abs(n)%60)m") \(n > 0 ? "ahead" : "behind")" }
-}
-private struct TripCityLongPress: ViewModifier {
-    let enabled: Bool
-    let edit: () -> Void
-    @GestureState private var pressing = false
-    @State private var activation = 0
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if enabled {
-        content
-            .contentShape(RoundedRectangle(cornerRadius: 14))
-            .scaleEffect(pressing ? 0.97 : 1)
-            .brightness(pressing ? -0.025 : 0)
-            .overlay(alignment: .topTrailing) {
-                if pressing {
-                    Image(systemName: "pencil.circle.fill").foregroundStyle(.blue)
-                        .padding(6).allowsHitTesting(false).accessibilityHidden(true)
-                }
-            }
-            .animation(.easeOut(duration: 0.12), value: pressing)
-            .gesture(LongPressGesture(minimumDuration: 0.5, maximumDistance: 12)
-                .updating($pressing) { value, state, _ in state = value }
-                .onEnded { _ in activate() })
-            .sensoryFeedback(.impact(weight: .light), trigger: activation)
-            .accessibilityHint(enabled ? "Touch and hold to change city" : "")
-            .accessibilityActions { Button("Change city") { activate() } }
-        } else { content }
-    }
-    private func activate() { activation += 1; edit() }
 }
 struct TripCityPicker: View {
     @EnvironmentObject private var clock: UsefulTravelClockStore
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    let select: (City) -> Void
-    var body: some View { NavigationStack { List { if query.isEmpty { Text("Search for a city") } else { ForEach(CitySearch.search(query, in: clock.allCities)) { city in Button(city.label) { select(city) } } } }.searchable(text: $query).navigationTitle("Choose city").toolbar { ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }.tripToolbarBackground() } } }
+    @State private var selectionError: String?
+    let select: (City) -> String?
+    var body: some View {
+        NavigationStack {
+            List {
+                if query.isEmpty { Text("Search for a city") }
+                else {
+                    ForEach(CitySearch.search(query, in: clock.allCities)) { city in
+                        Button(city.label) { selectionError = select(city) }
+                    }
+                }
+            }.searchable(text: $query).navigationTitle("Choose city")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { TripActionButton("Cancel", primary: false) { dismiss() } }
+                        .tripToolbarBackground()
+                }
+                .alert("Choose another city", isPresented: Binding(get: { selectionError != nil }, set: { if !$0 { selectionError = nil } })) {
+                    Button("OK") { selectionError = nil }
+                } message: { Text(selectionError ?? "") }
+        }
+    }
 }
 
 #if DEBUG
