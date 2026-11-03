@@ -260,6 +260,7 @@ struct RecordForm: View {
                 if choosingStart == true { record.departureTimeZone = city.timeZoneID; record.departureCity = city.name }
                 else { record.arrivalTimeZone = city.timeZoneID; record.arrivalCity = city.name }
                 choosingStart = nil
+                return nil
             }
         }
         .confirmationDialog("Delete this travel entry?", isPresented: $deleting, titleVisibility: .visible) {
