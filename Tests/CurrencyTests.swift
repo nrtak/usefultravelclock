@@ -31,16 +31,91 @@ final class CurrencyTests: XCTestCase {
 
     func testLocalizedAmountsAndInvalidInput() {
         XCTAssertEqual(Amount.parse("12,50", locale: Locale(identifier: "fr_FR")), Decimal(string: "12.5"))
-        for text in ["", "-1", "1,000", "1.2.3", "$12", "NaN", "1e9"] {
+        for text in ["", "-1", "1,00", "1.2.3", "$12", "NaN", "1e9"] {
             XCTAssertNil(Amount.parse(text, locale: Locale(identifier: "en_US")), text)
         }
         XCTAssertEqual(Amount.parse("0", locale: Locale(identifier: "en_US")), 0)
+    }
+
+    func testGroupedPastedAmountsAndMalformedSeparators() {
+        let us = Locale(identifier: "en_US")
+        XCTAssertEqual(Amount.parse("1,234,567.8900", locale: us), Decimal(string: "1234567.89"))
+        XCTAssertEqual(Amount.editableInput("1,234,567.8900", locale: us), "1234567.8900")
+        XCTAssertEqual(Amount.groupedInput("1,234,567.8900", locale: us), "1,234,567.8900")
+        for invalid in [",123", "123,", "1,,234", "12,34", "1234,567", "1.23,4", "1,234.5,6"] {
+            XCTAssertNil(Amount.parse(invalid, locale: us), invalid)
+            XCTAssertEqual(Amount.editableInput(invalid, locale: us), invalid)
+        }
+        let de = Locale(identifier: "de_DE")
+        XCTAssertEqual(Amount.parse("1.234.567,89", locale: de), Decimal(string: "1234567.89"))
+        XCTAssertEqual(Amount.editableInput("1.234,5600", locale: de), "1234,5600")
+        XCTAssertNil(Amount.parse("1.23,45", locale: de))
+        let french = Locale(identifier: "fr_FR")
+        let separator = french.groupingSeparator ?? "\u{202f}"
+        XCTAssertEqual(Amount.parse("1" + separator + "234,50", locale: french), Decimal(string: "1234.5"))
+        let indian = Locale(identifier: "en_IN")
+        let displayed = Amount.groupedInput("1234567.8900", locale: indian)
+        XCTAssertEqual(Amount.parse(displayed, locale: indian), Decimal(string: "1234567.89"))
+        XCTAssertEqual(Amount.groupedInput(displayed, locale: indian), displayed)
+        XCTAssertEqual(Amount.parse("123,456,789,012,345,678", locale: us), Decimal(string: "123456789012345678"))
+        XCTAssertNil(Amount.parse("1,234,567,890,123,456,789", locale: us))
+    }
+
+    @MainActor
+    func testPastingDisplayedCurrencyKeepsConversionAndEditablePrecision() throws {
+        let suite = "CurrencyPaste-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ConverterStore(preferences: defaults, isOffline: { true })
+        store.source = "USD"; store.target = "USD"
+        let raw = ItemAmounts.editable(Decimal(string: "12345.6789")!)
+        store.edit(Amount.groupedInput(raw), side: .target)
+        XCTAssertEqual(store.amount, raw)
+        XCTAssertEqual(store.fieldText(for: .target, focused: true), raw)
+        XCTAssertEqual(store.value(for: "USD"), Decimal(string: "12345.6789"))
+        store.swap()
+        XCTAssertEqual(store.value(for: "USD"), Decimal(string: "12345.6789"))
+        let restored = ConverterStore(preferences: defaults, isOffline: { true })
+        XCTAssertEqual(restored.amount, raw)
     }
 
     func testRoundingForCurrencyMinorUnits() {
         let us = Locale(identifier: "en_US")
         XCTAssertEqual(Amount.format(Decimal(string: "12.345")!, currency: .named("USD"), locale: us), "12.35")
         XCTAssertEqual(Amount.format(Decimal(string: "123.6")!, currency: .named("JPY"), locale: us), "124")
+    }
+
+    func testGroupingPreservesInputPrecisionAndLocale() {
+        let us = Locale(identifier: "en_US")
+        XCTAssertEqual(Amount.groupedInput("1234567.8900", locale: us), "1,234,567.8900")
+        XCTAssertEqual(Amount.groupedInput("1000.", locale: us), "1,000.")
+        XCTAssertEqual(Amount.groupedInput("123456789012345678", locale: us), "123,456,789,012,345,678")
+        XCTAssertEqual(Amount.groupedInput("999", locale: us), "999")
+        XCTAssertEqual(Amount.groupedInput("", locale: us), "")
+        XCTAssertEqual(Amount.groupedInput("1.2.3", locale: us), "1.2.3")
+        let german = Locale(identifier: "de_DE")
+        XCTAssertEqual(Amount.groupedInput("1234567,8900", locale: german), "1.234.567,8900")
+        XCTAssertEqual(Amount.format(1234567, currency: .named("USD"), locale: us), "1,234,567.00")
+        XCTAssertEqual(Amount.format(1234567, currency: .named("JPY"), locale: us), "1,234,567")
+    }
+
+    @MainActor
+    func testGroupedConverterDisplayNeverChangesStoredInputOrConversion() throws {
+        let suite = "GroupedConverter-\(UUID().uuidString)"
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { preferences.removePersistentDomain(forName: suite) }
+        let store = ConverterStore(preferences: preferences, isOffline: { true })
+        store.source = "USD"; store.target = "USD"
+        let raw = ItemAmounts.editable(Decimal(string: "12345.6789")!)
+        store.edit(raw, side: .source)
+        XCTAssertEqual(store.fieldText(for: .source, focused: false), Amount.groupedInput(raw))
+        XCTAssertEqual(store.fieldText(for: .source, focused: true), raw)
+        XCTAssertEqual(store.amount, raw)
+        XCTAssertEqual(store.value(for: "USD"), Decimal(string: "12345.6789"))
+        store.edit("", side: .source)
+        XCTAssertEqual(store.fieldText(for: .source, focused: false), "")
+        store.edit("0", side: .target)
+        XCTAssertEqual(store.fieldText(for: .target, focused: false), "0")
     }
 
     func testAllRequestedCurrenciesAndAliases() {

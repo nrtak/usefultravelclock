@@ -81,7 +81,7 @@ struct ItemConversionView: View {
                     }.buttonStyle(.plain)
                         .accessibilityLabel("Item \(pair.offset + 1): \(pair.element.subtract ? "subtract" : "add"). Tap to switch.")
                     Button { selectedID = pair.element.id } label: {
-                        Text(pair.element.text.isEmpty ? "0" : pair.element.text)
+                        Text(pair.element.text.isEmpty ? "0" : Amount.groupedInput(pair.element.text))
                             .monospacedDigit().frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing).padding(.horizontal, 10)
                             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(selectedID == pair.element.id ? Color.blue : .clear))

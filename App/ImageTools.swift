@@ -283,8 +283,9 @@ struct TripTranslateView: View {
                         let next = TranslationSession.Configuration(source: Locale.Language(identifier: source), target: Locale.Language(identifier: target))
                         if preparationConfig == next { preparationConfig?.invalidate() } else { preparationConfig = next }
                     }.font(.subheadline).disabled(connection.isOffline || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
-                }.tripPanel()
+                }.tripPanel(accent: .purple)
                 VStack(alignment: .leading, spacing: 10) {
+                    TripSectionLabel(title: "Text & camera", symbol: "text.viewfinder", color: .blue)
                     HStack {
                         translationModeButton("Text", icon: "text.alignleft", selected: !liveTranslation && image == nil) { photo = nil; liveScanID = UUID(); keepingPhoto = false; liveTranslation = false; image = nil }
                         translationModeButton("Live camera", icon: "camera.viewfinder", selected: liveTranslation) { photo = nil; resetTranslationScan(); liveTranslation = true }
@@ -343,16 +344,16 @@ struct TripTranslateView: View {
                         if config == next { config?.invalidate() } else { config = next }
                     } label: { Label("Translate", systemImage: "arrow.right").frame(maxWidth: .infinity) }
                     .tripButtonStyle(primary: true).disabled(input.isEmpty || Locale.Language(identifier: source).isEquivalent(to: Locale.Language(identifier: target)))
-                }.tripPanel()
+                }.tripPanel(accent: .blue)
                 VStack(alignment: .leading, spacing: 10) {
                     TripSectionLabel(title: "Translation", symbol: "character.bubble.fill", color: .purple)
                     TextField("Your translation appears here", text: $output, axis: .vertical).lineLimit(3...5).textFieldStyle(.roundedBorder).accessibilityLabel("Translation result, editable")
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
-                }.tripPanel()
+                }.tripPanel(accent: .purple)
                 if !message.isEmpty { Text(message).font(.subheadline).accessibilityAddTraits(.updatesFrequently) }
                 if !liveTranslation { TripArtwork(symbol: "character.bubble") }
             }.padding(12)
-        }.scrollBounceBehavior(.basedOnSize).navigationBarTitleDisplayMode(.inline)
+        }.scrollBounceBehavior(.basedOnSize).background(Color(.systemGroupedBackground)).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             TripActionButton("Save", primary: true) { saveCurrentTranslation() }.disabled(output.isEmpty && image == nil)
         }.tripToolbarBackground() }

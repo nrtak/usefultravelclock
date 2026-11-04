@@ -19,7 +19,7 @@ struct TravelRecordsView: View {
     @State private var visible = false
     @State private var query = ""
     @State private var discard: TravelRecord?
-    private var entries: [TravelRecord] { TripSummary.orderedRecords(in: trip.records.filter { $0.matches(query) }, at: Date()) }
+    private func entries(at date: Date) -> [TravelRecord] { TripSummary.orderedRecords(in: trip.records.filter { $0.matches(query) }, at: date) }
     private var unfinishedEntries: [TravelRecord] { trip.drafts.filter { $0.matches(query) } }
     private var documents: [TripDocument] {
         trip.documents.filter { document in
@@ -41,83 +41,15 @@ struct TravelRecordsView: View {
                     }
                 }
             } else {
-                List {
-                    if !unfinishedEntries.isEmpty {
-                        Section("Unfinished edits") {
-                            ForEach(unfinishedEntries) { saved in
-                                Button { draft = saved } label: {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Label("Resume " + (saved.name.isEmpty ? saved.kind : saved.name), systemImage: "square.and.pencil")
-                                        if let date = saved.draftSavedAt { Text("Saved " + date.formatted(date: .abbreviated, time: .shortened)).font(.subheadline).foregroundStyle(.secondary) }
-                                    }
-                                }.accessibilityHint("Continue editing this saved draft")
-                                    .swipeActions { Button("Discard", role: .destructive) { discard = saved } }
-                                    .accessibilityAction(named: "Discard draft") { discard = saved }
-                            }
-                        }
+                ScrollView {
+                    TripVisibleTimeline(interval: 60, enabled: acceptsIncomingDocuments && draft == nil && preview == nil && incoming == nil && !addingDocument && !managingDocuments && !checkingReadiness) { context in
+                        tripContent(at: context.date)
                     }
-                    if query.isEmpty || !entries.isEmpty {
-                        Section("Bookings") {
-                            if query.isEmpty {
-                                Button { draft = TravelRecord() } label: {
-                                    Label("Add travel entry", systemImage: "plus.circle.fill").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                }
-                            }
-                            ForEach(entries) { record in
-                                Button { draft = trip.drafts.first { $0.id == record.id } ?? record } label: {
-                                    HStack(spacing: 14) {
-                                            Image(systemName: record.kind == "Hotel" ? "bed.double" : record.kind == "Flight" ? "airplane" : "tram")
-                                            .font(.title2).foregroundStyle(.orange).frame(width: 32).accessibilityHidden(true)
-                                        VStack(alignment: .leading, spacing: 5) {
-                                            Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
-                                            Text(record.timingLabel(at: Date())).font(.subheadline).foregroundStyle(.secondary)
-                                            Text((record.kind == "Hotel" ? "Check-in · " : "Departure · ") + record.timeLabel(start: true)).font(.subheadline)
-                                            Text((record.kind == "Hotel" ? "Check-out · " : "Arrival · ") + record.timeLabel(start: false)).font(.subheadline).foregroundStyle(.secondary)
-                                            if !record.reference.isEmpty { Text(record.reference).font(.subheadline) }
-                                            if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.subheadline).lineLimit(2) }
-                                        }
-                                    }.foregroundStyle(Color.primary).padding(.vertical, 4)
-                                }.buttonStyle(.plain).accessibilityElement(children: .combine).accessibilityHint("Edit travel details and view attached documents")
-                                .contextMenu {
-                                    ForEach(trip.documents(for: record.id)) { document in
-                                        Button("Open " + document.name, systemImage: "doc.viewfinder") {
-                                            do { preview = TripPreviewFile(url: try trip.previewURL(document)) }
-                                            catch { trip.error = TripSaveError.message(error) }
-                                        }
-                                    }
-                                }
-                            }
-                            if entries.isEmpty { Text("Add a hotel, flight or transport booking.").font(.subheadline).foregroundStyle(.secondary) }
-                        }
-                    }
-                    if query.isEmpty || !documents.isEmpty {
-                        Section("Documents") {
-                            if query.isEmpty {
-                                Button { addingDocument = true } label: {
-                                    Label(trip.importDraft == nil ? "Add document" : "Resume document import", systemImage: trip.importDraft == nil ? "plus.circle" : "arrow.clockwise")
-                                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                }
-                                if inbox.url != nil, trip.importDraft != nil {
-                                    Text("Finish your current document import first. To discard its draft, open More → Manage documents.").font(.subheadline).foregroundStyle(.secondary)
-                                }
-                            }
-                            ForEach(documents) { document in
-                                NavigationLink { TripDocumentDetail(documentID: document.id) } label: {
-                                    TripDocumentRow(document: document, record: trip.records.first { $0.id == document.recordID }, available: trip.documentAvailable(document))
-                                }
-                            }
-                            if documents.isEmpty {
-                                Text("Keep tickets and confirmations here alongside your bookings.").font(.subheadline).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    if !query.isEmpty && entries.isEmpty && documents.isEmpty && unfinishedEntries.isEmpty {
-                        ContentUnavailableView("No matching trips or documents", systemImage: "magnifyingglass", description: Text("Search by name, route, traveler, booking reference or note."))
-                    }
-                }
-
+                }.scrollBounceBehavior(.basedOnSize).scrollDismissesKeyboard(.interactively)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Booking, document, traveler, reference or note")
         .toolbar { ToolbarItem(placement: .topBarLeading) { tripActions } }
@@ -144,6 +76,107 @@ struct TravelRecordsView: View {
         .onChange(of: inbox.url) { _, _ in receiveDocument() }
         .onChange(of: trip.unlocked) { _, value in if value { receiveDocument() } else { preview = nil; incoming = nil; addingDocument = false } }
         .onChange(of: phase) { _, value in if value == .background { preview = nil; trip.clearDocumentPreviews() } }
+    }
+    private func tripContent(at date: Date) -> some View {
+        let bookings = entries(at: date)
+        let files = documents
+        let drafts = unfinishedEntries
+        return LazyVStack(spacing: 20) {
+            if !drafts.isEmpty {
+                unfinishedCard(drafts)
+            }
+            if query.isEmpty || !bookings.isEmpty {
+                bookingsCard(bookings, at: date)
+            }
+            if query.isEmpty || !files.isEmpty {
+                documentsCard(files)
+            }
+            if !query.isEmpty && bookings.isEmpty && files.isEmpty && drafts.isEmpty {
+                ContentUnavailableView("No matching trips or documents", systemImage: "magnifyingglass", description: Text("Search by name, route, traveler, booking reference or note."))
+            }
+        }.padding(12)
+    }
+
+    private func unfinishedCard(_ drafts: [TravelRecord]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TripSectionLabel(title: "Unfinished edits", symbol: "square.and.pencil", color: .purple)
+            ForEach(drafts) { saved in
+                Button { draft = saved } label: {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Label("Resume " + (saved.name.isEmpty ? saved.kind : saved.name), systemImage: "square.and.pencil")
+                        if let date = saved.draftSavedAt { Text("Saved " + date.formatted(date: .abbreviated, time: .shortened)).font(.subheadline).foregroundStyle(.secondary) }
+                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityHint("Continue editing this saved draft")
+                    .contextMenu { Button("Discard draft", role: .destructive) { discard = saved } }
+                    .accessibilityAction(named: "Discard draft") { discard = saved }
+            }
+        }.tripPanel(accent: .purple)
+    }
+
+    private func bookingsCard(_ bookings: [TravelRecord], at date: Date) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TripSectionLabel(title: "Bookings", symbol: "suitcase.rolling", color: .teal)
+            if query.isEmpty {
+                Button { draft = TravelRecord() } label: {
+                    Label("Add travel entry", systemImage: "plus.circle.fill").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.tripButtonStyle()
+            }
+            ForEach(bookings) { record in
+                if record.id != bookings.first?.id { Divider() }
+                Button { draft = trip.drafts.first { $0.id == record.id } ?? record } label: {
+                    HStack(spacing: 14) {
+                            Image(systemName: record.kind == "Hotel" ? "bed.double" : record.kind == "Flight" ? "airplane" : "tram")
+                            .font(.title2).foregroundStyle(.orange).frame(width: 32).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(record.name.isEmpty ? record.kind : record.name).font(.headline)
+                            Text(record.timingLabel(at: date)).font(.subheadline).foregroundStyle(.secondary)
+                            Text((record.kind == "Hotel" ? "Check-in · " : "Departure · ") + record.timeLabel(start: true)).font(.subheadline)
+                            Text((record.kind == "Hotel" ? "Check-out · " : "Arrival · ") + record.timeLabel(start: false)).font(.subheadline).foregroundStyle(.secondary)
+                            if !record.reference.isEmpty { Text(record.reference).font(.subheadline) }
+                            if !record.from.isEmpty { Text(record.from + (record.to.isEmpty ? "" : " → " + record.to)).font(.subheadline).lineLimit(2) }
+                        }
+                    }.foregroundStyle(Color.primary).padding(.vertical, 4)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityElement(children: .combine).accessibilityHint("Edit travel details and view attached documents")
+                .contextMenu {
+                    ForEach(trip.documents(for: record.id)) { document in
+                        Button("Open " + document.name, systemImage: "doc.viewfinder") {
+                            do { preview = TripPreviewFile(url: try trip.previewURL(document)) }
+                            catch { trip.error = TripSaveError.message(error) }
+                        }
+                    }
+                }
+            }
+            if bookings.isEmpty { Text("Add a hotel, flight or transport booking.").font(.subheadline).foregroundStyle(.secondary) }
+        }.tripPanel(accent: .teal)
+    }
+
+    private func documentsCard(_ files: [TripDocument]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TripSectionLabel(title: "Documents", symbol: "folder", color: .purple)
+            if query.isEmpty {
+                Button { addingDocument = true } label: {
+                    Label(trip.importDraft == nil ? "Add document" : "Resume document import", systemImage: trip.importDraft == nil ? "plus.circle" : "arrow.clockwise")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.tripButtonStyle()
+                if inbox.url != nil, trip.importDraft != nil {
+                    Text("Finish your current document import first. To discard its draft, open More → Manage documents.").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(files) { document in
+                if document.id != files.first?.id { Divider() }
+                NavigationLink { TripDocumentDetail(documentID: document.id) } label: {
+                    HStack(spacing: 8) {
+                        TripDocumentRow(document: document, record: trip.records.first { $0.id == document.recordID }, available: trip.documentAvailable(document))
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.buttonStyle(.plain)
+            }
+            if files.isEmpty {
+                Text("Keep tickets and confirmations here alongside your bookings.").font(.subheadline).foregroundStyle(.secondary)
+            }
+        }.tripPanel(accent: .purple)
     }
     private var tripActions: some View {
         Menu {

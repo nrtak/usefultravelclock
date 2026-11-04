@@ -21,7 +21,8 @@ final class ItemAmountsTests: XCTestCase {
         XCTAssertNil(ItemAmounts.total(["10", "invalid"], subtracting: [1], locale: us))
     }
     func testInvalidItemsDoNotSilentlyDisappear() {
-        XCTAssertNil(ItemAmounts.total(["120", "1,500"], locale: us))
+        XCTAssertEqual(ItemAmounts.total(["120", "1,500"], locale: us), 1620)
+        XCTAssertNil(ItemAmounts.total(["120", "1,50"], locale: us))
         XCTAssertNil(ItemAmounts.total(["120", "-5"], locale: us))
         XCTAssertEqual(ItemAmounts.total(["120", "", "  "], locale: us), 120)
     }

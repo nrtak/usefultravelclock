@@ -109,7 +109,7 @@ struct TravelDashboard: View {
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         if editingHome { Button { customizingHome = true } label: { Image(systemName: "plus") }.accessibilityLabel("Add Home card") }
-                        homeMenu
+                        settingsButton
                     }
                 }
             }
@@ -135,17 +135,6 @@ struct TravelDashboard: View {
     private var settingsButton: some View {
         Button { settings = true } label: { Image(systemName: "gearshape") }
             .tripToolbarButtonStyle().accessibilityLabel("Settings")
-    }
-    private var homeMenu: some View {
-        Menu {
-            Button { tool = .currency } label: { Label("Currency", systemImage: "banknote") }
-            Button { tool = .weather } label: { Label("Weather", systemImage: "cloud.sun") }
-            Button { tool = .documents } label: { Label("Documents", systemImage: "folder") }
-            Button { tool = .readiness } label: { Label("Before you leave", systemImage: "checklist") }
-            Divider()
-            Button { settings = true } label: { Label("Settings", systemImage: "gearshape") }
-        } label: { Image(systemName: "ellipsis") }
-            .tripToolbarButtonStyle().accessibilityLabel("More Home actions")
     }
     private func openTrip() {
         if DashboardTab.decode(savedTabs).contains(.trip) { tab = DashboardTab.trip.rawValue }
@@ -231,14 +220,19 @@ struct TravelDashboard: View {
         clock.comparisonCities(destinationID: destinationID)
     }
     private var world: some View {
-        TripVisibleTimeline(interval: 30, enabled: phase == .active && ((tab == DashboardTab.time.rawValue && !hasModal && !editingTabs) || (tool == .world && picker == nil && !editingTabs))) { context in
-            let date = context.date.addingTimeInterval(shift * 3600)
-            ScrollView {
-                VStack(spacing: 16) {
-                    comparisonControls
+        ScrollView {
+            TripVisibleTimeline(interval: 30, enabled: phase == .active && ((tab == DashboardTab.time.rawValue && !hasModal && !editingTabs) || (tool == .world && picker == nil && !editingTabs))) { context in
+                let date = context.date.addingTimeInterval(shift * 3600)
+                VStack(spacing: 20) {
+                    primaryClock(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time",
+                                 location: clock.homeMode == .manual ? clock.homeCity?.clockLocationLabel ?? "Choose a city" : "Device time zone",
+                                 zone: clock.homeTimeZoneID, at: date, selection: "home")
+                        .padding(12).background {
+                            TripCardBackground(accent: .indigo)
+                        }
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
-                            TripSectionLabel(title: "City clocks", symbol: "globe")
+                            TripSectionLabel(title: "Other cities", symbol: "globe", color: .indigo)
                             Spacer(minLength: 8)
                             if editingCities || !comparisonCities.isEmpty {
                                 Button(editingCities ? "Done" : "Edit") { editingCities.toggle() }
@@ -251,25 +245,26 @@ struct TravelDashboard: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
                         }
-                        primaryClock(role: "Home", name: clock.homeMode == .manual ? clock.homeCity?.name ?? "Home" : "Device time",
-                                     location: clock.homeMode == .manual ? clock.homeCity?.clockLocationLabel ?? "Choose a city" : "Device time zone",
-                                     zone: clock.homeTimeZoneID, at: date, selection: "home")
-                        Divider()
-                        primaryClock(role: "Destination", name: destination?.name ?? "Choose city",
+                        primaryClock(role: "", name: destination?.name ?? "Choose city",
                                      location: destination?.clockLocationLabel ?? "Choose a city", zone: destination?.timeZoneID,
                                      at: date, selection: "destination")
                         ForEach(comparisonCities) { city in
                             Divider()
                             reorderableCity(city, at: date)
                         }
-                    }.tripPanel(accent: .gray)
+                    }.tripPanel(accent: .indigo)
                 }.padding(12)
-            }.scrollBounceBehavior(.basedOnSize)
-                .background(Color(.systemGroupedBackground))
-        }.navigationBarTitleDisplayMode(.inline)
+            }
+        }.scrollBounceBehavior(.basedOnSize)
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                comparisonControls.padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.regularMaterial)
+            }
+            .navigationBarTitleDisplayMode(.inline)
     }
     private var comparisonControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
             ViewThatFits(in: .horizontal) {
                 HStack {
                     Text("Compare times").font(.headline).fixedSize()
@@ -349,19 +344,9 @@ struct TravelDashboard: View {
     private func primaryClock(role: String, name: String, location: String, zone: String?, at date: Date, selection: String) -> some View {
         Button { picker = selection } label: {
             VStack(alignment: .leading, spacing: 6) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        clockRole(role).fixedSize(horizontal: true, vertical: false)
-                        if role == "Destination", let zone, clock.showDifference {
-                            Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary).fixedSize()
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        clockRole(role)
-                        if role == "Destination", let zone, clock.showDifference {
-                            Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
+                if !role.isEmpty { clockRole(role) }
+                if selection == "destination", let zone, clock.showDifference {
+                    Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary)
                 }
                 comparisonClockContent(name: name, location: location, zone: zone, at: date)
             }.padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
@@ -369,7 +354,7 @@ struct TravelDashboard: View {
         }.buttonStyle(.plain)
             .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in picker = selection })
             .accessibilityElement(children: .combine)
-            .accessibilityHint("Choose \(role.lowercased()) city")
+            .accessibilityHint(selection == "home" ? "Choose home city" : "Choose city")
     }
     private func clockRole(_ role: String) -> some View {
         Label(role, systemImage: "pencil")

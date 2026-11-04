@@ -21,7 +21,7 @@ struct PriceCorrectionView: View {
                 Section("Recognized price · " + currency.code) {
                     HStack {
                         Text(currency.symbol).font(.title2)
-                        TextField("Amount", text: $amount).font(.title2).keyboardType(.decimalPad).focused($focused)
+                        TextField("Amount", text: Binding(get: { focused ? amount : Amount.groupedInput(amount) }, set: { amount = $0 })).font(.title2).keyboardType(.decimalPad).focused($focused)
                             .accessibilityLabel("Correct price in " + currency.name)
                     }
                     Text("Enter the amount shown on the original menu or tag. Its conversion updates after saving.").font(.subheadline).foregroundStyle(.secondary)

@@ -114,9 +114,22 @@ struct CompactHomeWeather: View {
     // A single destination forecast keeps attribution readable without crowding Home.
     private var city: City? { destination ?? home }
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        ViewThatFits(in: .vertical) {
+            card(compact: false).fixedSize(horizontal: false, vertical: true)
+            card(compact: true)
+        }
+        // Keep loading outside the size alternatives so a layout change cannot
+        // replace the forecast with a shortcut or cancel its only load task.
+        .task(id: requestID) {
+            guard active, let city else { return }
+            await weather.load(city: city)
+        }
+    }
+    private var requestID: String { "\(city?.id ?? "none")|\(active)|\(connection.isOffline)" }
+    private func card(compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 2 : 4) {
             Button(action: open) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: compact ? 2 : 4) {
                     HStack {
                         Text("Weather").font(.headline)
                         Spacer(minLength: 8)
@@ -124,27 +137,44 @@ struct CompactHomeWeather: View {
                     }
                     if let city, let place = weather.locations[city.id], let forecast = weather.cache[place.id] {
                         HStack(spacing: 8) {
-                            Text(city.name).font(.title2.weight(.bold)).lineLimit(2)
+                            Text(city.name).font(compact ? .headline : .title2.weight(.bold)).lineLimit(1)
                             Spacer(minLength: 0)
-                            TripWeatherSymbol(symbol: forecast.symbol, size: 28)
+                            TripWeatherSymbol(symbol: forecast.symbol, size: compact ? 22 : 28)
                         }
-                        ViewThatFits(in: .horizontal) {
-                            Text(forecast.temperatures(forecast.celsius)).fixedSize(horizontal: true, vertical: false)
-                            Text(forecast.temperatures(forecast.celsius)).fixedSize(horizontal: false, vertical: true)
-                        }.font(.system(size: temperatureSize, weight: .bold)).monospacedDigit()
+                        Text(forecast.temperatures(forecast.celsius))
+                            .font(.system(size: compact ? min(temperatureSize, 32) : temperatureSize, weight: .bold))
+                            .monospacedDigit().fixedSize(horizontal: false, vertical: true)
                         TripVisibleTimeline(interval: 60, enabled: active) { context in
-                            Text(forecast.condition + " · " + weather.status(for: place, now: context.date, offline: connection.isOffline)).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                            Text(forecast.condition + " · " + weather.status(for: place, now: context.date, offline: connection.isOffline))
+                                .font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                                 .accessibilityLabel(forecast.condition + ". " + weather.status(for: place, now: context.date, offline: connection.isOffline) + ". Fetched " + forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened))
                         }
                     } else {
-                        if let city { Text(city.name).font(.title2.weight(.bold)).lineLimit(2) }
-                        Text(city == nil ? "Choose a city" : (connection.isOffline ? "No saved forecast" : "Open forecast")).font(.subheadline)
+                        if let city { Text(city.name).font(.title2.weight(.bold)).lineLimit(1) }
+                        if isLoading { ProgressView("Loading weather…").font(.subheadline) }
+                        else {
+                            Text(emptyMessage).font(.subheadline).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }.buttonStyle(.plain).accessibilityHint("View hourly and daily forecasts")
             WeatherCreditView()
-        }.task(id: city?.id) { if let city { await weather.load(city: city) } }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
+    private var isLoading: Bool {
+        guard let city else { return false }
+        return weather.loading.contains(city.id) || weather.locations[city.id].map { weather.loading.contains($0.id) } == true
+    }
+    private var emptyMessage: String {
+        guard let city else { return "Choose a city to see weather." }
+        if connection.isOffline { return "Offline · no saved forecast" }
+        if weather.errors[city.id] != nil || weather.locations[city.id].map({ weather.errors[$0.id] != nil }) == true {
+            return "Weather unavailable · open forecast to retry"
+        }
+        return "Open forecast to load weather"
+    }
+
 }
 
 struct TripWeatherSearchView: View {

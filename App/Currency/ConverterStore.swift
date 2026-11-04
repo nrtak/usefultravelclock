@@ -67,11 +67,11 @@ final class ConverterStore: ObservableObject {
 
     func edit(_ text: String, side: AmountSide) {
         inputSide = side
-        amount = text
+        amount = Amount.editableInput(text)
     }
 
     func fieldText(for side: AmountSide, focused: Bool) -> String {
-        if side == inputSide { return amount }
+        if side == inputSide { return focused ? amount : Amount.groupedInput(amount) }
         let code = side == .source ? source : target
         guard let value = value(for: code) else { return "" }
         let formatted = Amount.format(value, currency: .named(code))

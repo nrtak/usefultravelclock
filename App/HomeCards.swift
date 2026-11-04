@@ -30,8 +30,8 @@ struct DashboardHome: View {
             VStack(spacing: HomeLayout.spacing) {
                 ForEach(displayed) { section in
                     Group {
-                        if section == .currency || section == .clocks {
-                            // Interactive fields must not disappear into the summary fallback.
+                        if section == .currency || section == .clocks || section == .weather {
+                            // Interactive fields and forecasts must remain visible in their cards.
                             detail(section)
                         } else {
                             ViewThatFits(in: .vertical) {
@@ -76,7 +76,7 @@ struct DashboardHome: View {
                     ViewThatFits(in: .vertical) {
                         VStack(spacing: 12) {
                             Text(sections.isEmpty ? "Make Home your own" : "Your tools are always available").font(.headline)
-                            Text("Choose your Home cards using Customize. Time, Translate and My Trip have their own tabs. More opens Currency, Weather and other Home actions.").font(.subheadline)
+                            Text("Choose your Home cards using Customize. Time, Translate and My Trip have their own tabs. Add Currency or Weather to Home to use them here.").font(.subheadline)
                         }.multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                         Color.clear.frame(height: 0)
                     }
