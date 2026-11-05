@@ -86,6 +86,15 @@ enum TimeEngine {
         return (minutes > 0 ? "+" : "-") + parts.joined(separator: " ")
     }
 
+    // City offsets are relative to Home, including cities in the same time zone.
+    static func formatCityOffset(_ minutes: Int) -> String {
+        guard minutes != 0 else { return "0 hr" }
+        let magnitude = minutes.magnitude
+        let hours = magnitude / 60, remainder = magnitude % 60
+        let duration = hours == 0 ? "\(remainder) min" : "\(hours) hr" + (remainder == 0 ? "" : " \(remainder) min")
+        return (minutes > 0 ? "+" : "-") + duration
+    }
+
     static func dayPhase(_ hourFloat: Double) -> DayPhase {
         switch hourFloat {
         case 7..<12: return .day

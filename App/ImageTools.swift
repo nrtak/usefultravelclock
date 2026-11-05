@@ -351,7 +351,6 @@ struct TripTranslateView: View {
                     TextField("Notes (optional)", text: $note, axis: .vertical).lineLimit(1...2).textFieldStyle(.roundedBorder)
                 }.tripPanel(accent: .purple)
                 if !message.isEmpty { Text(message).font(.subheadline).accessibilityAddTraits(.updatesFrequently) }
-                if !liveTranslation { TripArtwork(symbol: "character.bubble") }
             }.padding(12)
         }.scrollBounceBehavior(.basedOnSize).background(Color(.systemGroupedBackground)).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) {

@@ -345,10 +345,7 @@ struct TravelDashboard: View {
         Button { picker = selection } label: {
             VStack(alignment: .leading, spacing: 6) {
                 if !role.isEmpty { clockRole(role) }
-                if selection == "destination", let zone, clock.showDifference {
-                    Text(difference(zone: zone, date: date)).font(.subheadline).foregroundStyle(.secondary)
-                }
-                comparisonClockContent(name: name, location: location, zone: zone, at: date)
+                comparisonClockContent(name: name, location: location, zone: zone, at: date, showsOffset: selection != "home")
             }.padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
         }.buttonStyle(.plain)
@@ -369,11 +366,11 @@ struct TravelDashboard: View {
         let measured = zones.map { (time(date, zone: $0) as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
         return max(comparisonTimeWidth, measured.rounded(.up) + 4)
     }
-    private func comparisonClockContent(name: String, location: String, zone: String?, at date: Date) -> some View {
+    private func comparisonClockContent(name: String, location: String, zone: String?, at date: Date, showsOffset: Bool = true) -> some View {
         ViewThatFits(in: .horizontal) {
             if typeSize < .xxLarge {
                 HStack(spacing: 12) {
-                    comparisonCityHeading(name: name, location: location)
+                    comparisonCityHeading(name: name, location: location, zone: zone, at: date, showsOffset: showsOffset)
                         .frame(minWidth: 100, maxWidth: .infinity, alignment: .leading)
                     comparisonClockReading(zone: zone, at: date, alignment: .trailing)
                         .frame(width: alignedComparisonTimeWidth(at: date), alignment: .trailing)
@@ -381,7 +378,7 @@ struct TravelDashboard: View {
                 }
             }
             VStack(alignment: .leading, spacing: 10) {
-                comparisonCityHeading(name: name, location: location)
+                comparisonCityHeading(name: name, location: location, zone: zone, at: date, showsOffset: showsOffset)
                 HStack(alignment: .center, spacing: 12) {
                     comparisonAnalogClock(zone: zone, at: date)
                     comparisonClockReading(zone: zone, at: date, alignment: .leading)
@@ -389,10 +386,16 @@ struct TravelDashboard: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.padding(.vertical, 10)
     }
-    private func comparisonCityHeading(name: String, location: String) -> some View {
+    private func comparisonCityHeading(name: String, location: String, zone: String?, at date: Date, showsOffset: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name).font(.title2.weight(.bold)).fixedSize(horizontal: false, vertical: true)
             Text(location).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if showsOffset, clock.showDifference, let zone {
+                let minutes = TimeEngine.timeDifferenceMinutes(date, timeZoneID: zone, homeTimeZoneID: clock.homeTimeZoneID)
+                Text(TimeEngine.formatCityOffset(minutes)).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(minutes == 0 ? "Same time as Home" : TimeEngine.formatDifference(minutes) + " of Home")
+            }
         }
     }
     private func comparisonClockReading(zone: String?, at date: Date, alignment: HorizontalAlignment) -> some View {
@@ -413,7 +416,6 @@ struct TravelDashboard: View {
         }
     }
     private func time(_ date: Date, zone: String) -> String { let f = DateFormatter(); f.timeZone = TimeZone(identifier: zone); f.dateFormat = clock.use24 ? "HH:mm" : "h:mm a"; return f.string(from: date) }
-    private func difference(zone: String, date: Date) -> String { let n = ((TimeZone(identifier: zone)?.secondsFromGMT(for: date) ?? 0) - (TimeZone(identifier: clock.homeTimeZoneID)?.secondsFromGMT(for: date) ?? 0)) / 60; return n == 0 ? "Same time" : "\(abs(n)/60)h\(abs(n)%60 == 0 ? "" : " \(abs(n)%60)m") \(n > 0 ? "ahead" : "behind")" }
 }
 struct TripCityPicker: View {
     @EnvironmentObject private var clock: UsefulTravelClockStore

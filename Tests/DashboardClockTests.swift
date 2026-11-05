@@ -2,6 +2,28 @@ import XCTest
 @testable import UsefulTravelClock
 
 final class DashboardClockTests: XCTestCase {
+    func testCityOffsetLabelsPreserveDirectionMinutesAndSameZone() {
+        XCTAssertEqual(TimeEngine.formatCityOffset(17 * 60), "+17 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(-9 * 60), "-9 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(0), "0 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(345), "+5 hr 45 min")
+        XCTAssertEqual(TimeEngine.formatCityOffset(-210), "-3 hr 30 min")
+        XCTAssertEqual(TimeEngine.formatCityOffset(30), "+30 min")
+        XCTAssertEqual(TimeEngine.formatCityOffset(-45), "-45 min")
+    }
+
+    func testCityOffsetsFollowHomeDaylightSavingAtTheComparedInstant() throws {
+        let formatter = ISO8601DateFormatter()
+        let winter = try XCTUnwrap(formatter.date(from: "2026-11-04T12:00:00Z"))
+        let summer = try XCTUnwrap(formatter.date(from: "2026-07-04T12:00:00Z"))
+        let tokyoWinter = TimeEngine.timeDifferenceMinutes(winter, timeZoneID: "Asia/Tokyo", homeTimeZoneID: "America/Los_Angeles")
+        let tokyoSummer = TimeEngine.timeDifferenceMinutes(summer, timeZoneID: "Asia/Tokyo", homeTimeZoneID: "America/Los_Angeles")
+        XCTAssertEqual(TimeEngine.formatCityOffset(tokyoWinter), "+17 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(tokyoSummer), "+16 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(TimeEngine.timeDifferenceMinutes(winter, timeZoneID: "America/Los_Angeles", homeTimeZoneID: "Asia/Tokyo")), "-17 hr")
+        XCTAssertEqual(TimeEngine.formatCityOffset(TimeEngine.timeDifferenceMinutes(winter, timeZoneID: "Asia/Kathmandu", homeTimeZoneID: "America/Los_Angeles")), "+13 hr 45 min")
+    }
+
     @MainActor func testAllSavedCitiesAreVisibleAndOnlyActiveManualHomeIsExcluded() {
         let suite = "comparison." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
